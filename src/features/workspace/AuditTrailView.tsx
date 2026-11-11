@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   FileBarChart, Search, Download, Filter,
   ShieldCheck, Clock, User, Check, RefreshCw
@@ -6,6 +6,7 @@ import {
 import { useCRM } from '../../store/CRMStore';
 import { SectionHeading } from '../../components/SectionHeading';
 import { StatusPill } from '../../components/StatusPill';
+import { api, AuditEventItem } from '../../services/api';
 import type { CRMRecord } from '../../data/models';
 
 export function AuditTrailView() {
@@ -14,15 +15,46 @@ export function AuditTrailView() {
   const [query, setQuery] = useState('');
   const [filterActor, setFilterActor] = useState('All');
   const [toast, setToast] = useState('');
+  const [liveEvents, setLiveEvents] = useState<AuditEventItem[]>([]);
 
   const notify = (msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(''), 3000);
   };
 
+  useEffect(() => {
+    api.listAuditEvents({ limit: 50 }).then(events => {
+      setLiveEvents(events);
+    }).catch(() => {
+      // Offline fallback
+    });
+  }, []);
+
   const auditRows = useMemo<CRMRecord[]>(() => {
-    return records('audit');
-  }, [records]);
+    const local = records('audit');
+    if (!liveEvents.length) return local;
+
+    const mappedLive: CRMRecord[] = liveEvents.map(e => ({
+      id: e.id,
+      ref: `AUD-${e.id.slice(0, 6).toUpperCase()}`,
+      title: e.action,
+      description: e.metadata ? JSON.stringify(e.metadata) : `${e.resource_type} event`,
+      status: 'Recorded',
+      owner: e.actor_name,
+      amount: 0,
+      links: {},
+      history: [],
+      date: e.created_at ? e.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      fields: {
+        timestamp: e.created_at,
+        actor: e.actor_name,
+        name: e.action,
+        details: `${e.action} on ${e.resource_type} (${e.ip_address || 'internal'})`,
+      }
+    }));
+
+    return [...mappedLive, ...local];
+  }, [records, liveEvents]);
 
   const actors = useMemo<string[]>(() => {
     const list = new Set(auditRows.map(a => a.fields.actor || a.owner || 'Demo User'));

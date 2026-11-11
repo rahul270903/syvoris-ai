@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, ArrowRight, Award, Bot, Boxes, Briefcase, Building2, CalendarDays,
@@ -9,6 +9,7 @@ import {
 import { useCRM } from '../../store/CRMStore';
 import { money, shortDate, type CRMRecord } from '../../data/models';
 import { StatusPill } from '../../components/StatusPill';
+import { api, Customer360Data } from '../../services/api';
 
 export function Customer360View({
   selectedOrgId,
@@ -23,11 +24,52 @@ export function Customer360View({
 }) {
   const { records } = useCRM();
   const navigate = useNavigate();
-  const orgs = records('organizations');
+  const [liveAccounts, setLiveAccounts] = useState<CRMRecord[]>([]);
+
+  useEffect(() => {
+    api.listAccounts({ limit: 100 }).then(res => {
+      if (res && res.items) {
+        const mapped: CRMRecord[] = res.items.map(acc => ({
+          id: acc.id,
+          ref: acc.ref,
+          title: acc.name,
+          description: acc.description || `${acc.name} · ${acc.industry || 'Organization'}`,
+          status: acc.status,
+          owner: acc.owner_name || 'Organization Owner',
+          amount: Number(acc.credit_limit || 0),
+          date: acc.created_at ? acc.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: { contacts: [] },
+          history: [],
+          fields: {
+            name: acc.name,
+            industry: acc.industry || '',
+            segment: acc.account_type || 'Enterprise',
+            website: acc.website || '',
+            phone: acc.phone || '',
+            email: acc.email || '',
+            address: acc.address || '',
+            ownership: acc.ownership || 'Private',
+            creditLimit: String(acc.credit_limit || 0),
+            description: acc.description || '',
+          }
+        }));
+        setLiveAccounts(mapped);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const storeOrgs = records('organizations');
+  const orgs = liveAccounts.length > 0 ? liveAccounts : storeOrgs;
 
   const [activeOrgId, setActiveOrgId] = useState<string>(() => {
     return selectedOrgId || orgs[0]?.id || '';
   });
+
+  useEffect(() => {
+    if (!activeOrgId && orgs.length > 0) {
+      setActiveOrgId(orgs[0].id);
+    }
+  }, [orgs, activeOrgId]);
   const [tab, setTab] = useState<'overview' | 'contacts' | 'deals' | 'quotes' | 'orders' | 'invoices' | 'cases' | 'projects' | 'timeline' | 'ai'>('overview');
 
   const currentOrg = useMemo(() => {
@@ -42,14 +84,64 @@ export function Customer360View({
   const orgName = currentOrg?.title || '';
   const orgId = currentOrg?.id || '';
 
+  const [live360Data, setLive360Data] = useState<Customer360Data | null>(null);
+  const [showActivityForm, setShowActivityForm] = useState(false);
+  const [actType, setActType] = useState('Note');
+  const [actSubject, setActSubject] = useState('');
+  const [actDesc, setActDesc] = useState('');
+  const [savingAct, setSavingAct] = useState(false);
+
+  const fetchLive360 = async (id: string) => {
+    if (!id) return;
+    try {
+      const data = await api.getAccount360(id);
+      setLive360Data(data);
+    } catch {
+      setLive360Data(null);
+    }
+  };
+
+  useEffect(() => {
+    if (orgId) {
+      fetchLive360(orgId);
+    }
+  }, [orgId]);
+
   // Linked records
   const contacts = useMemo(() => {
+    if (live360Data?.contacts && live360Data.contacts.length > 0) {
+      return live360Data.contacts.map(c => ({
+        id: c.id,
+        ref: c.ref,
+        title: c.full_name,
+        description: `${c.job_title || 'Contact'} · ${c.department || 'Department'}`,
+        status: c.status,
+        owner: c.owner_name || 'Owner',
+        amount: 0,
+        date: c.created_at ? c.created_at.slice(0, 10) : '',
+        links: { organizations: c.account_id ? [c.account_id] : [] },
+        history: [],
+        fields: {
+          firstName: c.first_name,
+          lastName: c.last_name,
+          organization: c.account_name || orgName,
+          email: c.email,
+          phone: c.phone || '',
+          jobTitle: c.job_title || '',
+          title: c.job_title || '',
+          department: c.department || '',
+          consent: 'Email and phone permitted',
+          primary: c.is_primary ? 'Primary' : 'Secondary',
+          decisionMaker: c.is_decision_maker ? 'Yes' : 'No',
+        }
+      }));
+    }
     return records('contacts').filter(c => 
       c.fields.organization?.toLowerCase() === orgName.toLowerCase() ||
       c.links.organizations?.includes(orgId) ||
       currentOrg?.links.contacts?.includes(c.id)
     );
-  }, [records, orgName, orgId, currentOrg]);
+  }, [records, orgName, orgId, currentOrg, live360Data]);
 
   const opportunities = useMemo(() => {
     return records('opportunities').filter(o => 
@@ -100,6 +192,17 @@ export function Customer360View({
   }, [records, orgName, orgId, currentOrg]);
 
   const timelineEntries = useMemo(() => {
+    const liveActEvents = (live360Data?.activities || []).map(a => ({
+      id: a.id,
+      ref: `ACT-${a.id.slice(0, 6).toUpperCase()}`,
+      title: `${a.activity_type}: ${a.subject}`,
+      type: a.activity_type,
+      date: a.occurred_at ? a.occurred_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      summary: `${a.description || ''} (Logged by ${a.actor_name})`,
+      channel: a.activity_type === 'Call' ? 'Phone' : a.activity_type === 'Email' ? 'Email' : 'Direct Note',
+      entity: 'interactions',
+    }));
+
     const orgInteractions = records('interactions').filter(i => 
       i.fields.relatedTo?.toLowerCase().includes(orgName.toLowerCase()) ||
       i.links.organizations?.includes(orgId)
@@ -145,10 +248,10 @@ export function Customer360View({
       entity: 'interactions',
     }));
 
-    return [...interactionEvents, ...oppEvents, ...caseEvents, ...orderEvents].sort((a, b) => 
+    return [...liveActEvents, ...interactionEvents, ...oppEvents, ...caseEvents, ...orderEvents].sort((a, b) =>
       b.date.localeCompare(a.date)
     );
-  }, [records, orgName, orgId, opportunities, cases, salesOrders]);
+  }, [records, orgName, orgId, opportunities, cases, salesOrders, live360Data]);
 
   const totalOpenDeals = opportunities.filter(o => !['Closed Won', 'Closed Lost'].includes(o.status)).reduce((s, o) => s + o.amount, 0);
   const totalWonDeals = opportunities.filter(o => o.status === 'Closed Won').reduce((s, o) => s + o.amount, 0);
@@ -342,7 +445,7 @@ export function Customer360View({
                 <h2>Customer Contacts & Stakeholders</h2>
                 <p>{contacts.length} people linked to {currentOrg.title}.</p>
               </div>
-              <button className="btn primary" onClick={() => onNewAction('contacts', { organization: currentOrg.title })}>
+              <button className="btn primary" onClick={() => onNewAction('contacts', { organization: currentOrg.title, accountId: currentOrg.id })}>
                 <Plus size={15}/> Add Contact
               </button>
             </div>
@@ -727,10 +830,68 @@ export function Customer360View({
                 <h2>Chronological Customer Memory & Interaction Narrative</h2>
                 <p>{timelineEntries.length} chronological events across all sales, service and commercial channels.</p>
               </div>
-              <button className="btn primary" onClick={() => onNewAction('interactions', { relatedTo: currentOrg.title })}>
-                <Plus size={15}/> Log Activity / Note
+              <button className="btn primary" onClick={() => setShowActivityForm(!showActivityForm)}>
+                <Plus size={15}/> {showActivityForm ? 'Close Form' : 'Log Activity / Note'}
               </button>
             </div>
+            {showActivityForm && (
+              <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg mb-4 text-xs">
+                <div className="font-semibold text-cyan-400 mb-2">Log Interaction / Note to Account Memory</div>
+                <div className="flex gap-2 mb-2">
+                  <select
+                    className="p-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200"
+                    value={actType}
+                    onChange={e => setActType(e.target.value)}
+                  >
+                    <option value="Note">Note</option>
+                    <option value="Call">Phone Call</option>
+                    <option value="Meeting">Meeting</option>
+                    <option value="Email">Email</option>
+                  </select>
+                  <input
+                    className="flex-1 p-1.5 bg-slate-800 border border-slate-700 rounded text-slate-200"
+                    placeholder="Subject..."
+                    value={actSubject}
+                    onChange={e => setActSubject(e.target.value)}
+                  />
+                </div>
+                <textarea
+                  className="w-full p-2 bg-slate-800 border border-slate-700 rounded text-slate-200 mb-2"
+                  rows={2}
+                  placeholder="Notes, discussion summary, or next actions..."
+                  value={actDesc}
+                  onChange={e => setActDesc(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <button className="btn secondary" onClick={() => setShowActivityForm(false)}>Cancel</button>
+                  <button
+                    className="btn primary"
+                    disabled={!actSubject.trim() || savingAct}
+                    onClick={async () => {
+                      if (!actSubject.trim() || !orgId) return;
+                      setSavingAct(true);
+                      try {
+                        await api.createAccountActivity(orgId, {
+                          activity_type: actType,
+                          subject: actSubject.trim(),
+                          description: actDesc.trim() || undefined,
+                        });
+                        setActSubject('');
+                        setActDesc('');
+                        setShowActivityForm(false);
+                        await fetchLive360(orgId);
+                      } catch (err) {
+                        console.error('Failed to log activity', err);
+                      } finally {
+                        setSavingAct(false);
+                      }
+                    }}
+                  >
+                    {savingAct ? 'Saving...' : 'Save Activity'}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="c360-unified-timeline">
               {timelineEntries.map(entry => (
                 <div className="c360-timeline-item" key={`${entry.entity}-${entry.id}`}>

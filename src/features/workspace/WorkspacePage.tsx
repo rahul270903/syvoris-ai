@@ -28,6 +28,8 @@ import { CustomerPortalView } from './CustomerPortalView';
 import { RadiumConnectorView } from './RadiumConnectorView';
 import { WorkflowDesignerView } from './WorkflowDesignerView';
 import { AuditTrailView } from './AuditTrailView';
+import { OrganizationSelectField } from './OrganizationSelectField';
+import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
 
@@ -67,6 +69,116 @@ export function WorkspacePage({ item }: Props) {
   const [activeComm, setActiveComm] = useState<CommType | null>(null);
   const [commPrefill, setCommPrefill] = useState<{ to?: string; contact?: string }>({});
 
+  // Live Backend Records
+  const isLiveCRMEntity = config.entity === 'organizations' || config.entity === 'contacts';
+  const [liveAccounts, setLiveAccounts] = useState<CRMRecord[]>([]);
+  const [liveContacts, setLiveContacts] = useState<CRMRecord[]>([]);
+  const [availableAccounts, setAvailableAccounts] = useState<AccountItem[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [accountsFetchError, setAccountsFetchError] = useState<string | null>(null);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
+  const [contactsLoaded, setContactsLoaded] = useState(false);
+  const [loadingLive, setLoadingLive] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const fetchLiveCRMData = async () => {
+    if (config.entity === 'organizations') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listAccounts({ limit: 100 });
+        const items = res?.items || [];
+        setAvailableAccounts(items);
+        const mapped: CRMRecord[] = items.map(acc => ({
+          id: acc.id,
+          ref: acc.ref,
+          title: acc.name,
+          description: acc.description || `${acc.name} · ${acc.industry || 'Organization'}`,
+          status: acc.status,
+          owner: acc.owner_name || 'Organization Owner',
+          amount: Number(acc.credit_limit || 0),
+          date: acc.created_at ? acc.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: { contacts: [] },
+          history: [],
+          fields: {
+            name: acc.name,
+            industry: acc.industry || '',
+            segment: acc.account_type || 'Enterprise',
+            website: acc.website || '',
+            phone: acc.phone || '',
+            email: acc.email || '',
+            address: acc.address || '',
+            ownership: acc.ownership || 'Private',
+            creditLimit: String(acc.credit_limit || 0),
+            description: acc.description || '',
+          }
+        }));
+        setLiveAccounts(mapped);
+        setAccountsLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load organizations from backend.');
+        setAccountsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'contacts') {
+      setLoadingLive(true);
+      setLoadingAccounts(true);
+      setLiveError(null);
+      setAccountsFetchError(null);
+      try {
+        const [contactsRes, accountsRes] = await Promise.all([
+          api.listContacts({ limit: 100 }),
+          api.listAccounts({ limit: 100 }),
+        ]);
+        const items = contactsRes?.items || [];
+        const mapped: CRMRecord[] = items.map(c => ({
+          id: c.id,
+          ref: c.ref,
+          title: c.full_name,
+          description: `${c.job_title || 'Contact'}${c.account_name ? ` at ${c.account_name}` : ''}`,
+          status: c.status,
+          owner: c.owner_name || 'Contact Owner',
+          amount: 0,
+          date: c.created_at ? c.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: { organizations: c.account_id ? [c.account_id] : [] },
+          history: [],
+          fields: {
+            firstName: c.first_name,
+            lastName: c.last_name,
+            organization: c.account_name || '',
+            accountId: c.account_id || '',
+            email: c.email,
+            phone: c.phone || '',
+            title: c.job_title || '',
+            department: c.department || '',
+            primary: c.is_primary ? 'Primary' : 'Secondary',
+            decisionMaker: c.is_decision_maker ? 'Yes' : 'No',
+          }
+        }));
+        setLiveContacts(mapped);
+        setContactsLoaded(true);
+
+        if (accountsRes?.items) {
+          setAvailableAccounts(accountsRes.items);
+        }
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load contacts from backend.');
+        setAccountsFetchError(err?.message || 'Failed to load organizations.');
+        setContactsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+        setLoadingAccounts(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveCRMData();
+  }, [config.entity]);
+
   useEffect(() => {
     const state = location.state as { openRecordId?: string } | null;
     if (state?.openRecordId) {
@@ -75,7 +187,16 @@ export function WorkspacePage({ item }: Props) {
     }
   }, [location.key]);
 
-  const rows = records(config.entity);
+  const localRows = records(config.entity);
+  const rows = useMemo(() => {
+    if (config.entity === 'organizations') {
+      return accountsLoaded ? liveAccounts : [];
+    }
+    if (config.entity === 'contacts') {
+      return contactsLoaded ? liveContacts : [];
+    }
+    return localRows;
+  }, [config.entity, accountsLoaded, liveAccounts, contactsLoaded, liveContacts, localRows]);
   const statusOptions = useMemo(() => [...new Set(rows.map(r => r.status))], [rows]);
   const filtered = useMemo(() => {
     return rows.filter(r =>
@@ -101,20 +222,47 @@ export function WorkspacePage({ item }: Props) {
 
   const openNew = (prefill: Record<string, string> = {}) => {
     setEditingId(null);
+    setFormError(null);
     setForm({
       date: new Date().toISOString().slice(0, 10),
       currency: 'USD',
       owner: 'Demo User',
+      accountId: '',
+      organization: '',
       ...prefill,
     });
     setLines([initialLine()]);
+    if (config.entity === 'contacts' && availableAccounts.length === 0) {
+      setLoadingAccounts(true);
+      api.listAccounts({ limit: 100 })
+        .then(res => {
+          if (res?.items) setAvailableAccounts(res.items);
+        })
+        .catch(err => setAccountsFetchError(err?.message || 'Failed to load organizations.'))
+        .finally(() => setLoadingAccounts(false));
+    }
     setModal(true);
   };
 
   const openEdit = (record: CRMRecord) => {
     setEditingId(record.id);
-    setForm({ ...record.fields });
+    setFormError(null);
+    const existingAccountId = record.fields.accountId || record.links.organizations?.[0] || '';
+    setForm({
+      ...record.fields,
+      accountId: existingAccountId,
+      organization: record.fields.organization || '',
+    });
     setLines(record.lineItems?.length ? record.lineItems : [initialLine()]);
+    if (config.entity === 'contacts' && availableAccounts.length === 0) {
+      setLoadingAccounts(true);
+      api.listAccounts({ limit: 100 })
+        .then(res => {
+          if (res?.items) setAvailableAccounts(res.items);
+        })
+        .catch(err => setAccountsFetchError(err?.message || 'Failed to load organizations.'))
+        .finally(() => setLoadingAccounts(false));
+    }
     setSelectedId(null);
     setModal(true);
   };
@@ -122,7 +270,7 @@ export function WorkspacePage({ item }: Props) {
   const isCommercial = ['quotes', 'salesOrders', 'purchaseOrders'].includes(config.entity);
   const lineTotal = lines.map(computeLine).reduce((s, l) => s + l.total, 0);
 
-  const saveRecord = (submit: boolean) => {
+  const saveRecord = async (submit: boolean) => {
     const missing = config.fields.find(f => f.required && !String(form[f.key] || '').trim());
     if (missing) {
       notify(`${missing.label} is required.`);
@@ -153,6 +301,102 @@ export function WorkspacePage({ item }: Props) {
     const statusValue = submit ? 'Pending Approval' : editingId ? rows.find(r => r.id === editingId)?.status || 'Draft' : 'Draft';
     const options = { status: statusValue, amount, lineItems: isCommercial ? lines.map(computeLine) : undefined };
 
+    // Organizations / Accounts: PostgreSQL is the single source of truth
+    if (config.entity === 'organizations') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateAccount(editingId, {
+            name: fields.name || item.label,
+            industry: fields.industry || undefined,
+            website: fields.website || undefined,
+            phone: fields.phone || undefined,
+            email: fields.email || undefined,
+            address: fields.address || undefined,
+            ownership: fields.ownership || 'Private',
+            status: statusValue,
+            description: fields.description || undefined,
+            credit_limit: amount,
+          });
+          notify('Organization updated in PostgreSQL database.');
+        } else {
+          await api.createAccount({
+            name: fields.name || item.label,
+            industry: fields.industry || undefined,
+            website: fields.website || undefined,
+            phone: fields.phone || undefined,
+            email: fields.email || undefined,
+            address: fields.address || undefined,
+            ownership: fields.ownership || 'Private',
+            status: statusValue,
+            description: fields.description || undefined,
+            credit_limit: amount,
+          });
+          notify('Organization created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save organization to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Contacts: PostgreSQL is the single source of truth
+    if (config.entity === 'contacts') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const accountIdPayload = fields.accountId && fields.accountId.trim() ? fields.accountId.trim() : null;
+        if (editingId) {
+          await api.updateContact(editingId, {
+            first_name: fields.firstName || 'First',
+            last_name: fields.lastName || 'Last',
+            email: fields.email || `contact-${Date.now()}@syvoris.example`,
+            account_id: accountIdPayload,
+            phone: fields.phone || undefined,
+            job_title: fields.title || fields.jobTitle || undefined,
+            department: fields.department || undefined,
+            status: statusValue,
+            is_primary: fields.primary === 'Primary',
+            is_decision_maker: fields.decisionMaker === 'Yes',
+          });
+          notify('Contact updated in PostgreSQL database.');
+        } else {
+          await api.createContact({
+            first_name: fields.firstName || 'First',
+            last_name: fields.lastName || 'Last',
+            email: fields.email || `contact-${Date.now()}@syvoris.example`,
+            account_id: accountIdPayload,
+            phone: fields.phone || undefined,
+            job_title: fields.title || fields.jobTitle || undefined,
+            department: fields.department || undefined,
+            status: statusValue,
+            is_primary: fields.primary === 'Primary',
+            is_decision_maker: fields.decisionMaker === 'Yes',
+          });
+          notify('Contact created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save contact to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Default prototype entities (leads, opportunities, quotes, etc.)
     if (editingId) {
       update(
         config.entity,
@@ -552,7 +796,8 @@ export function WorkspacePage({ item }: Props) {
         </span>
       );
     if (key === 'status') return <StatusPill status={record.status}/>;
-    return record.fields[key] || record.owner || '—';
+    if (key === 'organization') return record.fields.organization || '—';
+    return record.fields[key] || (key === 'owner' ? record.owner : undefined) || '—';
   };
 
   // CUSTOMER 360 WORKSPACE RENDER
@@ -888,7 +1133,20 @@ export function WorkspacePage({ item }: Props) {
           ))}
         </tbody>
       </table>
-      {filtered.length === 0 && <EmptyState/>}
+      {loadingLive ? (
+        <div className="p-8 text-center text-xs text-slate-500">
+          Loading {config.title.toLowerCase()} from PostgreSQL database...
+        </div>
+      ) : liveError ? (
+        <div className="p-6 m-4 bg-red-50 text-red-700 text-xs rounded border border-red-200">
+          <strong>Database Connection Warning:</strong> {liveError}
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title={isLiveCRMEntity ? `No ${config.title.toLowerCase()} found` : undefined}
+          description={isLiveCRMEntity ? `This tenant has no ${config.title.toLowerCase()} yet. Create your first record above.` : undefined}
+        />
+      ) : null}
     </div>
   );
 
@@ -1126,14 +1384,45 @@ export function WorkspacePage({ item }: Props) {
                 <button className="btn secondary" onClick={() => setConfirmDelete(false)}>Keep record</button>
                 <button
                   className="btn danger"
-                  onClick={() => {
+                  disabled={submitting}
+                  onClick={async () => {
+                    if (config.entity === 'organizations') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteAccount(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Organization archived in PostgreSQL database.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'contacts') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteContact(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Contact archived in PostgreSQL database.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
                     remove(config.entity, selected.id);
                     setSelectedId(null);
                     setConfirmDelete(false);
                     notify('Record moved to recycle bin.');
                   }}
                 >
-                  Confirm delete
+                  {submitting ? 'Archiving...' : 'Confirm delete'}
                 </button>
               </div>
             </div>
@@ -1183,14 +1472,25 @@ export function WorkspacePage({ item }: Props) {
         }
       />
 
-      <div className="demo-strip">
-        <span className="demo-strip-icon"><ShieldCheck size={16}/></span>
-        <div>
-          <strong>Interactive prototype · demonstration data</strong>
-          <p>Records, approvals and workflows are persisted in this browser. External communications, production AI execution and connected-system transactions are simulated.</p>
+      {isLiveCRMEntity ? (
+        <div className="demo-strip" style={{ borderColor: 'rgba(5, 150, 105, 0.4)', background: 'linear-gradient(90deg, rgba(236, 253, 245, 0.95), rgba(240, 253, 250, 0.85))' }}>
+          <span className="demo-strip-icon" style={{ color: '#059669' }}><ShieldCheck size={16}/></span>
+          <div>
+            <strong style={{ color: '#065f46' }}>Enterprise CRM Tier · PostgreSQL RLS Enforced</strong>
+            <p style={{ color: '#047857' }}>Production database storage active. Records are isolated with tenant Row-Level Security policies. Changes are committed directly to PostgreSQL.</p>
+          </div>
+          <span className="demo-tag" style={{ background: '#059669', color: '#fff' }}>LIVE DB</span>
         </div>
-        <span className="demo-tag">DEMO</span>
-      </div>
+      ) : (
+        <div className="demo-strip">
+          <span className="demo-strip-icon"><ShieldCheck size={16}/></span>
+          <div>
+            <strong>Interactive prototype · demonstration data</strong>
+            <p>Records, approvals and workflows are persisted in this browser. External communications, production AI execution and connected-system transactions are simulated.</p>
+          </div>
+          <span className="demo-tag">DEMO</span>
+        </div>
+      )}
 
       <div className="metric-row">
         <div className="metric-card">
@@ -1387,7 +1687,13 @@ export function WorkspacePage({ item }: Props) {
         {table}
         <div className="table-footer">
           <span>Showing {filtered.length} of {rows.length} records</span>
-          <span>Browser-local persistence · Single-tenant demonstration store</span>
+          {isLiveCRMEntity ? (
+            <span style={{ color: '#059669', fontWeight: 600 }}>
+              PostgreSQL Core Storage · Tenant-isolated with Row-Level Security
+            </span>
+          ) : (
+            <span>Browser-local persistence · Single-tenant demonstration store</span>
+          )}
         </div>
       </section>
 
@@ -1407,14 +1713,39 @@ export function WorkspacePage({ item }: Props) {
             </div>
             <div className="form-modal-body">
               <div className="form-grid">
-                {config.fields.map(field => (
-                  <FormField
-                    key={field.key}
-                    field={field}
-                    value={form[field.key] || ''}
-                    onChange={v => setForm(old => ({ ...old, [field.key]: v }))}
-                  />
-                ))}
+                {config.fields.map(field => {
+                  if (config.entity === 'contacts' && field.key === 'organization') {
+                    return (
+                      <OrganizationSelectField
+                        key="contact-organization-select"
+                        label={field.label}
+                        required={field.required}
+                        value={form.accountId || ''}
+                        organizationName={form.organization || ''}
+                        accounts={availableAccounts}
+                        loading={loadingAccounts}
+                        error={accountsFetchError}
+                        disabled={submitting}
+                        onChange={(accId, accName) => {
+                          setForm(old => ({
+                            ...old,
+                            accountId: accId,
+                            organization: accName,
+                          }));
+                        }}
+                        onRefresh={() => fetchLiveCRMData()}
+                      />
+                    );
+                  }
+                  return (
+                    <FormField
+                      key={field.key}
+                      field={field}
+                      value={form[field.key] || ''}
+                      onChange={v => setForm(old => ({ ...old, [field.key]: v }))}
+                    />
+                  );
+                })}
               </div>
 
               {isCommercial && (
@@ -1501,11 +1832,18 @@ export function WorkspacePage({ item }: Props) {
                 </div>
               )}
             </div>
+            {formError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs rounded border border-red-200 mx-5 mb-3">
+                {formError}
+              </div>
+            )}
             <div className="form-modal-footer">
-              <button className="btn secondary" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn secondary" onClick={() => saveRecord(false)}>Save draft</button>
-              <button className="btn primary" onClick={() => saveRecord(true)}>
-                <Send size={15}/> Submit for approval
+              <button className="btn secondary" disabled={submitting} onClick={() => setModal(false)}>Cancel</button>
+              <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(false)}>
+                {submitting ? 'Saving...' : 'Save draft'}
+              </button>
+              <button className="btn primary" disabled={submitting} onClick={() => saveRecord(true)}>
+                <Send size={15}/> {submitting ? 'Submitting...' : 'Submit for approval'}
               </button>
             </div>
           </div>

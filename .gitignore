@@ -3,9 +3,22 @@ dist/
 .vite/
 *.tsbuildinfo
 .env*
+!.env.example
 .DS_Store
 .agents/
 .vercel
 
+# Python & Backend
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+backend/venv/
+backend/.pytest_cache/
 
-.vercel
+# Databases & local storage
+*.db
+*.sqlite3
+storage/
+!storage/.gitkeep

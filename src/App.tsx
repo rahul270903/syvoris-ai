@@ -13,11 +13,18 @@ import { WorkflowNavigator } from './features/workspace/WorkflowNavigator';
 import { AIWorkspace } from './features/ai/AIWorkspace';
 import { IntegrationWorkspace } from './features/integrations/IntegrationWorkspace';
 import { Login } from './app/Login';
+import { Register } from './app/Register';
+import { api, CurrentUserProfile } from './services/api';
 import { StatusPill } from './components/StatusPill';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './data/models';
 
-function AppShell() {
+interface AppShellProps {
+  initialProfile: CurrentUserProfile;
+  onLogout: () => void;
+}
+
+function AppShell({ initialProfile, onLogout }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expanded, setExpanded] = useState<string[]>(['Command Centre', 'Essentials & Customer 360', 'Sales & Revenue']);
@@ -25,13 +32,26 @@ function AppShell() {
   const [search, setSearch] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [role, setRole] = useState('System Administrator');
+  const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<CurrentUserProfile>(initialProfile);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showHelp, setShowHelp] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
   const { data, records, update, create, addAudit, reset } = useCRM();
+
+  const switchOrg = async (tenantId: string) => {
+    try {
+      await api.switchTenant(tenantId);
+      const updated = await api.getMe();
+      setUserProfile(updated);
+      notify(`Switched organization to ${updated.active_tenant?.tenant_name}.`, 'success');
+    } catch (err: any) {
+      notify(err.message || 'Failed to switch organization context.', 'error');
+    }
+    setTenantDropdownOpen(false);
+  };
 
   const notify = (text: string, tone: ToastMessage['tone'] = 'success') => {
     const id = Math.random().toString(36).slice(2);
@@ -147,17 +167,14 @@ function AppShell() {
   const toggleGroup = (label: string) =>
     setExpanded(old => (old.includes(label) ? old.filter(x => x !== label) : [...old, label]));
 
-  const loginOut = () => {
-    localStorage.removeItem('syvoris-ai:demo-auth');
-    navigate('/login');
-    window.location.reload();
-  };
-
-  const notifyRole = (newRole: string) => {
-    setRole(newRole);
-    setProfileOpen(false);
-    addAudit('Demo role context switched', newRole, 'UI role selector only; not an authorization boundary.');
-    notify(`Demo role context changed to ${newRole}.`, 'info');
+  const loginOut = async () => {
+    try {
+      await api.logout();
+    } catch {
+      // ignore
+    }
+    api.clearTokens();
+    onLogout();
   };
 
   return (
@@ -203,14 +220,46 @@ function AppShell() {
           </button>
         </div>
 
-        <button className="tenant-switcher" onClick={() => notify('Only one demo workspace is configured.', 'info')}>
-          <span className="tenant-avatar">SE</span>
-          <span>
-            <b>Seiretsu Enterprise</b>
-            <small>Primary workspace</small>
-          </span>
-          <ChevronDown size={14} />
-        </button>
+        <div className="relative">
+          <button
+            className="tenant-switcher w-full text-left"
+            onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
+          >
+            <span className="tenant-avatar">
+              {userProfile?.active_tenant?.tenant_name ? userProfile.active_tenant.tenant_name.slice(0, 2).toUpperCase() : 'SE'}
+            </span>
+            <span>
+              <b>{userProfile?.active_tenant?.tenant_name || 'Seiretsu Enterprise'}</b>
+              <small>{userProfile?.active_tenant?.tenant_slug ? `${userProfile.active_tenant.tenant_slug}` : 'Primary workspace'}</small>
+            </span>
+            <ChevronDown size={14} />
+          </button>
+
+          {tenantDropdownOpen && (
+            <div className="dropdown tenant-dropdown" style={{ left: 8, right: 8, top: '100%', width: 'auto', zIndex: 50 }}>
+              <label>ORGANIZATION WORKSPACES</label>
+              {(userProfile?.memberships && userProfile.memberships.length > 0) ? (
+                userProfile.memberships.map(m => (
+                  <button
+                    key={m.tenant_id}
+                    className={userProfile.active_tenant?.tenant_id === m.tenant_id ? 'role-selected' : ''}
+                    onClick={() => switchOrg(m.tenant_id)}
+                  >
+                    <span>
+                      <b>{m.tenant_name}</b>
+                      <small className="block text-xs opacity-75">{m.role} · {m.status}</small>
+                    </span>
+                    {userProfile.active_tenant?.tenant_id === m.tenant_id && <CheckIcon />}
+                  </button>
+                ))
+              ) : (
+                <div className="p-2 text-xs text-slate-400">
+                  <span>Current: Seiretsu Enterprise (Demo Workspace)</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="side-nav-scroll">
           <div className="nav-section-label">WORKSPACE</div>
@@ -377,10 +426,12 @@ function AppShell() {
                   setNotificationsOpen(false);
                 }}
               >
-                <span className="profile-avatar">DU</span>
+                <span className="profile-avatar">
+                  {userProfile.user ? `${userProfile.user.first_name[0] || 'U'}${userProfile.user.last_name[0] || ''}` : 'U'}
+                </span>
                 <span>
-                  <b>Demo User</b>
-                  <small>{role === 'System Administrator' ? 'Enterprise Administrator' : role}</small>
+                  <b>{userProfile.user?.full_name || 'User'}</b>
+                  <small>{userProfile.active_tenant?.role || 'Organization Member'}</small>
                 </span>
                 <ChevronDown size={14} />
               </button>
@@ -388,27 +439,24 @@ function AppShell() {
               {profileOpen && (
                 <div className="dropdown profile-dropdown">
                   <div className="profile-summary">
-                    <span className="profile-avatar large">DU</span>
+                    <span className="profile-avatar large">
+                      {userProfile.user ? `${userProfile.user.first_name[0] || 'U'}${userProfile.user.last_name[0] || ''}` : 'U'}
+                    </span>
                     <span>
-                      <b>Demo User</b>
-                      <small>demo@syvoris.example</small>
+                      <b>{userProfile.user?.full_name || 'User'}</b>
+                      <small>{userProfile.user?.email}</small>
                     </span>
                   </div>
-                  <label>DEMO ROLE CONTEXT</label>
-                  {[
-                    'System Administrator',
-                    'Sales Manager',
-                    'Sales Representative',
-                    'Marketing Manager',
-                    'Customer Support Agent',
-                    'Service Manager',
-                    'Executive',
-                  ].map(r => (
-                    <button key={r} className={role === r ? 'role-selected' : ''} onClick={() => notifyRole(r)}>
-                      {r}
-                      {role === r && <CheckIcon />}
-                    </button>
-                  ))}
+                  <label>ASSIGNED ORGANIZATION ROLE</label>
+                  <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-lg mb-2">
+                    <div className="font-bold text-cyan-400 text-sm">{userProfile.active_tenant?.role || 'Member'}</div>
+                    <div className="text-slate-400 text-xs mt-1">
+                      {userProfile.active_tenant?.permissions?.length || 0} active system permissions
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      Kernel-enforced by PostgreSQL RLS & RBAC policies
+                    </div>
+                  </div>
                   <div className="profile-divider" />
                   <button onClick={() => navigate('/admin/roles')}>
                     <Settings size={14} />
@@ -418,7 +466,6 @@ function AppShell() {
                     <LogOut size={14} />
                     Sign out
                   </button>
-                  <small className="role-disclaimer">Role switching is a UI simulation, not security enforcement.</small>
                 </div>
               )}
             </div>
@@ -453,7 +500,7 @@ function AppShell() {
         <footer className="app-footer">
           <span>© 2026 SYVORIS Ai™ · Enterprise Platform, CRM, Sales & Operations</span>
           <span>
-            <i /> Demo workspace · External services not connected
+            <i style={{ background: '#10b981' }} /> Connected: {userProfile.active_tenant?.tenant_name || 'Active Tenant'} ({userProfile.active_tenant?.role || 'Member'}) · PostgreSQL Core Active
           </span>
         </footer>
       </div>
@@ -591,19 +638,55 @@ function NotFound() {
 }
 
 function AuthenticatedApp() {
-  const [authenticated, setAuthenticated] = useState(() => localStorage.getItem('syvoris-ai:demo-auth') === 'true');
-  if (!authenticated) {
+  const [userProfile, setUserProfile] = useState<CurrentUserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+
+  const checkSession = async () => {
+    try {
+      const p = await api.getMe();
+      setUserProfile(p);
+    } catch {
+      api.clearTokens();
+      setUserProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="login-screen" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ color: '#06b6d4', fontWeight: 'bold', fontSize: 18, marginBottom: 8 }}>SYVORIS Ai</div>
+          <p style={{ fontSize: 12 }}>Authenticating enterprise workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userProfile) {
+    if (authView === 'register') {
+      return (
+        <Register
+          onSuccess={() => checkSession()}
+          onNavigateLogin={() => setAuthView('login')}
+        />
+      );
+    }
     return (
       <Login
-        onLogin={email => {
-          localStorage.setItem('syvoris-ai:demo-auth', 'true');
-          localStorage.setItem('syvoris-ai:demo-user', email);
-          setAuthenticated(true);
-        }}
+        onLogin={() => checkSession()}
+        onNavigateRegister={() => setAuthView('register')}
       />
     );
   }
-  return <AppShell />;
+
+  return <AppShell initialProfile={userProfile} onLogout={() => setUserProfile(null)} />;
 }
 
 export default function App() {
