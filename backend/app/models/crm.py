@@ -33,6 +33,9 @@ class Account(TenantScopedModel):
     parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True
     )
+    merged_into_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     custom_fields: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -76,6 +79,9 @@ class Contact(TenantScopedModel):
     )
     owner_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    merged_into_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     custom_fields: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -171,6 +177,9 @@ class Lead(TenantScopedModel):
     )
     converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    merged_into_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("leads.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     custom_fields: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True

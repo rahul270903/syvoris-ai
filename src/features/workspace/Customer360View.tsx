@@ -144,12 +144,38 @@ export function Customer360View({
   }, [records, orgName, orgId, currentOrg, live360Data]);
 
   const opportunities = useMemo(() => {
+    if (live360Data?.opportunities && live360Data.opportunities.length > 0) {
+      return live360Data.opportunities.map(o => ({
+        id: o.id,
+        ref: o.ref,
+        title: o.name,
+        description: `${o.stage} · ${o.currency} ${Number(o.amount).toLocaleString()}`,
+        status: o.stage,
+        owner: o.owner_name || 'Owner',
+        amount: Number(o.amount),
+        date: o.created_at ? o.created_at.slice(0, 10) : '',
+        links: { organizations: [o.account_id], contacts: o.contact_id ? [o.contact_id] : [] },
+        history: [],
+        fields: {
+          name: o.name,
+          customer: o.account_name || orgName,
+          contact: o.contact_name || '',
+          stage: o.stage,
+          amount: String(o.amount),
+          probability: String(o.probability),
+          risk: o.risk_level,
+          forecast: o.forecast_category,
+          source: o.lead_source || 'Lead Conversion',
+          closeDate: o.expected_close_date ? o.expected_close_date.slice(0, 10) : '',
+        }
+      }));
+    }
     return records('opportunities').filter(o => 
       o.fields.customer?.toLowerCase() === orgName.toLowerCase() ||
       o.links.organizations?.includes(orgId) ||
       currentOrg?.links.opportunities?.includes(o.id)
     );
-  }, [records, orgName, orgId, currentOrg]);
+  }, [records, orgName, orgId, currentOrg, live360Data]);
 
   const quotes = useMemo(() => {
     return records('quotes').filter(q => 
@@ -526,7 +552,7 @@ export function Customer360View({
                       </td>
                       <td><StatusPill status={opp.fields.stage || opp.status}/></td>
                       <td><strong>{money(opp.amount)}</strong></td>
-                      <td>{opp.probability ?? opp.fields.probability ?? 50}%</td>
+                      <td>{(opp as any).probability ?? opp.fields.probability ?? 50}%</td>
                       <td>{shortDate(opp.fields.closeDate || opp.date)}</td>
                       <td>{opp.owner}</td>
                       <td>

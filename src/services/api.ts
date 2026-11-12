@@ -167,6 +167,7 @@ export interface Customer360Data {
   account: AccountItem;
   contacts: ContactItem[];
   activities: CRMActivityItem[];
+  opportunities: OpportunityItem[];
   metrics: Record<string, any>;
 }
 
@@ -274,6 +275,87 @@ export interface LeadConvertResponse {
   account: AccountItem;
   contact: ContactItem;
   opportunity?: OpportunityItem | null;
+  message: string;
+}
+
+// --- Hierarchy & Deduplication Types (Milestone 2C) ---
+
+export interface AccountHierarchyNode {
+  id: string;
+  ref: string;
+  name: string;
+  account_type: string;
+  status: string;
+  owner_name?: string;
+  industry?: string;
+  credit_limit: number;
+  depth: number;
+  direct_contacts_count: number;
+  direct_opportunities_count: number;
+  direct_pipeline_value: number;
+  children: AccountHierarchyNode[];
+}
+
+export interface AccountHierarchyResponse {
+  root: AccountHierarchyNode;
+  current_account_id: string;
+  total_hierarchy_accounts: number;
+  total_hierarchy_contacts: number;
+  total_hierarchy_opportunities: number;
+  total_hierarchy_pipeline_value: number;
+  max_depth: number;
+}
+
+export interface DuplicateMatchRule {
+  rule_name: string;
+  field_name: string;
+  confidence_score: number;
+  matched_value: string;
+  explanation: string;
+}
+
+export interface DuplicateRecordItem {
+  id: string;
+  ref: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  secondary_info?: string;
+  status: string;
+  created_at: string;
+  owner_name?: string;
+  fields: Record<string, any>;
+}
+
+export interface DuplicateCluster {
+  cluster_id: string;
+  entity_type: 'account' | 'contact' | 'lead';
+  primary_rule: string;
+  confidence_score: number;
+  records: DuplicateRecordItem[];
+  rules_triggered: DuplicateMatchRule[];
+}
+
+export interface DuplicateScanResponse {
+  entity_type: string;
+  total_candidates_scanned: number;
+  clusters_found: number;
+  clusters: DuplicateCluster[];
+}
+
+export interface RecordMergePayload {
+  entity_type: 'account' | 'contact' | 'lead';
+  master_id: string;
+  duplicate_ids: string[];
+  field_overrides?: Record<string, any>;
+}
+
+export interface RecordMergeResponse {
+  entity_type: string;
+  master_id: string;
+  master_ref: string;
+  merged_ids: string[];
+  reassigned_counts: Record<string, number>;
   message: string;
 }
 
@@ -706,6 +788,26 @@ class ApiClient {
 
   public async convertLead(id: string, payload: LeadConvertPayload): Promise<LeadConvertResponse> {
     return this.request<LeadConvertResponse>(`/leads/${id}/convert`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // --- Account Hierarchies (CR-02) ---
+  public async getAccountHierarchy(accountId: string): Promise<AccountHierarchyResponse> {
+    return this.request<AccountHierarchyResponse>(`/accounts/${accountId}/hierarchy`);
+  }
+
+  // --- Deduplication & Merge Engine (CR-04) ---
+  public async scanDuplicates(entityType: 'account' | 'contact' | 'lead', limit: number = 50): Promise<DuplicateScanResponse> {
+    return this.request<DuplicateScanResponse>('/crm/duplicates/scan', {
+      method: 'POST',
+      body: JSON.stringify({ entity_type: entityType, limit }),
+    });
+  }
+
+  public async mergeRecords(payload: RecordMergePayload): Promise<RecordMergeResponse> {
+    return this.request<RecordMergeResponse>('/crm/duplicates/merge', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

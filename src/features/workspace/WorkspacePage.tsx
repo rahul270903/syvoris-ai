@@ -28,6 +28,8 @@ import { CustomerPortalView } from './CustomerPortalView';
 import { RadiumConnectorView } from './RadiumConnectorView';
 import { WorkflowDesignerView } from './WorkflowDesignerView';
 import { AuditTrailView } from './AuditTrailView';
+import { AccountHierarchiesView } from './AccountHierarchiesView';
+import { DuplicateManagementView } from './DuplicateManagementView';
 import { OrganizationSelectField } from './OrganizationSelectField';
 import { api, type AccountItem } from '../../services/api';
 
@@ -984,6 +986,33 @@ export function WorkspacePage({ item }: Props) {
             </aside>
           </div>
         )}
+      </div>
+    );
+  }
+
+  // ACCOUNT HIERARCHIES WORKSPACE (CR-02)
+  if (item.path === '/accounts/hierarchies' || item.path === '/admin/hierarchy') {
+    return (
+      <div className="workspace-page">
+        <AccountHierarchiesView
+          onOpenRecord={(entity, recordId) => {
+            navigate('/organizations', { state: { selectedId: recordId } });
+          }}
+        />
+      </div>
+    );
+  }
+
+  // DUPLICATE MANAGEMENT & RESOLUTION WORKSPACE (CR-04)
+  if (item.path === '/data/duplicates' || item.path === '/admin/duplicates') {
+    return (
+      <div className="workspace-page">
+        <DuplicateManagementView
+          onOpenRecord={(entity, recordId) => {
+            const targetPath = entity === 'account' ? '/organizations' : `/${entity}s`;
+            navigate(targetPath, { state: { selectedId: recordId } });
+          }}
+        />
       </div>
     );
   }

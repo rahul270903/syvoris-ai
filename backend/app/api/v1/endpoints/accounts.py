@@ -12,9 +12,11 @@ from app.api.deps import (
 from app.models.user import User
 from app.schemas.crm import (
     AccountCreate, AccountUpdate, AccountResponse, PaginatedList,
-    Customer360Response, CRMActivityCreate, CRMActivityResponse
+    Customer360Response, CRMActivityCreate, CRMActivityResponse,
+    AccountHierarchyResponse
 )
 from app.services.account_service import AccountService
+from app.services.hierarchy_service import HierarchyService
 from app.core.errors import ValidationException
 
 router = APIRouter()
@@ -90,6 +92,7 @@ async def get_account(
     return await AccountService.get_account(db, tenant_id=tenant_id, account_id=id)
 
 @router.put("/{id}", response_model=AccountResponse)
+@router.patch("/{id}", response_model=AccountResponse)
 async def update_account(
     id: uuid.UUID,
     req: AccountUpdate,
@@ -165,4 +168,21 @@ async def create_account_activity(
         req=req,
         actor_id=current_user.id,
         actor_name=current_user.full_name
+    )
+
+@router.get("/{id}/hierarchy", response_model=AccountHierarchyResponse)
+async def get_account_hierarchy_tree(
+    id: uuid.UUID,
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("accounts:read")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve full recursive account parent-child hierarchy tree and rollup business metrics (CR-02)."""
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    return await HierarchyService.get_account_hierarchy(
+        db=db,
+        tenant_id=tenant_id,
+        account_id=id
     )

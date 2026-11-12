@@ -7,11 +7,12 @@ from sqlalchemy import select, func, desc, asc, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.crm import Account, Contact, CRMActivity
+from app.models.crm import Account, Contact, CRMActivity, Opportunity
 from app.models.user import User
 from app.schemas.crm import (
     AccountCreate, AccountUpdate, AccountResponse,
-    CRMActivityCreate, CRMActivityResponse, Customer360Response, ContactResponse
+    CRMActivityCreate, CRMActivityResponse, Customer360Response, ContactResponse,
+    OpportunityResponse
 )
 from app.core.errors import NotFoundException, ValidationException
 from app.services.audit_service import audit_service
@@ -257,6 +258,15 @@ class AccountService:
             raise NotFoundException("Account not found.")
 
         patch_data = req.model_dump(exclude_unset=True)
+        if "parent_id" in patch_data and patch_data["parent_id"] is not None:
+            from app.services.hierarchy_service import HierarchyService
+            await HierarchyService.validate_parent_assignment(
+                db=db,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                parent_id=patch_data["parent_id"]
+            )
+
         for k, v in patch_data.items():
             if k == "name" and v:
                 account.name = v.strip()
@@ -350,7 +360,8 @@ class AccountService:
             )
             .options(
                 selectinload(Account.contacts),
-                selectinload(Account.activities)
+                selectinload(Account.activities),
+                selectinload(Account.opportunities)
             )
         )
         account = res.scalar_one_or_none()
@@ -402,6 +413,34 @@ class AccountService:
             if not a.is_deleted
         ]
 
+        opportunities_list = [
+            OpportunityResponse(
+                id=o.id,
+                tenant_id=o.tenant_id,
+                account_id=o.account_id,
+                account_name=account.name,
+                contact_id=o.contact_id,
+                contact_name=o.contact.full_name if o.contact else None,
+                ref=o.ref,
+                name=o.name,
+                pipeline_id=o.pipeline_id,
+                stage=o.stage,
+                amount=o.amount,
+                currency=o.currency,
+                probability=o.probability,
+                expected_close_date=o.expected_close_date,
+                forecast_category=o.forecast_category,
+                risk_level=o.risk_level,
+                lead_source=o.lead_source,
+                owner_id=o.owner_id,
+                owner_name=o.owner_name,
+                custom_fields=o.custom_fields or {},
+                created_at=o.created_at,
+                updated_at=o.updated_at
+            )
+            for o in (account.opportunities or []) if not o.is_deleted
+        ]
+
         acc_resp = AccountResponse(
             id=account.id,
             tenant_id=account.tenant_id,
@@ -428,10 +467,16 @@ class AccountService:
             contacts_count=len(contacts_list)
         )
 
+        open_opps = [o for o in opportunities_list if o.stage not in ("Closed Won", "Closed Lost")]
+        total_pipe_val = sum((Decimal(str(o.amount)) for o in open_opps), Decimal("0.00"))
+
         metrics = {
             "total_contacts": len(contacts_list),
             "primary_contact": next((c.full_name for c in contacts_list if c.is_primary), None),
             "total_activities": len(activities_list),
+            "total_opportunities": len(opportunities_list),
+            "open_opportunities_count": len(open_opps),
+            "open_pipeline_value": float(total_pipe_val),
             "credit_limit": float(account.credit_limit),
             "account_status": account.status,
             "health_score": 92 if account.status == "Active" else 50
@@ -441,6 +486,7 @@ class AccountService:
             account=acc_resp,
             contacts=contacts_list,
             activities=activities_list,
+            opportunities=opportunities_list,
             metrics=metrics
         )
 

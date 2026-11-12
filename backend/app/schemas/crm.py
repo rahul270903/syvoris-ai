@@ -75,6 +75,8 @@ class AccountResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     contacts_count: int = 0
+    merged_into_id: Optional[uuid.UUID] = None
+    merged_into_id: Optional[uuid.UUID] = None
 
 # ==============================================================================
 # Contact Schemas
@@ -130,36 +132,7 @@ class ContactResponse(BaseModel):
     custom_fields: Dict[str, Any] = {}
     created_at: datetime
     updated_at: datetime
-
-# ==============================================================================
-# Activity & Customer 360 Schemas
-# ==============================================================================
-
-class CRMActivityCreate(BaseModel):
-    activity_type: str = Field("Note", max_length=50)
-    subject: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    contact_id: Optional[uuid.UUID] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-class CRMActivityResponse(BaseModel):
-    id: uuid.UUID
-    tenant_id: uuid.UUID
-    account_id: uuid.UUID
-    contact_id: Optional[uuid.UUID] = None
-    activity_type: str
-    subject: str
-    description: Optional[str] = None
-    occurred_at: datetime
-    actor_id: Optional[uuid.UUID] = None
-    actor_name: str
-    metadata: Dict[str, Any] = {}
-
-class Customer360Response(BaseModel):
-    account: AccountResponse
-    contacts: List[ContactResponse] = []
-    activities: List[CRMActivityResponse] = []
-    metrics: Dict[str, Any] = {}
+    merged_into_id: Optional[uuid.UUID] = None
 
 # ==============================================================================
 # Opportunity Schemas (Foundational for Lead Conversion)
@@ -204,6 +177,37 @@ class OpportunityResponse(BaseModel):
     custom_fields: Dict[str, Any] = {}
     created_at: datetime
     updated_at: datetime
+
+# ==============================================================================
+# Activity & Customer 360 Schemas
+# ==============================================================================
+
+class CRMActivityCreate(BaseModel):
+    activity_type: str = Field("Note", max_length=50)
+    subject: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
+    contact_id: Optional[uuid.UUID] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class CRMActivityResponse(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    account_id: uuid.UUID
+    contact_id: Optional[uuid.UUID] = None
+    activity_type: str
+    subject: str
+    description: Optional[str] = None
+    occurred_at: datetime
+    actor_id: Optional[uuid.UUID] = None
+    actor_name: str
+    metadata: Dict[str, Any] = {}
+
+class Customer360Response(BaseModel):
+    account: AccountResponse
+    contacts: List[ContactResponse] = []
+    activities: List[CRMActivityResponse] = []
+    opportunities: List[OpportunityResponse] = []
+    metrics: Dict[str, Any] = {}
 
 # ==============================================================================
 # Lead Schemas
@@ -277,6 +281,7 @@ class LeadResponse(BaseModel):
     custom_fields: Dict[str, Any] = {}
     created_at: datetime
     updated_at: datetime
+    merged_into_id: Optional[uuid.UUID] = None
 
 # ==============================================================================
 # Lead Conversion Schemas
@@ -296,3 +301,86 @@ class LeadConvertResponse(BaseModel):
     contact: ContactResponse
     opportunity: Optional[OpportunityResponse] = None
     message: str = "Lead successfully converted into customer records."
+
+# ==============================================================================
+# Hierarchy Schemas (CR-02)
+# ==============================================================================
+
+class AccountHierarchyNode(BaseModel):
+    id: uuid.UUID
+    ref: str
+    name: str
+    account_type: str
+    status: str
+    owner_name: Optional[str] = None
+    industry: Optional[str] = None
+    credit_limit: Decimal = Decimal("0.00")
+    depth: int = 0
+    direct_contacts_count: int = 0
+    direct_opportunities_count: int = 0
+    direct_pipeline_value: Decimal = Decimal("0.00")
+    children: List["AccountHierarchyNode"] = []
+
+class AccountHierarchyResponse(BaseModel):
+    root: AccountHierarchyNode
+    current_account_id: uuid.UUID
+    total_hierarchy_accounts: int = 0
+    total_hierarchy_contacts: int = 0
+    total_hierarchy_opportunities: int = 0
+    total_hierarchy_pipeline_value: Decimal = Decimal("0.00")
+    max_depth: int = 0
+
+# ==============================================================================
+# Deduplication & Merge Schemas (CR-04)
+# ==============================================================================
+
+class DuplicateMatchRule(BaseModel):
+    rule_name: str
+    field_name: str
+    confidence_score: int
+    matched_value: str
+    explanation: str
+
+class DuplicateRecordItem(BaseModel):
+    id: uuid.UUID
+    ref: str
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    secondary_info: Optional[str] = None
+    status: str
+    created_at: datetime
+    owner_name: Optional[str] = None
+    fields: Dict[str, Any] = {}
+
+class DuplicateCluster(BaseModel):
+    cluster_id: str
+    entity_type: str
+    primary_rule: str
+    confidence_score: int
+    records: List[DuplicateRecordItem]
+    rules_triggered: List[DuplicateMatchRule]
+
+class DuplicateScanRequest(BaseModel):
+    entity_type: str = Field(..., pattern="^(account|contact|lead)$")
+    limit: int = Field(50, ge=1, le=200)
+
+class DuplicateScanResponse(BaseModel):
+    entity_type: str
+    total_candidates_scanned: int
+    clusters_found: int
+    clusters: List[DuplicateCluster]
+
+class RecordMergeRequest(BaseModel):
+    entity_type: str = Field(..., pattern="^(account|contact|lead)$")
+    master_id: uuid.UUID
+    duplicate_ids: List[uuid.UUID] = Field(..., min_length=1)
+    field_overrides: Optional[Dict[str, Any]] = None
+
+class RecordMergeResponse(BaseModel):
+    entity_type: str
+    master_id: uuid.UUID
+    master_ref: str
+    merged_ids: List[uuid.UUID]
+    reassigned_counts: Dict[str, int]
+    message: str
