@@ -7,7 +7,8 @@ from app.api.v1.endpoints import (
     roles,
     audit,
     accounts,
-    contacts
+    contacts,
+    leads
 )
 
 api_router = APIRouter()
@@ -20,3 +21,4 @@ api_router.include_router(roles.router, prefix="/admin/roles", tags=["Role-Based
 api_router.include_router(audit.router, prefix="/admin/audit", tags=["Security Audit Trail"])
 api_router.include_router(accounts.router, prefix="/accounts", tags=["Accounts & Customer 360"])
 api_router.include_router(contacts.router, prefix="/contacts", tags=["Contacts & Stakeholders"])
+api_router.include_router(leads.router, prefix="/leads", tags=["Leads & Conversion Engine"])

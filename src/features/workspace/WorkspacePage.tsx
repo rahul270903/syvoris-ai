@@ -70,14 +70,16 @@ export function WorkspacePage({ item }: Props) {
   const [commPrefill, setCommPrefill] = useState<{ to?: string; contact?: string }>({});
 
   // Live Backend Records
-  const isLiveCRMEntity = config.entity === 'organizations' || config.entity === 'contacts';
+  const isLiveCRMEntity = config.entity === 'organizations' || config.entity === 'contacts' || config.entity === 'leads';
   const [liveAccounts, setLiveAccounts] = useState<CRMRecord[]>([]);
   const [liveContacts, setLiveContacts] = useState<CRMRecord[]>([]);
+  const [liveLeads, setLiveLeads] = useState<CRMRecord[]>([]);
   const [availableAccounts, setAvailableAccounts] = useState<AccountItem[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [accountsFetchError, setAccountsFetchError] = useState<string | null>(null);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [contactsLoaded, setContactsLoaded] = useState(false);
+  const [leadsLoaded, setLeadsLoaded] = useState(false);
   const [loadingLive, setLoadingLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -172,12 +174,63 @@ export function WorkspacePage({ item }: Props) {
         setLoadingLive(false);
         setLoadingAccounts(false);
       }
+    } else if (config.entity === 'leads' || ['/lead-capture', '/lead-qualification', '/lead-conversion'].includes(item.path)) {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listLeads({ limit: 100 });
+        const items = res?.items || [];
+        const mapped: CRMRecord[] = items.map(l => ({
+          id: l.id,
+          ref: l.ref,
+          title: l.full_name,
+          description: `${l.job_title || 'Lead'}${l.company_name ? ` at ${l.company_name}` : ''}`,
+          status: l.status,
+          owner: l.owner_name || 'Lead Owner',
+          amount: 0,
+          date: l.created_at ? l.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {
+            organizations: l.converted_account_id ? [l.converted_account_id] : [],
+            contacts: l.converted_contact_id ? [l.converted_contact_id] : [],
+            opportunities: l.converted_opportunity_id ? [l.converted_opportunity_id] : [],
+          },
+          history: [],
+          fields: {
+            firstName: l.first_name,
+            lastName: l.last_name,
+            company: l.company_name,
+            organization: l.company_name,
+            title: l.job_title || '',
+            jobTitle: l.job_title || '',
+            email: l.email,
+            phone: l.phone || '',
+            source: l.source || 'Website',
+            industry: l.industry || '',
+            territory: l.territory || '',
+            score: String(l.score),
+            priority: l.priority || 'Normal',
+            consent: l.consent_status || 'Pending',
+            description: l.description || '',
+            convertedOrganization: l.converted_account_name || '',
+            convertedContact: l.converted_contact_name || '',
+            convertedOpportunity: l.converted_opportunity_name || '',
+            conversionDate: l.converted_at ? l.converted_at.slice(0, 10) : '',
+          }
+        }));
+        setLiveLeads(mapped);
+        setLeadsLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load leads from backend.');
+        setLeadsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
     }
   };
 
   useEffect(() => {
     fetchLiveCRMData();
-  }, [config.entity]);
+  }, [config.entity, item.path]);
 
   useEffect(() => {
     const state = location.state as { openRecordId?: string } | null;
@@ -195,8 +248,11 @@ export function WorkspacePage({ item }: Props) {
     if (config.entity === 'contacts') {
       return contactsLoaded ? liveContacts : [];
     }
+    if (config.entity === 'leads') {
+      return leadsLoaded ? liveLeads : [];
+    }
     return localRows;
-  }, [config.entity, accountsLoaded, liveAccounts, contactsLoaded, liveContacts, localRows]);
+  }, [config.entity, accountsLoaded, liveAccounts, contactsLoaded, liveContacts, leadsLoaded, liveLeads, localRows]);
   const statusOptions = useMemo(() => [...new Set(rows.map(r => r.status))], [rows]);
   const filtered = useMemo(() => {
     return rows.filter(r =>
@@ -396,7 +452,63 @@ export function WorkspacePage({ item }: Props) {
       return;
     }
 
-    // Default prototype entities (leads, opportunities, quotes, etc.)
+    // Leads: PostgreSQL is the single source of truth
+    if (config.entity === 'leads') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const companyName = fields.company || fields.organization || fields.name || 'Company';
+        const firstName = fields.firstName || fields.name?.split(' ')[0] || 'First';
+        const lastName = fields.lastName || fields.name?.split(' ').slice(1).join(' ') || 'Last';
+        if (editingId) {
+          await api.updateLead(editingId, {
+            first_name: firstName,
+            last_name: lastName,
+            company_name: companyName,
+            job_title: fields.title || fields.jobTitle || undefined,
+            email: fields.email || `lead-${Date.now()}@syvoris.example`,
+            phone: fields.phone || undefined,
+            source: fields.source || 'Website',
+            industry: fields.industry || undefined,
+            territory: fields.territory || undefined,
+            status: fields.status || statusValue || 'New',
+            priority: fields.priority || 'Normal',
+            consent_status: fields.consent || 'Pending',
+            description: fields.description || undefined,
+          });
+          notify('Lead updated in PostgreSQL database.');
+        } else {
+          await api.createLead({
+            first_name: firstName,
+            last_name: lastName,
+            company_name: companyName,
+            job_title: fields.title || fields.jobTitle || undefined,
+            email: fields.email || `lead-${Date.now()}@syvoris.example`,
+            phone: fields.phone || undefined,
+            source: fields.source || 'Website',
+            industry: fields.industry || undefined,
+            territory: fields.territory || undefined,
+            status: fields.status || 'New',
+            priority: fields.priority || 'Normal',
+            consent_status: fields.consent || 'Pending',
+            description: fields.description || undefined,
+          });
+          notify('Lead created and scored in PostgreSQL database.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save lead to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Default prototype entities (opportunities, quotes, etc.)
     if (editingId) {
       update(
         config.entity,
@@ -555,7 +667,14 @@ export function WorkspacePage({ item }: Props) {
   const runAction = (record: CRMRecord, action: string) => {
     if (config.entity === 'leads') {
       if (action === 'Qualify Lead') {
-        transition(record, 'Qualified', 'Lead qualified after discovery review');
+        api.updateLead(record.id, { status: 'Qualified' })
+          .then(() => {
+            notify(`Lead ${record.ref} marked as Qualified in PostgreSQL.`);
+            fetchLiveCRMData();
+          })
+          .catch(() => {
+            transition(record, 'Qualified', 'Lead qualified after discovery review');
+          });
         return;
       }
       if (action === 'Convert Lead') {
@@ -563,7 +682,14 @@ export function WorkspacePage({ item }: Props) {
         return;
       }
       if (action === 'Mark Nurture') {
-        transition(record, 'Nurture');
+        api.updateLead(record.id, { status: 'Nurture' })
+          .then(() => {
+            notify(`Lead ${record.ref} marked for Nurture in PostgreSQL.`);
+            fetchLiveCRMData();
+          })
+          .catch(() => {
+            transition(record, 'Nurture');
+          });
         return;
       }
     }
@@ -864,7 +990,8 @@ export function WorkspacePage({ item }: Props) {
 
   // LEAD CONVERSION DEDICATED WORKSPACE
   if (item.path === '/lead-conversion') {
-    const qualifiedLeads = records('leads').filter(l => l.status === 'Qualified' || l.status === 'New');
+    const leadSource = leadsLoaded ? liveLeads : records('leads');
+    const qualifiedLeads = leadSource.filter(l => l.status === 'Qualified' || l.status === 'New');
     return (
       <div className="workspace-page">
         <SectionHeading
@@ -921,6 +1048,7 @@ export function WorkspacePage({ item }: Props) {
             onClose={() => setConvertingLead(null)}
             onComplete={(org, con, opp) => {
               setConvertingLead(null);
+              fetchLiveCRMData();
               navigate('/customers/360', { state: { openRecordId: org.id } });
               notify(`Lead successfully converted into ${org.ref}, ${con.ref} and ${opp.ref}.`);
             }}
@@ -1416,6 +1544,21 @@ export function WorkspacePage({ item }: Props) {
                       }
                       return;
                     }
+                    if (config.entity === 'leads') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteLead(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Lead archived in PostgreSQL database.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
                     remove(config.entity, selected.id);
                     setSelectedId(null);
                     setConfirmDelete(false);
@@ -1857,6 +2000,7 @@ export function WorkspacePage({ item }: Props) {
           onClose={() => setConvertingLead(null)}
           onComplete={(org, con, opp) => {
             setConvertingLead(null);
+            fetchLiveCRMData();
             navigate('/customers/360', { state: { openRecordId: org.id } });
             notify(`Lead successfully converted into ${org.ref}, ${con.ref} and ${opp.ref}.`);
           }}

@@ -170,6 +170,113 @@ export interface Customer360Data {
   metrics: Record<string, any>;
 }
 
+export interface OpportunityItem {
+  id: string;
+  tenant_id: string;
+  account_id: string;
+  account_name?: string;
+  contact_id?: string;
+  contact_name?: string;
+  ref: string;
+  name: string;
+  pipeline_id: string;
+  stage: string;
+  amount: number;
+  currency: string;
+  probability: number;
+  expected_close_date?: string;
+  forecast_category: string;
+  risk_level: string;
+  lead_source?: string;
+  owner_id?: string;
+  owner_name?: string;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScoreFactor {
+  factor: string;
+  weight: number;
+  type: 'positive' | 'negative';
+}
+
+export interface LeadItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  company_name: string;
+  job_title?: string;
+  email: string;
+  phone?: string;
+  source: string;
+  industry?: string;
+  territory?: string;
+  status: string;
+  score: number;
+  score_factors: ScoreFactor[];
+  priority: string;
+  consent_status: string;
+  owner_id?: string;
+  owner_name?: string;
+  converted_account_id?: string;
+  converted_account_name?: string;
+  converted_contact_id?: string;
+  converted_contact_name?: string;
+  converted_opportunity_id?: string;
+  converted_opportunity_name?: string;
+  converted_at?: string;
+  description?: string;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadConvertPayload {
+  account_mode: 'create' | 'link';
+  existing_account_id?: string | null;
+  new_account?: {
+    name?: string;
+    industry?: string;
+    segment?: string;
+    territory?: string;
+    website?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    credit_limit?: number;
+  };
+  contact?: {
+    first_name?: string;
+    last_name?: string;
+    job_title?: string;
+    department?: string;
+    email?: string;
+    phone?: string;
+    consent_status?: string;
+  };
+  create_opportunity?: boolean;
+  opportunity?: {
+    name?: string;
+    amount?: number;
+    stage?: string;
+    probability?: number;
+    expected_close_date?: string;
+    pipeline_id?: string;
+  };
+}
+
+export interface LeadConvertResponse {
+  lead: LeadItem;
+  account: AccountItem;
+  contact: ContactItem;
+  opportunity?: OpportunityItem | null;
+  message: string;
+}
+
 export interface PaginatedResult<T> {
   items: T[];
   total: number;
@@ -544,6 +651,63 @@ class ApiClient {
   public async deleteContact(id: string): Promise<void> {
     await this.request<void>(`/contacts/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  // --- CRM Leads & Conversion ---
+  public async listLeads(params?: {
+    q?: string;
+    status?: string;
+    source?: string;
+    min_score?: number;
+    owner_id?: string;
+    sort_by?: string;
+    sort_order?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResult<LeadItem>> {
+    const q = new URLSearchParams();
+    if (params?.q) q.set('q', params.q);
+    if (params?.status) q.set('status', params.status);
+    if (params?.source) q.set('source', params.source);
+    if (params?.min_score !== undefined && params?.min_score !== null) q.set('min_score', String(params.min_score));
+    if (params?.owner_id) q.set('owner_id', params.owner_id);
+    if (params?.sort_by) q.set('sort_by', params.sort_by);
+    if (params?.sort_order) q.set('sort_order', params.sort_order);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<PaginatedResult<LeadItem>>(`/leads${qs}`);
+  }
+
+  public async createLead(data: Partial<LeadItem>): Promise<LeadItem> {
+    return this.request<LeadItem>('/leads', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getLead(id: string): Promise<LeadItem> {
+    return this.request<LeadItem>(`/leads/${id}`);
+  }
+
+  public async updateLead(id: string, patch: Partial<LeadItem>): Promise<LeadItem> {
+    return this.request<LeadItem>(`/leads/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+  }
+
+  public async deleteLead(id: string): Promise<void> {
+    await this.request<void>(`/leads/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async convertLead(id: string, payload: LeadConvertPayload): Promise<LeadConvertResponse> {
+    return this.request<LeadConvertResponse>(`/leads/${id}/convert`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 }

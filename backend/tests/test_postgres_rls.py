@@ -1,3 +1,4 @@
+import os
 import uuid
 import pytest
 import pytest_asyncio
@@ -6,13 +7,18 @@ from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.exc import DBAPIError
 
-POSTGRES_TEST_URL = "postgresql+asyncpg://syvoris_app@127.0.0.1:5433/syvoris_test_rls"
+POSTGRES_TEST_URL = os.getenv("POSTGRES_TEST_URL", "postgresql+asyncpg://syvoris_app@127.0.0.1:5433/syvoris_test_rls")
 
 @pytest_asyncio.fixture
 async def pg_engine():
-    engine = create_async_engine(POSTGRES_TEST_URL, pool_size=5, max_overflow=0)
-    yield engine
-    await engine.dispose()
+    try:
+        engine = create_async_engine(POSTGRES_TEST_URL, pool_size=5, max_overflow=0)
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        yield engine
+        await engine.dispose()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL RLS test cluster at {POSTGRES_TEST_URL} not accessible: {e}")
 
 @pytest_asyncio.fixture
 async def pg_session_factory(pg_engine):
@@ -278,6 +284,82 @@ async def test_native_postgresql_accounts_and_contacts_rls(pg_session_factory):
                 await session.execute(text("""
                     INSERT INTO accounts (id, tenant_id, ref, name, account_type, billing_address, shipping_address, ownership, status, credit_limit, custom_fields, created_at, updated_at)
                     VALUES (:id, :tid, 'ACC-MALICIOUS', 'Malicious Write', 'Customer', '{}', '{}', 'Private', 'Active', 0.00, '{}', NOW(), NOW())
+                """), {"id": uuid.uuid4(), "tid": t_beta})
+            assert "violates row-level security policy" in str(exc_info.value).lower()
+@pytest.mark.asyncio
+async def test_native_postgresql_leads_and_conversion_rls(pg_session_factory):
+    """
+    PROPRIETARY POSTGRESQL KERNEL ROW-LEVEL SECURITY TEST FOR LEADS & CONVERSION:
+    Verifies that PostgreSQL 18.1 engine enforces RLS policies directly
+    on 'leads' and 'opportunities' tables.
+    """
+    t_alpha = uuid.uuid4()
+    t_beta = uuid.uuid4()
+    suffix = uuid.uuid4().hex[:6]
+
+    lead_alpha = uuid.uuid4()
+    lead_beta = uuid.uuid4()
+    opp_alpha = uuid.uuid4()
+    acc_alpha = uuid.uuid4()
+
+    async with pg_session_factory() as session:
+        # Create non-RLS parent tenants
+        await session.execute(text("""
+            INSERT INTO tenants (id, slug, name, plan_tier, status, settings, created_at, updated_at)
+            VALUES
+                (:t_alpha, :s_alpha, 'Alpha Org', 'enterprise', 'Active', '{}', NOW(), NOW()),
+                (:t_beta, :s_beta, 'Beta Org', 'enterprise', 'Active', '{}', NOW(), NOW())
+        """), {"t_alpha": t_alpha, "t_beta": t_beta, "s_alpha": f"alpha-{suffix}", "s_beta": f"beta-{suffix}"})
+        await session.commit()
+
+    # 1. Insert Lead & Opportunity under Tenant Alpha context
+    async with pg_session_factory() as session:
+        async with session.begin():
+            await session.execute(text("SELECT set_config('app.current_tenant_id', :tid, true)"), {"tid": str(t_alpha)})
+            await session.execute(text("""
+                INSERT INTO accounts (id, tenant_id, ref, name, account_type, billing_address, shipping_address, ownership, status, credit_limit, custom_fields, created_at, updated_at)
+                VALUES (:id, :tid, 'ACC-ALPHA-2', 'Alpha Acc 2', 'Customer', '{}', '{}', 'Private', 'Active', 0.00, '{}', NOW(), NOW())
+            """), {"id": acc_alpha, "tid": t_alpha})
+            await session.execute(text("""
+                INSERT INTO leads (id, tenant_id, ref, first_name, last_name, company_name, email, source, status, score, priority, consent_status, custom_fields, created_at, updated_at)
+                VALUES (:id, :tid, 'LED-ALPHA', 'Jane', 'Doe', 'Alpha Prospect Corp', :email, 'Website', 'Qualified', 85, 'High', 'Pending', '{}', NOW(), NOW())
+            """), {"id": lead_alpha, "tid": t_alpha, "email": f"jane-{suffix}@alpha.example"})
+            await session.execute(text("""
+                INSERT INTO opportunities (id, tenant_id, account_id, ref, name, pipeline_id, stage, amount, currency, probability, forecast_category, risk_level, custom_fields, created_at, updated_at)
+                VALUES (:id, :tid, :aid, 'OPP-ALPHA', 'Alpha Opportunity Deal', 'default', 'Qualification', 95000.00, 'USD', 30, 'Pipeline', 'Low', '{}', NOW(), NOW())
+            """), {"id": opp_alpha, "tid": t_alpha, "aid": acc_alpha})
+
+    # 2. Insert Lead under Tenant Beta context
+    async with pg_session_factory() as session:
+        async with session.begin():
+            await session.execute(text("SELECT set_config('app.current_tenant_id', :tid, true)"), {"tid": str(t_beta)})
+            await session.execute(text("""
+                INSERT INTO leads (id, tenant_id, ref, first_name, last_name, company_name, email, source, status, score, priority, consent_status, custom_fields, created_at, updated_at)
+                VALUES (:id, :tid, 'LED-BETA', 'John', 'Smith', 'Beta Target Inc', :email, 'Website', 'New', 40, 'Normal', 'Pending', '{}', NOW(), NOW())
+            """), {"id": lead_beta, "tid": t_beta, "email": f"john-{suffix}@beta.example"})
+
+    # 3. Read under Tenant Alpha context -> MUST return ONLY Alpha lead and opportunity
+    async with pg_session_factory() as session:
+        async with session.begin():
+            await session.execute(text("SELECT set_config('app.current_tenant_id', :tid, true)"), {"tid": str(t_alpha)})
+            res_lead = await session.execute(text("SELECT id, company_name FROM leads;"))
+            lead_rows = res_lead.fetchall()
+            assert len(lead_rows) == 1
+            assert lead_rows[0][0] == lead_alpha
+
+            res_opp = await session.execute(text("SELECT id, name FROM opportunities;"))
+            opp_rows = res_opp.fetchall()
+            assert len(opp_rows) == 1
+            assert opp_rows[0][0] == opp_alpha
+
+    # 4. Cross-tenant INSERT violation on leads
+    async with pg_session_factory() as session:
+        async with session.begin():
+            await session.execute(text("SELECT set_config('app.current_tenant_id', :tid, true)"), {"tid": str(t_alpha)})
+            with pytest.raises(DBAPIError) as exc_info:
+                await session.execute(text("""
+                    INSERT INTO leads (id, tenant_id, ref, first_name, last_name, company_name, email, source, status, score, priority, consent_status, custom_fields, created_at, updated_at)
+                    VALUES (:id, :tid, 'LED-HACK', 'Hacker', 'X', 'Infiltrator', 'hack@test.com', 'Website', 'New', 0, 'Normal', 'Pending', '{}', NOW(), NOW())
                 """), {"id": uuid.uuid4(), "tid": t_beta})
             assert "violates row-level security policy" in str(exc_info.value).lower()
 

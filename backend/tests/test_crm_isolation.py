@@ -80,3 +80,58 @@ async def test_cross_tenant_accounts_and_contacts_isolation(client: AsyncClient)
     list_b = await client.get("/api/v1/accounts", headers=headers_b)
     assert list_b.status_code == 200
     assert not any(a["id"] == acc_a_id for a in list_b.json()["items"])
+
+    # 5. CROSS-TENANT LEADS ISOLATION
+    # Create Lead in Tenant A
+    lead_a = await client.post("/api/v1/leads", json={
+        "first_name": "Confidential",
+        "last_name": "Prospect",
+        "company_name": "Alpha Secret Labs",
+        "email": "prospect@secretlabs.example",
+        "status": "Qualified"
+    }, headers=headers_a)
+    assert lead_a.status_code == 201
+    lead_a_id = lead_a.json()["id"]
+
+    # Tenant B tries to get Tenant A's lead -> MUST return 404
+    cross_lead_get = await client.get(f"/api/v1/leads/{lead_a_id}", headers=headers_b)
+    assert cross_lead_get.status_code == 404
+
+    # Tenant B tries to update Tenant A's lead -> MUST return 404
+    cross_lead_patch = await client.patch(f"/api/v1/leads/{lead_a_id}", json={"company_name": "Stolen Data"}, headers=headers_b)
+    assert cross_lead_patch.status_code == 404
+
+    # Tenant B tries to delete Tenant A's lead -> MUST return 404
+    cross_lead_del = await client.delete(f"/api/v1/leads/{lead_a_id}", headers=headers_b)
+    assert cross_lead_del.status_code == 404
+
+    # Tenant B tries to convert Tenant A's lead -> MUST return 404
+    cross_lead_conv = await client.post(f"/api/v1/leads/{lead_a_id}/convert", json={
+        "account_mode": "create",
+        "contact": {"first_name": "Hacker", "last_name": "X", "email": "hacker@beta.example"}
+    }, headers=headers_b)
+    assert cross_lead_conv.status_code == 404
+
+    # Tenant B creates their own lead but tries to convert linking to Tenant A's account -> MUST return 422
+    lead_b = await client.post("/api/v1/leads", json={
+        "first_name": "Beta",
+        "last_name": "Lead",
+        "company_name": "Beta Corp",
+        "email": "lead@beta.example",
+        "status": "Qualified"
+    }, headers=headers_b)
+    assert lead_b.status_code == 201
+    lead_b_id = lead_b.json()["id"]
+
+    cross_link_conv = await client.post(f"/api/v1/leads/{lead_b_id}/convert", json={
+        "account_mode": "link",
+        "existing_account_id": acc_a_id,
+        "contact": {"first_name": "Beta", "last_name": "Contact", "email": "contact@beta.example"}
+    }, headers=headers_b)
+    assert cross_link_conv.status_code == 422
+    assert "does not exist in this organization" in cross_link_conv.json()["detail"]
+
+    # Tenant B lists leads -> MUST NOT contain Tenant A's lead
+    list_leads_b = await client.get("/api/v1/leads", headers=headers_b)
+    assert list_leads_b.status_code == 200
+    assert not any(l["id"] == lead_a_id for l in list_leads_b.json()["items"])

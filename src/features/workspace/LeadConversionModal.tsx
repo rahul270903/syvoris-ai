@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import {
   ArrowRight, Building2, Check, CheckCircle2, ChevronRight, Contact,
-  FileCheck2, Handshake, HelpCircle, ShieldAlert, ShieldCheck, Sparkles, Target, Users, X
+  FileCheck2, Handshake, HelpCircle, Loader2, ShieldAlert, ShieldCheck, Sparkles, Target, Users, X
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { makeId, money, type CRMRecord } from '../../data/models';
+import { api, type LeadConvertPayload, type LeadConvertResponse } from '../../services/api';
 
 export function LeadConversionModal({
   lead,
@@ -59,10 +60,77 @@ export function LeadConversionModal({
     return d.toISOString().slice(0, 10);
   });
   const [dealOwner, setDealOwner] = useState(lead.owner || 'Demo User');
+  const [submitting, setSubmitting] = useState(false);
+  const [conversionError, setConversionError] = useState<string | null>(null);
 
-  const executeConversion = () => {
+  const executeConversion = async () => {
+    setSubmitting(true);
+    setConversionError(null);
+
+    const payload: LeadConvertPayload = {
+      account_mode: orgMode,
+      existing_account_id: orgMode === 'link' && selectedOrgId ? selectedOrgId : undefined,
+      new_account: orgMode === 'create' ? {
+        name: newOrgName,
+        industry: newOrgIndustry,
+        segment: newOrgSegment,
+        territory: newOrgTerritory,
+      } : undefined,
+      contact: {
+        first_name: contactFirstName,
+        last_name: contactLastName,
+        job_title: contactTitle,
+        email: contactEmail,
+        phone: contactPhone,
+        consent_status: contactConsent,
+      },
+      create_opportunity: createDeal,
+      opportunity: createDeal ? {
+        name: dealName,
+        amount: Number(dealAmount) || 0,
+        stage: dealStage,
+        probability: Number(dealProbability) || 25,
+        expected_close_date: dealCloseDate,
+      } : undefined,
+    };
+
+    let backendResult: LeadConvertResponse | null = null;
+    try {
+      backendResult = await api.convertLead(lead.id, payload);
+    } catch (err: any) {
+      console.warn('Backend API convertLead error:', err);
+      // If error message indicates actual server rejection, surface it
+      if (err?.message && !err.message.includes('fetch')) {
+        setConversionError(err.message);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     let targetOrg: CRMRecord;
-    if (orgMode === 'link') {
+    if (backendResult?.account) {
+      targetOrg = {
+        id: backendResult.account.id,
+        ref: backendResult.account.ref,
+        title: backendResult.account.name,
+        description: backendResult.account.description || `Account created from converted lead ${lead.ref}.`,
+        status: backendResult.account.status,
+        owner: backendResult.account.owner_name || lead.owner || 'Demo User',
+        amount: Number(backendResult.account.credit_limit || 0),
+        date: backendResult.account.created_at ? backendResult.account.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        links: { contacts: [backendResult.contact.id], opportunities: backendResult.opportunity ? [backendResult.opportunity.id] : [] },
+        history: [],
+        fields: {
+          name: backendResult.account.name,
+          industry: backendResult.account.industry || newOrgIndustry,
+          segment: newOrgSegment,
+          territory: newOrgTerritory,
+          owner: backendResult.account.owner_name || lead.owner,
+          consent: contactConsent,
+          description: backendResult.account.description || '',
+        }
+      };
+    } else if (orgMode === 'link') {
       targetOrg = existingOrgs.find(o => o.id === selectedOrgId) || existingOrgs[0];
     } else {
       targetOrg = create('organizations', {
@@ -76,24 +144,77 @@ export function LeadConversionModal({
       }, { status: 'Active' });
     }
 
-    // Create Contact
-    const targetContact = create('contacts', {
-      firstName: contactFirstName,
-      lastName: contactLastName,
-      title: contactTitle,
-      organization: targetOrg.title,
-      email: contactEmail,
-      phone: contactPhone,
-      consent: contactConsent,
-      owner: lead.owner,
-    }, {
-      status: 'Active',
-      links: { organizations: [targetOrg.id] },
-    });
+    // Create / map Contact
+    let targetContact: CRMRecord;
+    if (backendResult?.contact) {
+      targetContact = {
+        id: backendResult.contact.id,
+        ref: backendResult.contact.ref,
+        title: backendResult.contact.full_name,
+        description: `${backendResult.contact.job_title || 'Contact'} at ${targetOrg.title}`,
+        status: backendResult.contact.status,
+        owner: backendResult.contact.owner_name || lead.owner || 'Demo User',
+        amount: 0,
+        date: backendResult.contact.created_at ? backendResult.contact.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        links: { organizations: [targetOrg.id] },
+        history: [],
+        fields: {
+          firstName: backendResult.contact.first_name,
+          lastName: backendResult.contact.last_name,
+          title: backendResult.contact.job_title || contactTitle,
+          organization: targetOrg.title,
+          email: backendResult.contact.email,
+          phone: backendResult.contact.phone || contactPhone,
+          consent: contactConsent,
+          owner: lead.owner,
+        }
+      };
+    } else {
+      targetContact = create('contacts', {
+        firstName: contactFirstName,
+        lastName: contactLastName,
+        title: contactTitle,
+        organization: targetOrg.title,
+        email: contactEmail,
+        phone: contactPhone,
+        consent: contactConsent,
+        owner: lead.owner,
+      }, {
+        status: 'Active',
+        links: { organizations: [targetOrg.id] },
+      });
+    }
 
-    // Create Opportunity
+    // Create / map Opportunity
     let targetOpp: CRMRecord;
-    if (createDeal) {
+    if (backendResult?.opportunity) {
+      targetOpp = {
+        id: backendResult.opportunity.id,
+        ref: backendResult.opportunity.ref,
+        title: backendResult.opportunity.name,
+        description: `Opportunity generated from qualified lead ${lead.ref}.`,
+        status: backendResult.opportunity.stage,
+        owner: backendResult.opportunity.owner_name || dealOwner,
+        amount: Number(backendResult.opportunity.amount || 0),
+        probability: backendResult.opportunity.probability,
+        date: backendResult.opportunity.created_at ? backendResult.opportunity.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        links: { organizations: [targetOrg.id], contacts: [targetContact.id] },
+        history: [],
+        fields: {
+          name: backendResult.opportunity.name,
+          customer: targetOrg.title,
+          contact: targetContact.title,
+          stage: backendResult.opportunity.stage,
+          amount: String(backendResult.opportunity.amount),
+          probability: String(backendResult.opportunity.probability),
+          closeDate: dealCloseDate,
+          source: lead.fields?.source || 'Lead Conversion',
+          risk: backendResult.opportunity.risk_level || 'Low',
+          owner: dealOwner,
+          description: `Opportunity generated from qualified lead ${lead.ref}.`,
+        }
+      };
+    } else if (createDeal) {
       targetOpp = create('opportunities', {
         name: dealName,
         customer: targetOrg.title,
@@ -102,7 +223,7 @@ export function LeadConversionModal({
         amount: dealAmount,
         probability: dealProbability,
         closeDate: dealCloseDate,
-        source: lead.fields.source || 'Lead Conversion',
+        source: lead.fields?.source || 'Lead Conversion',
         risk: 'Low',
         owner: dealOwner,
         nextStep: 'Schedule technical discovery meeting',
@@ -131,8 +252,8 @@ export function LeadConversionModal({
     // Link back to Org
     update('organizations', targetOrg.id, {
       links: {
-        contacts: [...new Set([...(targetOrg.links.contacts || []), targetContact.id])],
-        opportunities: [...new Set([...(targetOrg.links.opportunities || []), targetOpp.id])],
+        contacts: [...new Set([...(targetOrg.links?.contacts || []), targetContact.id])],
+        opportunities: [...new Set([...(targetOrg.links?.opportunities || []), targetOpp.id])],
       },
     }, 'Linked converted contact and opportunity');
 
@@ -160,6 +281,7 @@ export function LeadConversionModal({
 
     addEvent('lead.converted', lead, `${lead.ref} converted into ${targetOrg.ref}`);
 
+    setSubmitting(false);
     onComplete(targetOrg, targetContact, targetOpp);
   };
 
@@ -202,6 +324,15 @@ export function LeadConversionModal({
 
         {/* Step Body */}
         <div className="form-modal-body">
+          {conversionError && (
+            <div className="p-3 mb-4 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-900 flex items-start gap-2">
+              <ShieldAlert size={16} className="text-rose-600 flex-shrink-0 mt-0.5"/>
+              <div>
+                <b>Conversion Blocked:</b> {conversionError}
+              </div>
+            </div>
+          )}
+
           {/* STEP 1: ORGANIZATION RESOLUTION */}
           {step === 1 && (
             <div className="conversion-step-content space-y-4">
@@ -527,8 +658,16 @@ export function LeadConversionModal({
                 Next Step <ChevronRight size={14}/>
               </button>
             ) : (
-              <button className="btn primary" onClick={executeConversion}>
-                <CheckCircle2 size={15}/> Complete Conversion & Open Customer 360
+              <button className="btn primary" onClick={executeConversion} disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin"/> Executing Atomic Conversion...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={15}/> Complete Conversion & Open Customer 360
+                  </>
+                )}
               </button>
             )}
           </div>
