@@ -9,6 +9,7 @@ dist/
 .vercel
 
 # Python & Backend
+*.log
 __pycache__/
 *.pyc
 *.pyo

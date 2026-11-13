@@ -110,7 +110,7 @@ export const navGroups:NavGroup[] = [
     item('Milestones','/projects/milestones','Milestone plans, target dates and completion evidence.','milestones',Flag,'Projects'),
     item('Project Calendar','/projects/calendar','Project timeline and scheduled delivery events.','milestones',CalendarDays,'Projects'),
     item('Resource Allocation','/projects/resources','Resource capacity, assignments and ownership.','resources',Users,'Projects'),
-    item('Project Costs','/projects/costs','Budget, estimate, actuals and cost variance.','projects',PieChart,'Projects'),
+    item('Project Costs','/projects/costs','Budget, estimate, actuals and cost variance.','costs',PieChart,'Projects'),
     item('Project Analytics','/projects/analytics','Progress, milestone, resource and budget indicators.','projects',BarChart3,'Projects'),
   ]},
   { label:'Product & Service Catalogue', icon:Package, items:[

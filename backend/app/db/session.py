@@ -40,7 +40,29 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         finally:
             await session.close()
 
+def _sync_sqlite_columns(sync_conn):
+    """Synchronize any newly added model columns to existing SQLite tables."""
+    from sqlalchemy.dialects import sqlite
+    sqlite_dialect = sqlite.dialect()
+    cursor = sync_conn.connection.cursor()
+    for table_name, table in Base.metadata.tables.items():
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+        if not existing_cols:
+            continue
+        for col in table.columns:
+            if col.name not in existing_cols:
+                type_str = col.type.compile(sqlite_dialect)
+                default_clause = ""
+                if "BOOL" in type_str.upper():
+                    default_clause = " DEFAULT 0"
+                alter_stmt = f"ALTER TABLE {table_name} ADD COLUMN {col.name} {type_str}{default_clause}"
+                cursor.execute(alter_stmt)
+    cursor.close()
+
 async def init_db():
     """Create all tables in database (used for local setup and testing)."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        if "sqlite" in settings.DATABASE_URL:
+            await conn.run_sync(_sync_sqlite_columns)

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Clock, Plus,
   Users, Check, X, Building2, MapPin
@@ -6,13 +6,14 @@ import {
 import { useCRM } from '../../store/CRMStore';
 import { SectionHeading } from '../../components/SectionHeading';
 import { StatusPill } from '../../components/StatusPill';
+import { api } from '../../services/api';
 
 interface CalEvent {
   id: string;
   title: string;
   date: string;
   time: string;
-  type: 'Meeting' | 'Demo' | 'Milestone' | 'SLA' | 'Review';
+  type: 'Meeting' | 'Demo' | 'Milestone' | 'SLA' | 'Review' | 'Task' | 'Deadline';
   account: string;
   attendees: string[];
   location: string;
@@ -98,6 +99,33 @@ export function CalendarView() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [toast, setToast] = useState('');
 
+  useEffect(() => {
+    api.listProjectCalendarEvents()
+      .then(liveList => {
+        if (liveList && liveList.length > 0) {
+          const mapped: CalEvent[] = liveList.map(e => ({
+            id: e.id,
+            title: e.title,
+            date: e.date,
+            time: e.time,
+            type: (['Milestone', 'Task', 'Deadline'].includes(e.type) ? e.type : 'Milestone') as any,
+            account: e.account_name || e.project_name,
+            attendees: [e.owner, 'Project Lead'],
+            location: `${e.project_ref} Workspace`,
+            description: e.description || `Delivery milestone / event for ${e.project_name}`,
+          }));
+          setEvents(prev => {
+            const ids = new Set(mapped.map(m => m.id));
+            return [...mapped, ...prev.filter(p => !ids.has(p.id))];
+          });
+          if (mapped.length > 0) {
+            setSelectedEvent(mapped[0]);
+          }
+        }
+      })
+      .catch(err => console.error('Failed to load project calendar events:', err));
+  }, []);
+
   const [newEvent, setNewEvent] = useState({
     title: '',
     date: '2026-11-10',
@@ -171,6 +199,8 @@ export function CalendarView() {
       case 'Meeting': return 'bg-sky-100 text-sky-800 border-sky-200';
       case 'Demo': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case 'Milestone': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'Task': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Deadline': return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'SLA': return 'bg-rose-100 text-rose-800 border-rose-200';
       case 'Review': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       default: return 'bg-slate-100 text-slate-800 border-slate-200';
@@ -212,7 +242,7 @@ export function CalendarView() {
         </div>
 
         <div className="flex items-center gap-1 text-xs">
-          {['All', 'Meeting', 'Demo', 'Milestone', 'SLA', 'Review'].map(cat => (
+          {['All', 'Milestone', 'Task', 'Deadline', 'Meeting', 'Demo', 'SLA', 'Review'].map(cat => (
             <button
               key={cat}
               onClick={() => setFilterType(cat)}

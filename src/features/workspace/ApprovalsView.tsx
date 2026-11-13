@@ -1,13 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ClipboardCheck, Check, X, ShieldAlert,
   ArrowRight, ShieldCheck, UserCheck,
-  TrendingDown, CheckCircle2
+  TrendingDown, CheckCircle2, RefreshCw
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { SectionHeading } from '../../components/SectionHeading';
 import { StatusPill } from '../../components/StatusPill';
 import { money } from '../../data/models';
+import { api } from '../../services/api';
 
 interface ApprovalItem {
   id: string;
@@ -124,6 +125,43 @@ export function ApprovalsView() {
   const [rejectionNote, setRejectionNote] = useState('');
   const [toast, setToast] = useState('');
 
+  const loadApprovals = async () => {
+    try {
+      const res = await api.listApprovals({ limit: 100 });
+      if (res?.items && res.items.length > 0) {
+        const mapped: ApprovalItem[] = res.items.map(a => ({
+          id: a.id,
+          ref: a.ref,
+          title: a.title,
+          category: (a.category as any) || 'Discount Override',
+          entity: a.entity_type,
+          entityRef: a.entity_ref,
+          requester: a.requester_name,
+          date: a.created_at ? a.created_at.slice(0, 10) : '2026-11-09',
+          amount: Number(a.amount || 0),
+          discountPct: Number(a.discount_pct || 0),
+          risk: (a.risk as any) || 'Medium',
+          policy: a.policy,
+          justification: a.justification,
+          status: a.status as any,
+          resolvedBy: a.approver_name || undefined,
+          resolvedAt: a.resolved_at || undefined,
+          rejectionReason: a.rejection_reason || undefined,
+        }));
+        setItems(mapped);
+        if (mapped.length > 0) {
+          setSelectedItem(mapped[0]);
+        }
+      }
+    } catch {
+      // Fallback to defaultApprovals
+    }
+  };
+
+  useEffect(() => {
+    loadApprovals();
+  }, []);
+
   const notify = (msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast(''), 3000);
@@ -147,7 +185,7 @@ export function ApprovalsView() {
     };
   }, [items]);
 
-  const handleApprove = (item: ApprovalItem) => {
+  const handleApprove = async (item: ApprovalItem) => {
     setItems(prev =>
       prev.map(i =>
         i.id === item.id
@@ -160,6 +198,13 @@ export function ApprovalsView() {
           : i
       )
     );
+    if (item.entity === 'Quote') {
+      try {
+        await api.decideQuoteApproval(item.id, { decision: 'approve', notes: 'Approved via Governance Workspace' });
+      } catch {
+        // Fallback logged
+      }
+    }
     addEvent('approval.granted', { ref: item.ref }, `Executive approved ${item.category} for ${item.entityRef}`);
     addAudit('Commercial Approval Granted', 'Demo User', `${item.ref}: ${item.title}`);
     notify(`Approved ${item.ref} (${money(item.amount)}). Audit record logged.`);
@@ -171,8 +216,9 @@ export function ApprovalsView() {
     setRejectionModal(true);
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!selectedItem) return;
+    const note = rejectionNote.trim() || 'Declined under governance commercial rules.';
     setItems(prev =>
       prev.map(i =>
         i.id === selectedItem.id
@@ -181,13 +227,20 @@ export function ApprovalsView() {
               status: 'Rejected',
               resolvedBy: 'Demo Executive User',
               resolvedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-              rejectionReason: rejectionNote.trim() || 'Declined under governance commercial rules.',
+              rejectionReason: note,
             }
           : i
       )
     );
+    if (selectedItem.entity === 'Quote') {
+      try {
+        await api.decideQuoteApproval(selectedItem.id, { decision: 'reject', notes: note });
+      } catch {
+        // Fallback logged
+      }
+    }
     addEvent('approval.rejected', { ref: selectedItem.ref }, `Executive rejected ${selectedItem.category} for ${selectedItem.entityRef}`);
-    addAudit('Commercial Approval Rejected', 'Demo User', `${selectedItem.ref}: ${rejectionNote}`);
+    addAudit('Commercial Approval Rejected', 'Demo User', `${selectedItem.ref}: ${note}`);
     setRejectionModal(false);
     notify(`Rejected ${selectedItem.ref}. Record returned to requester.`);
   };

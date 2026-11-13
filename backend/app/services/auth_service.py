@@ -376,14 +376,23 @@ class AuthService:
         )
         rt = token_res.scalar_one_or_none()
 
-        if not rt or not rt.is_valid:
+        now = datetime.now(timezone.utc)
+        if not rt:
+            raise AuthenticationException("Invalid or expired refresh token.")
+
+        exp = rt.expires_at if rt.expires_at.tzinfo is not None else rt.expires_at.replace(tzinfo=timezone.utc)
+        if now >= exp:
             raise AuthenticationException("Invalid or expired refresh token.")
 
         user = rt.user
         tenant_id = rt.tenant_id
 
+        # Token rotation security: revoked tokens are immediately invalid
+        if rt.revoked_at is not None:
+            raise AuthenticationException("Invalid or expired refresh token.")
+
         # Revoke old refresh token (rotation)
-        rt.revoked_at = datetime.now(timezone.utc)
+        rt.revoked_at = now
 
         # Issue new refresh token
         new_raw_refresh, new_refresh_hash = create_random_token(48)

@@ -331,7 +331,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
           </button>
           <div className="sidebar-status">
             <i />
-            <span>Prototype v0.1 · Phase 1</span>
+            <span>Prototype v0.1 </span>
           </div>
         </div>
       </aside>
@@ -656,6 +656,12 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     checkSession();
+
+    const handleExpired = () => {
+      setUserProfile(null);
+    };
+    window.addEventListener('syvoris:session_expired', handleExpired);
+    return () => window.removeEventListener('syvoris:session_expired', handleExpired);
   }, []);
 
   if (loading) {

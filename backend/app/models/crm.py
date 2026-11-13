@@ -54,6 +54,18 @@ class Account(TenantScopedModel):
     activities: Mapped[List["CRMActivity"]] = relationship(
         "CRMActivity", back_populates="account", cascade="all, delete-orphan", lazy="selectin"
     )
+    quotes: Mapped[List["Quote"]] = relationship(
+        "Quote", back_populates="account", cascade="all, delete-orphan", lazy="select"
+    )
+    sales_orders: Mapped[List["SalesOrder"]] = relationship(
+        "SalesOrder", back_populates="account", cascade="all, delete-orphan", lazy="select"
+    )
+    invoices: Mapped[List["Invoice"]] = relationship(
+        "Invoice", back_populates="account", cascade="all, delete-orphan", lazy="select"
+    )
+    cases: Mapped[List["Case"]] = relationship(
+        "Case", back_populates="account", cascade="all, delete-orphan", lazy="select"
+    )
 
 class Contact(TenantScopedModel):
     __tablename__ = "contacts"
@@ -98,6 +110,9 @@ class Contact(TenantScopedModel):
     activities: Mapped[List["CRMActivity"]] = relationship(
         "CRMActivity", back_populates="contact", cascade="all, delete-orphan", lazy="selectin"
     )
+    cases: Mapped[List["Case"]] = relationship(
+        "Case", back_populates="contact", cascade="all, delete-orphan", lazy="select"
+    )
 
     @property
     def full_name(self) -> str:
@@ -126,6 +141,15 @@ class Opportunity(TenantScopedModel):
     forecast_category: Mapped[str] = mapped_column(String(50), default="Pipeline", nullable=False)
     risk_level: Mapped[str] = mapped_column(String(32), default="Low", nullable=False)
     lead_source: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    stage_entered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    loss_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    win_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    competitor_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    budget_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    decision_maker_bought_in: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    next_step: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     owner_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -141,6 +165,52 @@ class Opportunity(TenantScopedModel):
     # Relationships
     account: Mapped["Account"] = relationship("Account", back_populates="opportunities", lazy="joined")
     contact: Mapped[Optional["Contact"]] = relationship("Contact", back_populates="opportunities", lazy="joined")
+    stage_history: Mapped[List["OpportunityStageHistory"]] = relationship(
+        "OpportunityStageHistory", back_populates="opportunity", cascade="all, delete-orphan", lazy="selectin"
+    )
+    quotes: Mapped[List["Quote"]] = relationship(
+        "Quote", back_populates="opportunity", lazy="select"
+    )
+    sales_orders: Mapped[List["SalesOrder"]] = relationship(
+        "SalesOrder", back_populates="opportunity", lazy="select"
+    )
+
+class OpportunityStageHistory(TenantScopedModel):
+    __tablename__ = "opportunity_stage_history"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("opportunities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    from_stage: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    to_stage: Mapped[str] = mapped_column(String(100), nullable=False)
+    transition_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True
+    )
+    days_in_previous_stage: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=Decimal("0.00"), nullable=False)
+    actor_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_name: Mapped[str] = mapped_column(String(255), default="System", nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Relationship
+    opportunity: Mapped["Opportunity"] = relationship("Opportunity", back_populates="stage_history")
+
+class Pipeline(TenantScopedModel):
+    __tablename__ = "pipelines"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    code: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    stages_config: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
 
 class Lead(TenantScopedModel):
     __tablename__ = "leads"
@@ -224,3 +294,16 @@ class CRMActivity(TenantScopedModel):
     # Relationships
     account: Mapped["Account"] = relationship("Account", back_populates="activities")
     contact: Mapped[Optional["Contact"]] = relationship("Contact", back_populates="activities")
+
+# Re-export Sales & CPQ models for unified CRM access
+from app.models.sales import (
+    Product,
+    PriceBook,
+    PriceBookEntry,
+    Quote,
+    QuoteLineItem,
+    SalesOrder,
+    OrderLineItem,
+    Invoice,
+    ApprovalRequest,
+)

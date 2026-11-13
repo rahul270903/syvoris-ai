@@ -96,3 +96,73 @@ async def test_lead_lifecycle_scoring_and_filtering(client: AsyncClient):
     list_after = await client.get("/api/v1/leads", headers=headers)
     assert list_after.status_code == 200
     assert not any(l["id"] == junior_data["id"] for l in list_after.json()["items"])
+
+
+@pytest.mark.asyncio
+async def test_lead_status_transitions_and_rules(client: AsyncClient):
+    reg = await client.post("/api/v1/auth/register", json={
+        "organization_name": "Status Governance Org",
+        "tenant_slug": "status-gov-test",
+        "first_name": "Greg",
+        "last_name": "Governance",
+        "email": "greg@gov.example",
+        "password": "Password123!"
+    })
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+
+    # Create lead
+    create_resp = await client.post("/api/v1/leads", json={
+        "first_name": "Sarah",
+        "last_name": "Connor",
+        "company_name": "Cyberdyne Systems",
+        "email": "sarah@cyberdyne.example",
+        "status": "New"
+    }, headers=headers)
+    assert create_resp.status_code == 201
+    lead_id = create_resp.json()["id"]
+
+    # Test invalid status string rejection
+    bad_status = await client.patch(f"/api/v1/leads/{lead_id}", json={
+        "status": "CompletelyBogusStatus"
+    }, headers=headers)
+    assert bad_status.status_code == 422
+    assert "invalid lead status" in bad_status.json()["detail"].lower()
+
+    # Transition to Disqualified
+    disq_resp = await client.patch(f"/api/v1/leads/{lead_id}", json={
+        "status": "Disqualified"
+    }, headers=headers)
+    assert disq_resp.status_code == 200
+    assert disq_resp.json()["status"] == "Disqualified"
+
+    # Attempting to convert a Disqualified lead directly must be rejected
+    conv_disq = await client.post(f"/api/v1/leads/{lead_id}/convert", json={
+        "account_mode": "create",
+        "new_account": {"name": "Cyberdyne Systems Corp"},
+        "contact": {"first_name": "Sarah", "last_name": "Connor", "email": "sarah@cyberdyne.example"}
+    }, headers=headers)
+    assert conv_disq.status_code == 422
+    assert "disqualified" in conv_disq.json()["detail"].lower()
+
+    # Re-qualify lead
+    qual_resp = await client.patch(f"/api/v1/leads/{lead_id}", json={
+        "status": "Qualified"
+    }, headers=headers)
+    assert qual_resp.status_code == 200
+    assert qual_resp.json()["status"] == "Qualified"
+
+    # Convert lead
+    conv_ok = await client.post(f"/api/v1/leads/{lead_id}/convert", json={
+        "account_mode": "create",
+        "new_account": {"name": "Cyberdyne Systems Corp"},
+        "contact": {"first_name": "Sarah", "last_name": "Connor", "email": "sarah@cyberdyne.example"}
+    }, headers=headers)
+    assert conv_ok.status_code == 200
+    assert conv_ok.json()["lead"]["status"] == "Converted"
+
+    # Modifying status of an already converted lead must be rejected
+    cant_change = await client.patch(f"/api/v1/leads/{lead_id}", json={
+        "status": "New"
+    }, headers=headers)
+    assert cant_change.status_code == 422
+    assert "already converted" in cant_change.json()["detail"].lower()

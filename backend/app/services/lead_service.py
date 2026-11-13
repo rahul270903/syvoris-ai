@@ -263,8 +263,9 @@ class LeadService:
         owner_name = actor_name
         if req.owner_id:
             owner = await db.get(User, req.owner_id)
-            if owner:
-                owner_name = owner.full_name
+            if not owner or owner.deleted_at is not None:
+                raise ValidationException("Selected owner user does not exist.")
+            owner_name = owner.full_name
 
         lead = Lead(
             tenant_id=tenant_id,
@@ -367,6 +368,22 @@ class LeadService:
         updated_fields = []
         data = patch.model_dump(exclude_unset=True)
 
+        # Enforce status transition validation
+        if "status" in data and data["status"] is not None:
+            new_status = data["status"]
+            allowed_statuses = {"New", "Contacted", "Engaged", "In Progress", "Qualified", "Nurture", "Disqualified", "Converted"}
+            if new_status not in allowed_statuses:
+                raise ValidationException(f"Invalid lead status '{new_status}'. Allowed statuses: {', '.join(sorted(allowed_statuses))}")
+            if lead.status == "Converted" and new_status != "Converted":
+                raise ValidationException("Cannot modify status of an already converted lead.")
+
+        if "owner_id" in data and data["owner_id"] is not None:
+            owner = await db.get(User, data["owner_id"])
+            if not owner or owner.deleted_at is not None:
+                raise ValidationException("Selected owner user does not exist.")
+            lead.owner_name = owner.full_name
+            updated_fields.append("owner_name")
+
         for k, v in data.items():
             if k == "custom_fields" and v is not None:
                 current_cf = dict(lead.custom_fields or {})
@@ -459,6 +476,9 @@ class LeadService:
 
         if lead.status == "Converted" or lead.converted_at is not None:
             raise ValidationException("Lead is already converted and cannot be converted again.")
+
+        if lead.status == "Disqualified":
+            raise ValidationException("Disqualified leads cannot be converted. Re-qualify the lead before conversion.")
 
         # Begin atomic transaction block using savepoint
         async with db.begin_nested():

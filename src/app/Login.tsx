@@ -8,9 +8,9 @@ interface LoginProps {
 }
 
 export function Login({ onLogin, onNavigateRegister }: LoginProps) {
-  const [email, setEmail] = useState('demo@syvoris.example');
-  const [password, setPassword] = useState('SYVORIS-DEMO');
-  const [tenantSlug, setTenantSlug] = useState('');
+  const [email, setEmail] = useState('arjun.mehta@example.com');
+  const [password, setPassword] = useState('Password123!');
+  const [tenantSlug, setTenantSlug] = useState('bluepeak-innovations');
   const [showTenantField, setShowTenantField] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -102,6 +102,32 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
           <span className="eyebrow">WELCOME TO YOUR WORKSPACE</span>
           <h2>Sign in to SYVORIS Ai</h2>
           <p>Access your customer, sales and service workspace.</p>
+
+          <div className="flex items-center gap-2 my-3">
+            <span className="text-[11px] text-slate-400 font-medium">Quick switch:</span>
+            <button
+              type="button"
+              className={`text-[11px] px-2.5 py-1 rounded border transition font-medium ${email === 'arjun.mehta@example.com' ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200' : 'bg-slate-850 border-slate-700 text-slate-300 hover:border-slate-500'}`}
+              onClick={() => {
+                setEmail('arjun.mehta@example.com');
+                setPassword('Password123!');
+                setTenantSlug('bluepeak-innovations');
+              }}
+            >
+              Arjun Mehta (Owner)
+            </button>
+            <button
+              type="button"
+              className={`text-[11px] px-2.5 py-1 rounded border transition font-medium ${email === 'demo@syvoris.example' ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200' : 'bg-slate-850 border-slate-700 text-slate-300 hover:border-slate-500'}`}
+              onClick={() => {
+                setEmail('demo@syvoris.example');
+                setPassword('SYVORIS-DEMO');
+                setTenantSlug('bluepeak-innovations');
+              }}
+            >
+              Demo Operator
+            </button>
+          </div>
 
           <form onSubmit={handleSubmit}>
             <label>

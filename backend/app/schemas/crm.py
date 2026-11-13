@@ -151,8 +151,54 @@ class OpportunityCreate(BaseModel):
     forecast_category: str = "Pipeline"
     risk_level: str = "Low"
     lead_source: Optional[str] = None
+    budget_confirmed: bool = False
+    decision_maker_bought_in: bool = False
+    next_step: Optional[str] = None
+    competitor_name: Optional[str] = None
     owner_id: Optional[uuid.UUID] = None
     custom_fields: Optional[Dict[str, Any]] = None
+
+class OpportunityUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    account_id: Optional[uuid.UUID] = None
+    contact_id: Optional[uuid.UUID] = None
+    pipeline_id: Optional[str] = None
+    stage: Optional[str] = None
+    amount: Optional[Decimal] = None
+    currency: Optional[str] = None
+    probability: Optional[int] = None
+    expected_close_date: Optional[datetime] = None
+    forecast_category: Optional[str] = None
+    risk_level: Optional[str] = None
+    lead_source: Optional[str] = None
+    budget_confirmed: Optional[bool] = None
+    decision_maker_bought_in: Optional[bool] = None
+    next_step: Optional[str] = None
+    competitor_name: Optional[str] = None
+    loss_reason: Optional[str] = None
+    win_description: Optional[str] = None
+    owner_id: Optional[uuid.UUID] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+
+class OpportunityStageTransitionRequest(BaseModel):
+    to_stage: str
+    budget_confirmed: Optional[bool] = None
+    decision_maker_bought_in: Optional[bool] = None
+    loss_reason: Optional[str] = None
+    win_description: Optional[str] = None
+    competitor_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class OpportunityStageHistoryResponse(BaseModel):
+    id: uuid.UUID
+    opportunity_id: uuid.UUID
+    from_stage: Optional[str] = None
+    to_stage: str
+    transition_at: datetime
+    days_in_previous_stage: Decimal
+    actor_id: Optional[uuid.UUID] = None
+    actor_name: str
+    notes: Optional[str] = None
 
 class OpportunityResponse(BaseModel):
     id: uuid.UUID
@@ -172,11 +218,37 @@ class OpportunityResponse(BaseModel):
     forecast_category: str
     risk_level: str
     lead_source: Optional[str] = None
+    stage_entered_at: Optional[datetime] = None
+    budget_confirmed: bool = False
+    decision_maker_bought_in: bool = False
+    next_step: Optional[str] = None
+    competitor_name: Optional[str] = None
+    loss_reason: Optional[str] = None
+    win_description: Optional[str] = None
     owner_id: Optional[uuid.UUID] = None
     owner_name: Optional[str] = None
     custom_fields: Dict[str, Any] = {}
+    stage_history: List[OpportunityStageHistoryResponse] = []
     created_at: datetime
     updated_at: datetime
+
+class PipelineStageConfig(BaseModel):
+    code: str
+    name: str
+    probability: int
+    forecast_category: str
+    order: int
+    gate_requirements: List[str] = []
+
+class PipelineResponse(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    code: str
+    description: Optional[str] = None
+    is_default: bool
+    is_active: bool
+    stages: List[PipelineStageConfig] = []
 
 # ==============================================================================
 # Activity & Customer 360 Schemas
@@ -207,6 +279,7 @@ class Customer360Response(BaseModel):
     contacts: List[ContactResponse] = []
     activities: List[CRMActivityResponse] = []
     opportunities: List[OpportunityResponse] = []
+    cases: List[Dict[str, Any]] = []
     metrics: Dict[str, Any] = {}
 
 # ==============================================================================

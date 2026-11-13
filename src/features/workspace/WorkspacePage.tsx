@@ -31,6 +31,11 @@ import { AuditTrailView } from './AuditTrailView';
 import { AccountHierarchiesView } from './AccountHierarchiesView';
 import { DuplicateManagementView } from './DuplicateManagementView';
 import { OrganizationSelectField } from './OrganizationSelectField';
+import { ProjectDetailsView } from './ProjectDetailsView';
+import { ProjectAnalyticsView } from './ProjectAnalyticsView';
+import { ServiceDashboardView } from './ServiceDashboardView';
+import { LeadCaptureView } from './LeadCaptureView';
+import { LeadQualificationView } from './LeadQualificationView';
 import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
@@ -72,16 +77,34 @@ export function WorkspacePage({ item }: Props) {
   const [commPrefill, setCommPrefill] = useState<{ to?: string; contact?: string }>({});
 
   // Live Backend Records
-  const isLiveCRMEntity = config.entity === 'organizations' || config.entity === 'contacts' || config.entity === 'leads';
+  const isLiveCRMEntity =
+    config.entity === 'organizations' ||
+    config.entity === 'contacts' ||
+    config.entity === 'leads' ||
+    config.entity === 'projects' ||
+    config.entity === 'tasks' ||
+    config.entity === 'milestones' ||
+    config.entity === 'resources' ||
+    config.entity === 'costs';
   const [liveAccounts, setLiveAccounts] = useState<CRMRecord[]>([]);
   const [liveContacts, setLiveContacts] = useState<CRMRecord[]>([]);
   const [liveLeads, setLiveLeads] = useState<CRMRecord[]>([]);
+  const [liveProjects, setLiveProjects] = useState<CRMRecord[]>([]);
+  const [liveProjectTasks, setLiveProjectTasks] = useState<CRMRecord[]>([]);
+  const [liveProjectMilestones, setLiveProjectMilestones] = useState<CRMRecord[]>([]);
+  const [liveProjectResources, setLiveProjectResources] = useState<CRMRecord[]>([]);
+  const [liveProjectCosts, setLiveProjectCosts] = useState<CRMRecord[]>([]);
   const [availableAccounts, setAvailableAccounts] = useState<AccountItem[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [accountsFetchError, setAccountsFetchError] = useState<string | null>(null);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [contactsLoaded, setContactsLoaded] = useState(false);
   const [leadsLoaded, setLeadsLoaded] = useState(false);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [milestonesLoaded, setMilestonesLoaded] = useState(false);
+  const [resourcesLoaded, setResourcesLoaded] = useState(false);
+  const [costsLoaded, setCostsLoaded] = useState(false);
   const [loadingLive, setLoadingLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -227,6 +250,210 @@ export function WorkspacePage({ item }: Props) {
       } finally {
         setLoadingLive(false);
       }
+    } else if (config.entity === 'projects') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listProjects();
+        const items = res || [];
+        const mapped: CRMRecord[] = items.map(p => ({
+          id: p.id,
+          ref: p.ref,
+          title: p.name,
+          description: `${p.account_name ? `${p.account_name} · ` : ''}${p.category || p.project_type || 'Project'} · Health: ${p.health}`,
+          status: p.status,
+          owner: p.manager_name || 'Project Manager',
+          amount: Number(p.budget || 0),
+          date: p.start_date || (p.created_at ? p.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {
+            organizations: p.account_id ? [p.account_id] : [],
+            opportunities: p.opportunity_id ? [p.opportunity_id] : [],
+          },
+          history: [],
+          fields: {
+            name: p.name,
+            customer: p.account_name || '',
+            manager: p.manager_name || '',
+            budget: String(p.budget || 0),
+            progress: String(p.progress_pct || 0),
+            health: p.health || 'On Track',
+            billingModel: p.category || 'Fixed price',
+            startDate: p.start_date || '',
+            finishDate: p.target_date || '',
+            actualCost: String((p as any).actual_cost || 0),
+            status: p.status,
+            description: p.description || '',
+          }
+        }));
+        setLiveProjects(mapped);
+        setProjectsLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load projects from backend.');
+        setProjectsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'tasks' || item.path === '/projects/tasks') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listProjectTasks();
+        const items = res || [];
+        const mapped: CRMRecord[] = items.map(t => ({
+          id: t.id,
+          ref: t.ref,
+          title: t.title,
+          description: `${t.project_name ? `${t.project_name} · ` : ''}Priority: ${t.priority} · Estimated: ${t.estimated_hours}h`,
+          status: t.status,
+          owner: t.assigned_user_name || 'Unassigned',
+          amount: 0,
+          date: t.due_date || (t.created_at ? t.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {
+            projects: [t.project_id],
+          },
+          history: [],
+          fields: {
+            title: t.title,
+            project: t.project_name || '',
+            milestone: t.milestone_name || '',
+            priority: t.priority,
+            assignee: t.assigned_user_name || 'Unassigned',
+            status: t.status,
+            estimatedHours: String(t.estimated_hours || 0),
+            actualHours: String(t.actual_hours || 0),
+            startDate: t.start_date || '',
+            dueDate: t.due_date || '',
+            description: t.description || '',
+          }
+        }));
+        setLiveProjectTasks(mapped);
+        setTasksLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load project tasks from backend.');
+        setTasksLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'milestones' || item.path === '/projects/milestones') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listProjectMilestones();
+        const items = res || [];
+        const mapped: CRMRecord[] = items.map(m => ({
+          id: m.id,
+          ref: m.ref,
+          title: m.name,
+          description: `${m.project_name ? `${m.project_name} · ` : ''}Target: ${m.target_date} · Deliverable: ${m.deliverable}`,
+          status: m.status,
+          owner: m.owner_name || 'Milestone Owner',
+          amount: 0,
+          date: m.target_date || (m.created_at ? m.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {
+            projects: [m.project_id],
+          },
+          history: [],
+          fields: {
+            name: m.name,
+            project: m.project_name || '',
+            deliverable: m.deliverable || '',
+            targetDate: m.target_date || '',
+            priority: m.priority || 'Medium',
+            owner: m.owner_name || '',
+            status: m.status,
+            completionCriteria: m.completion_criteria || '',
+            completionEvidence: (m.custom_fields?.completion_evidence as string) || '',
+            description: m.description || '',
+          }
+        }));
+        setLiveProjectMilestones(mapped);
+        setMilestonesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load project milestones from backend.');
+        setMilestonesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'resources' || item.path === '/projects/resources') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listProjectResources();
+        const items = res || [];
+        const mapped: CRMRecord[] = items.map(r => ({
+          id: r.id,
+          ref: r.ref,
+          title: r.role_title,
+          description: `${r.user_name || 'Team Member'} · ${r.project_name || ''} · Rate: $${r.hourly_rate}/h (${r.allocation_pct}%)`,
+          status: r.is_overallocated ? 'Over-Allocated' : 'Active',
+          owner: r.user_name || 'Team Member',
+          amount: Number(r.hourly_rate || 0),
+          date: r.start_date || (r.created_at ? r.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {
+            projects: [r.project_id],
+          },
+          history: [],
+          fields: {
+            name: r.role_title,
+            assignee: r.user_name || '',
+            project: r.project_name || '',
+            allocation: String(r.allocation_pct),
+            hourlyRate: String(r.hourly_rate),
+            plannedHours: String(r.planned_hours || 0),
+            actualHours: String(r.actual_hours || 0),
+            startDate: r.start_date || '',
+            endDate: r.end_date || '',
+            status: r.is_overallocated ? 'Over-Allocated' : 'Active',
+            description: (r.custom_fields?.notes as string) || '',
+          }
+        }));
+        setLiveProjectResources(mapped);
+        setResourcesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load resource allocations from backend.');
+        setResourcesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'costs' || item.path === '/projects/costs') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listProjectCosts();
+        const items = res || [];
+        const mapped: CRMRecord[] = items.map(c => ({
+          id: c.id,
+          ref: c.ref,
+          title: c.title,
+          description: `${c.project_name ? `${c.project_name} · ` : ''}${c.category} (${c.cost_type}) · Date: ${c.date_incurred}`,
+          status: c.cost_type,
+          owner: 'Finance / PMO',
+          amount: Number(c.amount || 0),
+          date: c.date_incurred || (c.created_at ? c.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {
+            projects: [c.project_id],
+          },
+          history: [],
+          fields: {
+            name: c.title,
+            project: c.project_name || '',
+            category: c.category,
+            costType: c.cost_type,
+            amount: String(c.amount),
+            dateIncurred: c.date_incurred,
+            vendor: c.vendor_name || '',
+            notes: c.notes || '',
+            status: c.cost_type,
+          }
+        }));
+        setLiveProjectCosts(mapped);
+        setCostsLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load project costs from backend.');
+        setCostsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
     }
   };
 
@@ -253,8 +480,34 @@ export function WorkspacePage({ item }: Props) {
     if (config.entity === 'leads') {
       return leadsLoaded ? liveLeads : [];
     }
+    if (config.entity === 'projects') {
+      return projectsLoaded ? liveProjects : [];
+    }
+    if (config.entity === 'tasks') {
+      return tasksLoaded ? liveProjectTasks : [];
+    }
+    if (config.entity === 'milestones') {
+      return milestonesLoaded ? liveProjectMilestones : [];
+    }
+    if (config.entity === 'resources') {
+      return resourcesLoaded ? liveProjectResources : [];
+    }
+    if (config.entity === 'costs') {
+      return costsLoaded ? liveProjectCosts : [];
+    }
     return localRows;
-  }, [config.entity, accountsLoaded, liveAccounts, contactsLoaded, liveContacts, leadsLoaded, liveLeads, localRows]);
+  }, [
+    config.entity,
+    accountsLoaded, liveAccounts,
+    contactsLoaded, liveContacts,
+    leadsLoaded, liveLeads,
+    projectsLoaded, liveProjects,
+    tasksLoaded, liveProjectTasks,
+    milestonesLoaded, liveProjectMilestones,
+    resourcesLoaded, liveProjectResources,
+    costsLoaded, liveProjectCosts,
+    localRows
+  ]);
   const statusOptions = useMemo(() => [...new Set(rows.map(r => r.status))], [rows]);
   const filtered = useMemo(() => {
     return rows.filter(r =>
@@ -510,6 +763,229 @@ export function WorkspacePage({ item }: Props) {
       return;
     }
 
+    // Projects: PostgreSQL is the single source of truth
+    if (config.entity === 'projects') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateProject(editingId, {
+            name: fields.name || item.label,
+            budget: Number(fields.budget || amount || 0),
+            category: fields.billingModel || 'Fixed price',
+            start_date: fields.startDate || undefined,
+            target_date: fields.finishDate || undefined,
+            description: fields.scope || fields.description || undefined,
+            status: fields.status || statusValue,
+          });
+          notify('Project updated in PostgreSQL database.');
+        } else {
+          await api.createProject({
+            name: fields.name || item.label,
+            budget: Number(fields.budget || amount || 0),
+            category: fields.billingModel || 'Fixed price',
+            start_date: fields.startDate || new Date().toISOString().slice(0, 10),
+            target_date: fields.finishDate || undefined,
+            description: fields.scope || fields.description || undefined,
+          });
+          notify('Project created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save project to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Project Tasks: PostgreSQL is the single source of truth
+    if (config.entity === 'tasks') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const projectId = fields.projectId || liveProjects[0]?.id;
+        if (!projectId && !editingId) {
+          throw new Error('Please select or specify a project ID for this task.');
+        }
+        if (editingId) {
+          await api.updateProjectTask(editingId, {
+            title: fields.title || fields.name || 'New Task',
+            priority: fields.priority || 'Medium',
+            estimated_hours: Number(fields.estimatedHours || 8),
+            actual_hours: Number(fields.actualHours || 0),
+            due_date: fields.dueDate || undefined,
+            status: fields.status || statusValue || 'Open',
+            description: fields.description || undefined,
+          });
+          notify('Task updated in PostgreSQL database.');
+        } else {
+          await api.createProjectTask({
+            project_id: projectId,
+            title: fields.title || fields.name || 'New Task',
+            priority: fields.priority || 'Medium',
+            estimated_hours: Number(fields.estimatedHours || 8),
+            due_date: fields.dueDate || undefined,
+            description: fields.description || undefined,
+          });
+          notify('Task created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save task to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Milestones: PostgreSQL is the single source of truth
+    if (config.entity === 'milestones') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const projectId = fields.projectId || liveProjects[0]?.id;
+        if (!projectId && !editingId) {
+          throw new Error('Please select or specify a project ID for this milestone.');
+        }
+        if (editingId) {
+          await api.updateProjectMilestone(editingId, {
+            name: fields.name || 'New Milestone',
+            deliverable: fields.deliverable || 'Deliverable',
+            target_date: fields.targetDate || new Date().toISOString().slice(0, 10),
+            priority: fields.priority || 'Medium',
+            status: fields.status || statusValue || 'Pending',
+            completion_criteria: fields.completionCriteria || undefined,
+            description: fields.description || undefined,
+          });
+          notify('Milestone updated in PostgreSQL database.');
+        } else {
+          await api.createProjectMilestone({
+            project_id: projectId,
+            name: fields.name || 'New Milestone',
+            deliverable: fields.deliverable || 'Deliverable specification',
+            target_date: fields.targetDate || new Date().toISOString().slice(0, 10),
+            priority: fields.priority || 'Medium',
+            completion_criteria: fields.completionCriteria || undefined,
+            description: fields.description || undefined,
+          });
+          notify('Milestone created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save milestone to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Resource Allocation: PostgreSQL is the single source of truth
+    if (config.entity === 'resources') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const projectId = fields.projectId || liveProjects[0]?.id;
+        if (!projectId && !editingId) {
+          throw new Error('Please select or specify a project ID for this resource allocation.');
+        }
+        if (editingId) {
+          await api.updateProjectResource(editingId, {
+            role_title: fields.name || fields.roleTitle || 'Team Member',
+            allocation_pct: Number(fields.allocation || 100),
+            hourly_rate: Number(fields.hourlyRate || 85),
+            planned_hours: Number(fields.plannedHours || 160),
+            actual_hours: Number(fields.actualHours || 0),
+            start_date: fields.startDate || undefined,
+            end_date: fields.endDate || undefined,
+            custom_fields: fields.description ? { notes: fields.description } : {},
+          });
+          notify('Resource allocation updated in PostgreSQL database.');
+        } else {
+          await api.createProjectResource({
+            project_id: projectId,
+            user_id: availableAccounts[0]?.id || 'usr-default',
+            role_title: fields.name || fields.roleTitle || 'Team Member',
+            allocation_pct: Number(fields.allocation || 100),
+            hourly_rate: Number(fields.hourlyRate || 85),
+            planned_hours: Number(fields.plannedHours || 160),
+            start_date: fields.startDate || undefined,
+            end_date: fields.endDate || undefined,
+            custom_fields: fields.description ? { notes: fields.description } : {},
+          });
+          notify('Resource allocation created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save resource allocation to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Project Costs: PostgreSQL is the single source of truth
+    if (config.entity === 'costs') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const projectId = fields.projectId || liveProjects[0]?.id;
+        if (!projectId && !editingId) {
+          throw new Error('Please select or specify a project ID for this cost entry.');
+        }
+        if (editingId) {
+          await api.updateProjectCost(editingId, {
+            title: fields.name || fields.title || 'Project Expense',
+            category: fields.category || 'Labor',
+            cost_type: fields.costType || 'Actual',
+            amount: Number(fields.amount || amount || 0),
+            date_incurred: fields.dateIncurred || new Date().toISOString().slice(0, 10),
+            vendor_name: fields.vendor || undefined,
+            notes: fields.notes || fields.description || undefined,
+          });
+          notify('Cost record updated in PostgreSQL database.');
+        } else {
+          await api.createProjectCost({
+            project_id: projectId,
+            title: fields.name || fields.title || 'Project Expense',
+            category: fields.category || 'Labor',
+            cost_type: fields.costType || 'Actual',
+            amount: Number(fields.amount || amount || 0),
+            date_incurred: fields.dateIncurred || new Date().toISOString().slice(0, 10),
+            vendor_name: fields.vendor || undefined,
+            notes: fields.notes || fields.description || undefined,
+          });
+          notify('Cost record created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save cost record to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     // Default prototype entities (opportunities, quotes, etc.)
     if (editingId) {
       update(
@@ -641,28 +1117,44 @@ export function WorkspacePage({ item }: Props) {
     setSelectedId(null);
   };
 
-  const createProjectFromOpportunity = (opp: CRMRecord) => {
-    const project = create(
-      'projects',
-      {
+  const createProjectFromOpportunity = async (opp: CRMRecord) => {
+    try {
+      const p = await api.createProject({
         name: `${opp.title} · Implementation`,
-        customer: opp.fields.customer || opp.title,
-        manager: 'D. Foster',
-        startDate: new Date().toISOString().slice(0, 10),
-        finishDate: opp.fields.closeDate || '',
-        budget: String(opp.amount),
-        billingModel: 'Milestone',
-        progress: '15',
-        health: 'On Track',
-        opportunity: opp.ref,
-        scope: opp.description,
-      },
-      { status: 'Active', amount: opp.amount, links: { opportunities: [opp.id], organizations: opp.links.organizations || [] } }
-    );
+        opportunity_id: opp.id,
+        account_id: opp.links.organizations?.[0],
+        budget: opp.amount || 50000,
+        category: 'Milestone',
+        start_date: new Date().toISOString().slice(0, 10),
+        target_date: opp.fields.closeDate || undefined,
+        description: opp.description,
+      });
+      notify(`Project ${p.ref} created in PostgreSQL from closed-won deal.`);
+      await fetchLiveCRMData();
+      navigate('/projects/details', { state: { projectId: p.id } });
+    } catch {
+      const project = create(
+        'projects',
+        {
+          name: `${opp.title} · Implementation`,
+          customer: opp.fields.customer || opp.title,
+          manager: 'D. Foster',
+          startDate: new Date().toISOString().slice(0, 10),
+          finishDate: opp.fields.closeDate || '',
+          budget: String(opp.amount),
+          billingModel: 'Milestone',
+          progress: '15',
+          health: 'On Track',
+          opportunity: opp.ref,
+          scope: opp.description,
+        },
+        { status: 'Active', amount: opp.amount, links: { opportunities: [opp.id], organizations: opp.links.organizations || [] } }
+      );
 
-    update('opportunities', opp.id, { fields: { projectRef: project.ref }, links: { projects: [project.id] } }, 'Project handoff initiated');
-    notify(`Project ${project.ref} created from closed-won deal.`);
-    navigate('/projects');
+      update('opportunities', opp.id, { fields: { projectRef: project.ref }, links: { projects: [project.id] } }, 'Project handoff initiated');
+      notify(`Project ${project.ref} created from closed-won deal.`);
+      navigate('/projects/details', { state: { projectId: project.id } });
+    }
     setSelectedId(null);
   };
 
@@ -898,6 +1390,9 @@ export function WorkspacePage({ item }: Props) {
     if (config.entity === 'cases') return ['ref', 'title', 'customer', 'priority', 'assigned', 'sla', 'status'];
     if (config.entity === 'projects') return ['ref', 'title', 'customer', 'manager', 'budget', 'progress', 'health', 'status'];
     if (config.entity === 'tasks') return ['ref', 'title', 'assignee', 'priority', 'dueDate', 'status'];
+    if (config.entity === 'milestones') return ['ref', 'title', 'deliverable', 'targetDate', 'priority', 'status'];
+    if (config.entity === 'resources') return ['ref', 'title', 'assignee', 'allocation', 'hourlyRate', 'status'];
+    if (config.entity === 'costs') return ['ref', 'title', 'category', 'amount', 'dateIncurred', 'status'];
     if (config.entity === 'campaigns') return ['ref', 'title', 'audience', 'channel', 'budget', 'owner', 'status'];
     if (config.entity === 'agents') return ['ref', 'title', 'role', 'module', 'autonomy', 'owner', 'status'];
     return ['ref', 'title', 'owner', 'date', 'amount', 'status'];
@@ -913,9 +1408,12 @@ export function WorkspacePage({ item }: Props) {
         </div>
       );
     if (key === 'amount' || key === 'budget') return money(record.amount);
-    if (key === 'date' || key === 'closeDate' || key === 'dueDate') return shortDate(record.fields[key] || record.date);
+    if (key === 'hourlyRate') return `$${record.fields.hourlyRate || record.amount}/h`;
+    if (key === 'allocation') return `${record.fields.allocation || 0}%`;
+    if (key === 'date' || key === 'closeDate' || key === 'dueDate' || key === 'targetDate' || key === 'dateIncurred') return shortDate(record.fields[key] || record.date);
     if (key === 'score') return <span className="score-value">{record.score ?? record.fields.score ?? '—'}</span>;
     if (key === 'probability') return `${record.probability ?? record.fields.probability ?? 0}%`;
+    if (key === 'health') return <StatusPill status={record.fields.health || 'On Track'}/>;
     if (key === 'progress')
       return (
         <span className="progress-cell">
@@ -1012,6 +1510,29 @@ export function WorkspacePage({ item }: Props) {
             const targetPath = entity === 'account' ? '/organizations' : `/${entity}s`;
             navigate(targetPath, { state: { selectedId: recordId } });
           }}
+        />
+      </div>
+    );
+  }
+
+  // LEAD CAPTURE DEDICATED WORKSPACE
+  if (item.path === '/lead-capture') {
+    return (
+      <div className="workspace-page">
+        <LeadCaptureView
+          onLeadCaptured={fetchLiveCRMData}
+          onNavigateToConversion={() => navigate('/lead-conversion')}
+        />
+      </div>
+    );
+  }
+
+  // LEAD QUALIFICATION DEDICATED WORKSPACE
+  if (item.path === '/lead-qualification') {
+    return (
+      <div className="workspace-page">
+        <LeadQualificationView
+          onNavigateToConversion={() => navigate('/lead-conversion')}
         />
       </div>
     );
@@ -1184,6 +1705,38 @@ export function WorkspacePage({ item }: Props) {
     );
   }
 
+  // PROJECT DETAILS DEDICATED VIEW
+  if (item.path === '/projects/details') {
+    return (
+      <div className="workspace-page">
+        <ProjectDetailsView
+          initialProjectId={(location.state as any)?.projectId}
+          onNavigateTo={(path, state) => navigate(path, { state })}
+        />
+      </div>
+    );
+  }
+
+  // PROJECT ANALYTICS DEDICATED VIEW
+  if (item.path === '/projects/analytics') {
+    return (
+      <div className="workspace-page">
+        <ProjectAnalyticsView
+          onNavigateTo={(path, state) => navigate(path, { state })}
+        />
+      </div>
+    );
+  }
+
+  // SERVICE DASHBOARD DEDICATED VIEW
+  if (item.path === '/service/dashboard') {
+    return (
+      <div className="workspace-page">
+        <ServiceDashboardView />
+      </div>
+    );
+  }
+
   // APPROVALS DEDICATED VIEW
   if (item.path === '/approvals' || item.path === '/quotes/approvals' || item.path === '/admin/approvals') {
     return (
@@ -1270,7 +1823,17 @@ export function WorkspacePage({ item }: Props) {
         </thead>
         <tbody>
           {filtered.map(r => (
-            <tr key={r.id} className="row-click" onClick={() => setSelectedId(r.id)}>
+            <tr
+              key={r.id}
+              className="row-click"
+              onClick={() => {
+                if (config.entity === 'projects') {
+                  navigate('/projects/details', { state: { projectId: r.id } });
+                  return;
+                }
+                setSelectedId(r.id);
+              }}
+            >
               {fieldColumns().map(k => (
                 <td key={k}>{cell(r, k)}</td>
               ))}
@@ -1279,6 +1842,10 @@ export function WorkspacePage({ item }: Props) {
                   className="row-open"
                   onClick={e => {
                     e.stopPropagation();
+                    if (config.entity === 'projects') {
+                      navigate('/projects/details', { state: { projectId: r.id } });
+                      return;
+                    }
                     setSelectedId(r.id);
                   }}
                   aria-label={`Open ${r.ref}`}

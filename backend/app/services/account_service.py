@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.crm import Account, Contact, CRMActivity, Opportunity
+from app.models.service import Case
 from app.models.user import User
 from app.schemas.crm import (
     AccountCreate, AccountUpdate, AccountResponse,
@@ -470,6 +471,25 @@ class AccountService:
         open_opps = [o for o in opportunities_list if o.stage not in ("Closed Won", "Closed Lost")]
         total_pipe_val = sum((Decimal(str(o.amount)) for o in open_opps), Decimal("0.00"))
 
+        cases_res = await db.execute(
+            select(Case).where(Case.account_id == account_id, Case.tenant_id == tenant_id, Case.deleted_at.is_(None))
+        )
+        cases_list = [
+            {
+                "id": str(c.id),
+                "ref": c.ref,
+                "subject": c.subject,
+                "status": c.status,
+                "priority": c.priority,
+                "category": c.category,
+                "sentiment": c.sentiment,
+                "sla_breached": c.sla_breached,
+                "created_at": c.created_at.isoformat() if c.created_at else None
+            }
+            for c in cases_res.scalars().all()
+        ]
+        open_cases = [c for c in cases_list if c["status"] not in ("Resolved", "Closed")]
+
         metrics = {
             "total_contacts": len(contacts_list),
             "primary_contact": next((c.full_name for c in contacts_list if c.is_primary), None),
@@ -477,6 +497,8 @@ class AccountService:
             "total_opportunities": len(opportunities_list),
             "open_opportunities_count": len(open_opps),
             "open_pipeline_value": float(total_pipe_val),
+            "total_cases": len(cases_list),
+            "open_cases_count": len(open_cases),
             "credit_limit": float(account.credit_limit),
             "account_status": account.status,
             "health_score": 92 if account.status == "Active" else 50
@@ -487,6 +509,7 @@ class AccountService:
             contacts=contacts_list,
             activities=activities_list,
             opportunities=opportunities_list,
+            cases=cases_list,
             metrics=metrics
         )
 

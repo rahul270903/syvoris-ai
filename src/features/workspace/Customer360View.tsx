@@ -201,13 +201,35 @@ export function Customer360View({
     );
   }, [records, orgName, orgId, currentOrg]);
 
-  const cases = useMemo(() => {
+  const cases: CRMRecord[] = useMemo(() => {
+    if (live360Data?.cases && live360Data.cases.length > 0) {
+      return live360Data.cases.map((c: any) => ({
+        id: c.id,
+        ref: c.ref,
+        title: c.subject,
+        description: c.description || c.subject,
+        status: c.status,
+        owner: 'Support Desk',
+        amount: 0,
+        date: c.created_at ? c.created_at.slice(0, 10) : '',
+        links: { organizations: [orgId] },
+        history: [],
+        fields: {
+          subject: c.subject,
+          priority: c.priority,
+          category: c.category,
+          sentiment: c.sentiment,
+          status: c.status,
+          slaBreached: c.sla_breached ? 'Yes' : 'No',
+        }
+      }));
+    }
     return records('cases').filter(c => 
       c.fields.customer?.toLowerCase() === orgName.toLowerCase() ||
       c.links.organizations?.includes(orgId) ||
       currentOrg?.links.cases?.includes(c.id)
     );
-  }, [records, orgName, orgId, currentOrg]);
+  }, [records, orgName, orgId, currentOrg, live360Data]);
 
   const projects = useMemo(() => {
     return records('projects').filter(p => 

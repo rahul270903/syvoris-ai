@@ -1,21 +1,71 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   FileText, Printer, Send, Download, Check,
-  Building2, ShieldCheck, ArrowRight, ShoppingCart
+  Building2, ShieldCheck, ArrowRight, ShoppingCart, RefreshCw
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { SectionHeading } from '../../components/SectionHeading';
 import { money, type CRMRecord } from '../../data/models';
+import { api, type QuoteItem } from '../../services/api';
 
 export function QuoteDocumentView() {
   const { records, update, addEvent, addAudit } = useCRM();
-  const quotes = records('quotes');
+  const localQuotes = records('quotes');
   const orgs = records('organizations');
 
-  const [selectedQuoteId, setSelectedQuoteId] = useState<string>(quotes[0]?.id || '');
+  const [liveQuotes, setLiveQuotes] = useState<QuoteItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string>('');
   const [toast, setToast] = useState('');
 
-  const activeQuote = quotes.find(q => q.id === selectedQuoteId) || quotes[0];
+  const loadLiveQuotes = async () => {
+    setLoading(true);
+    try {
+      const res = await api.listQuotes({ limit: 100 });
+      if (res?.items && res.items.length > 0) {
+        setLiveQuotes(res.items);
+        if (!selectedQuoteId) {
+          setSelectedQuoteId(res.items[0].id);
+        }
+      }
+    } catch {
+      // Fallback gracefully to local mock quotes
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLiveQuotes();
+  }, []);
+
+  const activeLiveQuote = liveQuotes.find(q => q.id === selectedQuoteId);
+  const activeQuote = activeLiveQuote ? {
+    id: activeLiveQuote.id,
+    ref: activeLiveQuote.ref,
+    title: activeLiveQuote.name,
+    status: activeLiveQuote.status,
+    amount: activeLiveQuote.grand_total,
+    owner: activeLiveQuote.owner_name || 'Account Executive',
+    fields: {
+      organization: activeLiveQuote.account_name || 'NovaTech Solutions',
+      contact: activeLiveQuote.contact_name || 'Technology Lead',
+      date: activeLiveQuote.created_at ? activeLiveQuote.created_at.slice(0, 10) : '2026-11-09',
+      validUntil: activeLiveQuote.valid_until || '2026-12-09',
+      paymentTerms: activeLiveQuote.payment_terms || 'Net 30 Days',
+    },
+    lineItems: (activeLiveQuote.lines || []).map(l => ({
+      id: l.id || '1',
+      name: l.item_name,
+      sku: l.sku,
+      quantity: Number(l.quantity),
+      unitPrice: Number(l.unit_price),
+      discount: Number(l.discount_pct || 0),
+      taxRate: Number(l.tax_rate || 0),
+      total: Number(l.line_total || 0),
+    }))
+  } as unknown as CRMRecord : (localQuotes.find(q => q.id === selectedQuoteId) || localQuotes[0]);
+
   const linkedOrg = orgs.find(o => o.title === activeQuote?.fields?.organization) || orgs[0];
 
   const notify = (msg: string) => {
@@ -36,6 +86,15 @@ export function QuoteDocumentView() {
   }, [activeQuote]);
 
   const financialSummary = useMemo(() => {
+    if (activeLiveQuote) {
+      return {
+        subtotal: Number(activeLiveQuote.subtotal),
+        totalDiscount: Number(activeLiveQuote.total_discount),
+        netTaxable: Number(activeLiveQuote.subtotal) - Number(activeLiveQuote.total_discount),
+        totalTax: Number(activeLiveQuote.total_tax),
+        grandTotal: Number(activeLiveQuote.grand_total),
+      };
+    }
     const subtotal = lineItems.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
     const totalDiscount = lineItems.reduce((s, l) => s + (l.quantity * l.unitPrice * (l.discount || 0)) / 100, 0);
     const netTaxable = subtotal - totalDiscount;
@@ -45,7 +104,7 @@ export function QuoteDocumentView() {
     }, 0);
     const grandTotal = netTaxable + totalTax;
     return { subtotal, totalDiscount, netTaxable, totalTax, grandTotal };
-  }, [lineItems]);
+  }, [lineItems, activeLiveQuote]);
 
   const handlePrint = () => {
     window.print();
@@ -58,8 +117,22 @@ export function QuoteDocumentView() {
     notify(`Quotation ${activeQuote.ref} successfully dispatched to client contact via encrypted link.`);
   };
 
-  const handleAcceptAndConvert = () => {
+  const handleAcceptAndConvert = async () => {
     if (!activeQuote) return;
+    if (activeLiveQuote) {
+      try {
+        const so = await api.acceptQuote(activeLiveQuote.id, {
+          warehouse_location: 'Houston Central Logistics Hub',
+          carrier: 'Standard Commercial Freight',
+          notes: 'Customer accepted and authorized proposal via Commercial Document Engine.'
+        });
+        notify(`Quote accepted! Sales Order ${so.ref} created in PostgreSQL. Opportunity moved to Closed Won.`);
+        await loadLiveQuotes();
+      } catch (err: any) {
+        notify(`Failed to accept quote: ${err?.message || 'Server error'}`);
+      }
+      return;
+    }
     update('quotes', activeQuote.id, { status: 'Accepted' }, 'Quote accepted by client');
     addEvent('quote.accepted', activeQuote, `Quotation ${activeQuote.ref} signed and accepted`);
     addAudit('Quote Accepted', 'Demo User', `${activeQuote.ref} converted to accepted state`);
@@ -101,7 +174,10 @@ export function QuoteDocumentView() {
             onChange={e => setSelectedQuoteId(e.target.value)}
             className="p-1.5 rounded-lg border border-slate-300 font-medium text-slate-800 bg-white"
           >
-            {quotes.map(q => (
+            {(liveQuotes.length > 0
+              ? liveQuotes.map(l => ({ id: l.id, ref: l.ref, title: l.name, status: l.status }))
+              : localQuotes
+            ).map(q => (
               <option key={q.id} value={q.id}>
                 {q.ref} · {q.title} ({q.status})
               </option>
