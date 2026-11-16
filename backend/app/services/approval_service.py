@@ -59,4 +59,41 @@ class ApprovalService:
             raise NotFoundException("Approval Request not found.")
         return item
 
+    async def decide_approval(
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
+        approval_id: uuid.UUID,
+        decision: str,
+        comments: Optional[str] = None,
+        approver_id: Optional[uuid.UUID] = None,
+        approver_name: str = "Manager"
+    ) -> ApprovalRequest:
+        app_req = await self.get_approval(session, tenant_id, approval_id)
+        now_dt = datetime.now(timezone.utc)
+        is_approved = (decision.lower() == "approve")
+
+        app_req.status = "Approved" if is_approved else "Rejected"
+        app_req.approver_id = approver_id
+        app_req.approver_name = approver_name
+        app_req.resolved_at = now_dt
+        if not is_approved:
+            app_req.rejection_reason = comments or "Declined by management."
+
+        # If target entity is Quote, update Quote status directly
+        if app_req.entity_type == "Quote" and app_req.entity_id:
+            from app.models.sales import Quote
+            quote_query = select(Quote).where(
+                Quote.id == app_req.entity_id,
+                Quote.tenant_id == tenant_id
+            )
+            quote = (await session.execute(quote_query)).scalar_one_or_none()
+            if quote:
+                quote.status = "Approved" if is_approved else "Rejected"
+                quote.updated_at = now_dt
+
+        await session.commit()
+        await session.refresh(app_req)
+        return app_req
+
 approval_service = ApprovalService()

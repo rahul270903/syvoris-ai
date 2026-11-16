@@ -206,4 +206,109 @@ class OrderService:
         )
         return (await session.execute(query)).scalar_one()
 
+    async def create_order(
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
+        data: SalesOrderCreate,
+        actor_id: Optional[uuid.UUID] = None,
+        actor_name: str = "Sales Operations"
+    ) -> SalesOrder:
+        ref = await self._generate_order_ref(session, tenant_id)
+        total = Decimal("0.00")
+        for line in getattr(data, "lines", []):
+            qty = Decimal(str(line.quantity))
+            price = Decimal(str(line.unit_price))
+            disc_pct = Decimal(str(line.discount_pct or 0))
+            tax_rt = Decimal(str(line.tax_rate or 0))
+            sub = qty * price
+            disc = sub * (disc_pct / Decimal("100"))
+            net = sub - disc
+            tax = net * (tax_rt / Decimal("100"))
+            total += (net + tax)
+
+        order = SalesOrder(
+            tenant_id=tenant_id,
+            ref=ref,
+            name=data.name,
+            quote_id=data.quote_id,
+            opportunity_id=data.opportunity_id,
+            account_id=data.account_id,
+            contact_id=data.contact_id,
+            status="Draft",
+            fulfilment_stage="Draft",
+            total_amount=total,
+            currency=data.currency or "USD",
+            warehouse_location=data.warehouse_location or "Kingston Central Logistics Hub",
+            requested_delivery_date=data.requested_delivery_date,
+            carrier=data.carrier,
+            tracking_number=data.tracking_number,
+            payment_terms=data.payment_terms or "Net 30",
+            notes=data.notes,
+            owner_id=actor_id,
+            owner_name=actor_name,
+            custom_fields={}
+        )
+        session.add(order)
+        await session.flush()
+
+        for idx, line in enumerate(getattr(data, "lines", [])):
+            qty = Decimal(str(line.quantity))
+            price = Decimal(str(line.unit_price))
+            disc_pct = Decimal(str(line.discount_pct or 0))
+            tax_rt = Decimal(str(line.tax_rate or 0))
+            sub = qty * price
+            disc = sub * (disc_pct / Decimal("100"))
+            net = sub - disc
+            tax = net * (tax_rt / Decimal("100"))
+            ltotal = net + tax
+
+            ol = OrderLineItem(
+                tenant_id=tenant_id,
+                order_id=order.id,
+                product_id=line.product_id,
+                item_name=line.item_name,
+                sku=line.sku,
+                quantity=qty,
+                unit_price=price,
+                discount_pct=disc_pct,
+                tax_rate=tax_rt,
+                line_total=ltotal,
+                sort_order=idx
+            )
+            session.add(ol)
+
+        await session.commit()
+        await audit_service.log_event(
+            session,
+            action="sales_order.created",
+            resource_type="sales_order",
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            actor_name=actor_name,
+            resource_id=str(order.id),
+            metadata={"ref": order.ref, "total_amount": str(order.total_amount)}
+        )
+        return await self.get_order(session, tenant_id, order.id)
+
+    async def delete_order(
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
+        order_id: uuid.UUID,
+        actor_id: Optional[uuid.UUID] = None
+    ) -> None:
+        order = await self.get_order(session, tenant_id, order_id)
+        order.deleted_at = datetime.now(timezone.utc)
+        await session.commit()
+        await audit_service.log_event(
+            session,
+            action="sales_order.deleted",
+            resource_type="sales_order",
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            resource_id=str(order.id),
+            metadata={"ref": order.ref, "name": order.name}
+        )
+
 order_service = OrderService()

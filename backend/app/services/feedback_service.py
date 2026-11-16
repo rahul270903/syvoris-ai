@@ -167,6 +167,39 @@ class FeedbackService:
         return CustomerSurveyResponse.model_validate(survey)
 
     @staticmethod
+    async def delete_survey(
+        db: AsyncSession,
+        survey_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        actor_id: Optional[uuid.UUID] = None,
+        actor_name: Optional[str] = None
+    ) -> None:
+        stmt = select(CustomerSurvey).where(
+            CustomerSurvey.id == survey_id,
+            CustomerSurvey.tenant_id == tenant_id,
+            CustomerSurvey.deleted_at.is_(None)
+        )
+        res = await db.execute(stmt)
+        survey = res.scalar_one_or_none()
+        if not survey:
+            raise NotFoundException("Customer survey not found.")
+
+        survey.deleted_at = datetime.now(timezone.utc)
+        survey.is_active = False
+        await db.commit()
+
+        await audit_service.log_event(
+            db=db,
+            action="survey.deleted",
+            resource_type="survey",
+            resource_id=str(survey.id),
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            actor_name=actor_name,
+            metadata={"ref": survey.ref}
+        )
+
+    @staticmethod
     async def submit_response(
         db: AsyncSession,
         resp_in: SurveyResponseCreate,

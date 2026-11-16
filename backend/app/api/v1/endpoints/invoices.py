@@ -12,7 +12,7 @@ from app.api.deps import (
     require_permission
 )
 from app.models.user import User
-from app.schemas.sales import InvoiceUpdate, InvoiceResponse
+from app.schemas.sales import InvoiceCreate, InvoiceUpdate, InvoiceResponse
 from app.schemas.crm import PaginatedList
 from app.services.invoice_service import invoice_service
 from app.core.errors import ValidationException
@@ -139,3 +139,41 @@ async def record_payment(
         actor_id=current_user.id
     )
     return _serialize_invoice(inv)
+
+@router.post("", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+async def create_invoice(
+    data: InvoiceCreate,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("quotes:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    inv = await invoice_service.create_invoice(
+        session=db,
+        tenant_id=tenant_id,
+        data=data,
+        actor_id=current_user.id,
+        actor_name=current_user.email
+    )
+    return _serialize_invoice(inv)
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_invoice(
+    id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("quotes:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    await invoice_service.delete_invoice(
+        session=db,
+        tenant_id=tenant_id,
+        invoice_id=id,
+        actor_id=current_user.id
+    )

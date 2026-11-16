@@ -85,6 +85,7 @@ async def get_product(
     )
 
 @router.patch("/{id}", response_model=ProductResponse)
+@router.put("/{id}", response_model=ProductResponse)
 async def update_product(
     id: uuid.UUID,
     data: ProductUpdate,

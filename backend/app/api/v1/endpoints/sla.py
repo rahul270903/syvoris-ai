@@ -87,3 +87,23 @@ async def update_sla_policy(
         actor_id=current_user.id,
         actor_name=current_user.full_name
     )
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sla_policy(
+    id: uuid.UUID,
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission("sla:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Soft delete an SLA policy."""
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    await SLAService.delete_policy(
+        db=db,
+        policy_id=id,
+        tenant_id=tenant_id,
+        actor_id=current_user.id,
+        actor_name=current_user.full_name
+    )

@@ -11,7 +11,7 @@ from app.api.deps import (
 )
 from app.models.user import User
 from app.schemas.sales import (
-    SalesOrderUpdate, SalesOrderResponse, OrderLineItemResponse,
+    SalesOrderCreate, SalesOrderUpdate, SalesOrderResponse, OrderLineItemResponse,
     InvoiceResponse
 )
 from app.schemas.crm import PaginatedList
@@ -186,3 +186,41 @@ async def generate_invoice_from_order(
         actor_name=current_user.email
     )
     return _serialize_invoice(invoice)
+
+@router.post("", response_model=SalesOrderResponse, status_code=status.HTTP_201_CREATED)
+async def create_order(
+    data: SalesOrderCreate,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("quotes:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    order = await order_service.create_order(
+        session=db,
+        tenant_id=tenant_id,
+        data=data,
+        actor_id=current_user.id,
+        actor_name=current_user.email
+    )
+    return _serialize_order(order)
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_order(
+    id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("quotes:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    await order_service.delete_order(
+        session=db,
+        tenant_id=tenant_id,
+        order_id=id,
+        actor_id=current_user.id
+    )

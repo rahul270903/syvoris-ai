@@ -27,7 +27,10 @@ from app.api.v1.endpoints import (
     surveys,
     service,
     portal,
-    projects
+    projects,
+    catalog,
+    inventory,
+    vendors
 )
 
 api_router = APIRouter()
@@ -65,3 +68,11 @@ api_router.include_router(sla.router, prefix="/service/sla", tags=["SLA Policies
 api_router.include_router(knowledge.router, prefix="/knowledge", tags=["Knowledge Base"])
 api_router.include_router(surveys.router, prefix="/surveys", tags=["Surveys & Feedback"])
 api_router.include_router(projects.router, prefix="/projects", tags=["Project Management"])
+
+# Product & Service Catalogue, Pricing & Inventory Workstream
+api_router.include_router(catalog.router, prefix="/catalog", tags=["Product & Service Catalogue"])
+api_router.include_router(products.router, prefix="/catalog/products", tags=["Product Catalog Direct Alias"])
+api_router.include_router(catalog.router, tags=["Catalogue Direct Aliases"])
+api_router.include_router(inventory.router, prefix="/inventory", tags=["Tax & Inventory Management"])
+api_router.include_router(vendors.router, prefix="/vendors", tags=["Vendor Management"])
+api_router.include_router(vendors.router, prefix="/catalog/vendors", tags=["Vendor Management"])

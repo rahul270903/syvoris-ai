@@ -34,6 +34,8 @@ class NotFoundException(AppException):
     def __init__(self, detail: str = "The requested resource was not found.", code: str = "ERR_NOT_FOUND"):
         super().__init__(status.HTTP_404_NOT_FOUND, "Resource Not Found", detail, code)
 
+EntityNotFoundException = NotFoundException
+
 class ConflictException(AppException):
     def __init__(self, detail: str = "Resource conflict occurred.", code: str = "ERR_CONFLICT"):
         super().__init__(status.HTTP_409_CONFLICT, "Resource Conflict", detail, code)

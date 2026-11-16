@@ -96,6 +96,25 @@ STANDARD_PERMISSIONS: List[Dict[str, str]] = [
     {"code": "costs:read", "module": "projects", "description": "View project costs, financial baseline, and budget variance"},
     {"code": "costs:write", "module": "projects", "description": "Record, approve, and adjust project costs and expenses"},
 
+    # Product & Service Catalogue, Pricing & Inventory
+    {"code": "services:read", "module": "catalog", "description": "View service catalogue and rates"},
+    {"code": "services:write", "module": "catalog", "description": "Create and manage service items"},
+    {"code": "services:delete", "module": "catalog", "description": "Archive and delete services"},
+    {"code": "categories:read", "module": "catalog", "description": "View product and service categories"},
+    {"code": "categories:write", "module": "catalog", "description": "Create and manage category taxonomy"},
+    {"code": "bundles:read", "module": "catalog", "description": "View product and service bundles"},
+    {"code": "bundles:write", "module": "catalog", "description": "Create and manage bundled packages"},
+    {"code": "availability:read", "module": "catalog", "description": "View catalog availability and lead times"},
+    {"code": "availability:write", "module": "catalog", "description": "Configure catalog availability rules"},
+    {"code": "taxes:read", "module": "inventory", "description": "View tax rules and jurisdictions"},
+    {"code": "taxes:write", "module": "inventory", "description": "Configure tax rates and policies"},
+    {"code": "terms:read", "module": "inventory", "description": "View commercial terms and conditions"},
+    {"code": "terms:write", "module": "inventory", "description": "Draft and publish commercial terms"},
+    {"code": "inventory:read", "module": "inventory", "description": "View warehouse locations and stock balances"},
+    {"code": "inventory:write", "module": "inventory", "description": "Record stock receipts, issues, transfers and adjustments"},
+    {"code": "vendors:read", "module": "catalog", "description": "View vendor profiles and supply catalogs"},
+    {"code": "vendors:write", "module": "catalog", "description": "Manage vendor relationships and supply pricing"},
+
     # Global SuperAdmin
     {"code": "platform:admin", "module": "platform", "description": "SaaS SuperAdmin global control"},
 ]
@@ -136,7 +155,11 @@ ROLE_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "invoices:read", "invoices:write",
             "cpq:read", "cpq:calculate",
             "approvals:read", "approvals:write",
-            "campaigns:read", "segments:read", "marketing:read"
+            "campaigns:read", "segments:read", "marketing:read",
+            "services:read", "services:write", "categories:read", "categories:write",
+            "bundles:read", "bundles:write", "availability:read", "availability:write",
+            "taxes:read", "taxes:write", "terms:read", "terms:write",
+            "inventory:read", "inventory:write", "vendors:read", "vendors:write"
         ]
     },
     "Sales Representative": {
@@ -157,7 +180,10 @@ ROLE_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "sales_orders:read", "sales_orders:write",
             "invoices:read",
             "cpq:read", "cpq:calculate",
-            "approvals:read"
+            "approvals:read",
+            "services:read", "categories:read", "bundles:read",
+            "availability:read", "taxes:read", "terms:read",
+            "inventory:read", "vendors:read"
         ]
     },
     "Marketing Manager": {

@@ -134,3 +134,21 @@ async def update_price_book(
         actor_id=current_user.id
     )
     return _serialize_price_book(pb)
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_price_book(
+    id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("quotes:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    await product_service.delete_price_book(
+        session=db,
+        tenant_id=tenant_id,
+        price_book_id=id,
+        actor_id=current_user.id
+    )

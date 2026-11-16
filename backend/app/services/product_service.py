@@ -406,4 +406,24 @@ class ProductService:
         await session.commit()
         return await self.get_price_book(session, tenant_id, price_book.id)
 
+    async def delete_price_book(
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
+        price_book_id: uuid.UUID,
+        actor_id: Optional[uuid.UUID] = None
+    ) -> None:
+        price_book = await self.get_price_book(session, tenant_id, price_book_id)
+        price_book.deleted_at = datetime.now(timezone.utc)
+        await session.commit()
+        await audit_service.log_event(
+            session,
+            action="price_book.deleted",
+            resource_type="price_book",
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            resource_id=str(price_book.id),
+            metadata={"name": price_book.name}
+        )
+
 product_service = ProductService()

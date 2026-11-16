@@ -182,7 +182,7 @@ class QuoteCreate(BaseModel):
     account_id: uuid.UUID
     contact_id: Optional[uuid.UUID] = None
     price_book_id: Optional[uuid.UUID] = None
-    valid_until: date
+    valid_until: Optional[date] = None
     currency: str = Field(default="USD", max_length=3)
     header_discount_pct: Decimal = Field(default=Decimal("0.00"), ge=0, le=100)
     payment_terms: str = Field(default="Net 30", max_length=50)
@@ -374,6 +374,11 @@ class InvoiceResponse(BaseModel):
     owner_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+class ApprovalDecisionRequest(BaseModel):
+    decision: str
+    notes: Optional[str] = None
+    comments: Optional[str] = None
 
 # ----------------- Approvals -----------------
 

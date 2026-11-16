@@ -259,6 +259,251 @@ export interface ProductItem {
   updated_at: string;
 }
 
+// --- Product & Service Catalogue Interfaces ---
+export interface CatalogCategoryItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  slug: string;
+  description?: string;
+  category_type: string;
+  parent_id?: string | null;
+  parent_name?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  image_url?: string;
+  custom_fields: Record<string, any>;
+  subcategories_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceCatalogItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  code: string;
+  category_id?: string | null;
+  category_name: string;
+  service_type: string;
+  description?: string;
+  billing_method: string;
+  billing_frequency: string;
+  duration_unit: string;
+  standard_rate: number;
+  cost_rate: number;
+  currency: string;
+  tax_category: string;
+  tax_rate: number;
+  terms_reference?: string;
+  status: string;
+  is_active: boolean;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BundleComponentItem {
+  id: string;
+  tenant_id: string;
+  bundle_id: string;
+  component_type: string;
+  product_id?: string | null;
+  service_id?: string | null;
+  item_name: string;
+  sku_or_code: string;
+  quantity: number;
+  unit_price: number;
+  discount_pct: number;
+  is_optional: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductBundleItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  bundle_code: string;
+  description?: string;
+  pricing_model: string;
+  bundle_price: number;
+  discount_pct: number;
+  currency: string;
+  valid_from?: string;
+  valid_until?: string;
+  status: string;
+  is_active: boolean;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  components: BundleComponentItem[];
+  calculated_total?: number;
+}
+
+export interface ProductAvailabilityItem {
+  id: string;
+  tenant_id: string;
+  product_id?: string | null;
+  service_id?: string | null;
+  item_name: string;
+  status: string;
+  effective_start_date?: string;
+  effective_end_date?: string;
+  channel: string;
+  region: string;
+  lead_time_days: number;
+  notes?: string;
+  is_active: boolean;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  is_currently_effective: boolean;
+}
+
+export interface TaxRuleItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  code: string;
+  rate: number;
+  region: string;
+  tax_type: string;
+  is_inclusive: boolean;
+  effective_start_date?: string;
+  effective_end_date?: string;
+  status: string;
+  description?: string;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommercialTermsItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  title: string;
+  version: string;
+  category: string;
+  content: string;
+  effective_date?: string;
+  expiration_date?: string;
+  status: string;
+  is_default: boolean;
+  published_by?: string;
+  published_at?: string;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WarehouseLocationItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  code: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  is_active: boolean;
+  is_default: boolean;
+  manager_name?: string;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  items_count: number;
+}
+
+export interface InventoryStockItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  product_id: string;
+  product_sku?: string;
+  product_name?: string;
+  location_id: string;
+  location_name?: string;
+  location_code?: string;
+  quantity_on_hand: number;
+  quantity_reserved: number;
+  quantity_available: number;
+  reorder_threshold: number;
+  reorder_quantity: number;
+  unit_of_measure: string;
+  last_counted_at?: string;
+  status: string;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StockMovementItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  inventory_item_id: string;
+  movement_type: string;
+  quantity: number;
+  balance_before: number;
+  balance_after: number;
+  from_location_id?: string;
+  to_location_id?: string;
+  reference_doc_type?: string;
+  reference_doc_id?: string;
+  reason?: string;
+  performed_by_name: string;
+  created_at: string;
+}
+
+export interface VendorProductItem {
+  id: string;
+  tenant_id: string;
+  vendor_id: string;
+  product_id?: string | null;
+  service_id?: string | null;
+  item_name?: string;
+  item_code?: string;
+  vendor_sku?: string;
+  unit_cost: number;
+  currency: string;
+  lead_time_days: number;
+  min_order_quantity: number;
+  is_preferred_vendor: boolean;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VendorProfileItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  account_id: string;
+  account_name?: string;
+  account_email?: string;
+  account_phone?: string;
+  account_city?: string;
+  vendor_code: string;
+  vendor_category: string;
+  payment_terms: string;
+  tax_id?: string;
+  rating: number;
+  status: string;
+  compliance_notes?: string;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  supplied_products_count: number;
+  supplied_products: VendorProductItem[];
+}
+
 export interface PriceBookEntryItem {
   id: string;
   tenant_id: string;
@@ -276,9 +521,10 @@ export interface PriceBookItem {
   id: string;
   tenant_id: string;
   name: string;
-  code: string;
+  code?: string;
   description?: string;
-  is_standard: boolean;
+  is_standard?: boolean;
+  is_default?: boolean;
   is_active: boolean;
   currency: string;
   valid_from?: string;
@@ -346,7 +592,7 @@ export interface QuoteLineItem {
   quote_id?: string;
   product_id?: string;
   item_name: string;
-  sku: string;
+  sku?: string;
   quantity: number;
   unit_price: number;
   cost_price?: number;
@@ -2050,10 +2296,17 @@ class ApiClient {
     });
   }
 
-  public async decideQuoteApproval(id: string, payload: { decision: 'approve' | 'reject'; notes?: string }): Promise<QuoteItem> {
-    return this.request<QuoteItem>(`/quotes/${id}/approval-decision`, {
+  public async decideQuoteApproval(id: string, payload: { decision: 'approve' | 'reject'; notes?: string }): Promise<any> {
+    return this.request<any>(`/approvals/${id}/decision`, {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  public async approveQuote(id: string, approved: boolean, comments?: string): Promise<QuoteItem> {
+    return this.request<QuoteItem>(`/quotes/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ approved, comments }),
     });
   }
 
@@ -2093,10 +2346,23 @@ class ApiClient {
     return this.request<SalesOrderItem>(`/sales-orders/${id}`);
   }
 
+  public async createSalesOrder(data: Partial<SalesOrderItem> & { account_id: string; name: string }): Promise<SalesOrderItem> {
+    return this.request<SalesOrderItem>('/sales-orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   public async updateSalesOrder(id: string, patch: Partial<SalesOrderItem>): Promise<SalesOrderItem> {
     return this.request<SalesOrderItem>(`/sales-orders/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
+    });
+  }
+
+  public async deleteSalesOrder(id: string): Promise<void> {
+    await this.request<void>(`/sales-orders/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -2130,10 +2396,23 @@ class ApiClient {
     return this.request<InvoiceItem>(`/invoices/${id}`);
   }
 
+  public async createInvoice(data: Partial<InvoiceItem> & { account_id: string; name: string; total_amount: number }): Promise<InvoiceItem> {
+    return this.request<InvoiceItem>('/invoices', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   public async updateInvoice(id: string, patch: Partial<InvoiceItem>): Promise<InvoiceItem> {
     return this.request<InvoiceItem>(`/invoices/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
+    });
+  }
+
+  public async deleteInvoice(id: string): Promise<void> {
+    await this.request<void>(`/invoices/${id}`, {
+      method: 'DELETE',
     });
   }
 
@@ -2416,6 +2695,17 @@ class ApiClient {
     });
   }
 
+  public async updateSLAPolicy(id: string, patch: Partial<SLAPolicyItem>): Promise<SLAPolicyItem> {
+    return this.request<SLAPolicyItem>(`/service/sla/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+  }
+
+  public async deleteSLAPolicy(id: string): Promise<void> {
+    return this.request<void>(`/service/sla/${id}`, { method: 'DELETE' });
+  }
+
   // --- Knowledge Articles ---
   public async listKnowledgeArticles(params?: {
     q?: string;
@@ -2458,6 +2748,10 @@ class ApiClient {
     return this.request<KnowledgeArticleItem>(`/knowledge/${id}/helpful`, { method: 'POST' });
   }
 
+  public async voteKnowledgeHelpful(id: string): Promise<KnowledgeArticleItem> {
+    return this.voteHelpfulArticle(id);
+  }
+
   public async deleteKnowledgeArticle(id: string): Promise<void> {
     return this.request<void>(`/knowledge/${id}`, { method: 'DELETE' });
   }
@@ -2477,6 +2771,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  }
+
+  public async deleteSurvey(id: string): Promise<void> {
+    return this.request<void>(`/surveys/${id}`, { method: 'DELETE' });
   }
 
   public async getCSATSummary(): Promise<CSATSummary> {
@@ -2970,6 +3268,295 @@ class ApiClient {
 
   public async getProjectAnalyticsSummary(): Promise<ProjectAnalyticsSummary> {
     return this.request<ProjectAnalyticsSummary>('/projects/analytics/summary');
+  }
+
+  // --- Product & Service Catalogue ---
+  public async listCategories(params?: { category_type?: string; is_active?: boolean; parent_id?: string }): Promise<CatalogCategoryItem[]> {
+    const q = new URLSearchParams();
+    if (params?.category_type) q.set('category_type', params.category_type);
+    if (params?.is_active !== undefined) q.set('is_active', String(params.is_active));
+    if (params?.parent_id) q.set('parent_id', params.parent_id);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<CatalogCategoryItem[]>(`/catalog/categories${qs}`);
+  }
+
+  public async getCategory(id: string): Promise<CatalogCategoryItem> {
+    return this.request<CatalogCategoryItem>(`/catalog/categories/${id}`);
+  }
+
+  public async createCategory(payload: Partial<CatalogCategoryItem>): Promise<CatalogCategoryItem> {
+    return this.request<CatalogCategoryItem>('/catalog/categories', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateCategory(id: string, payload: Partial<CatalogCategoryItem>): Promise<CatalogCategoryItem> {
+    return this.request<CatalogCategoryItem>(`/catalog/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteCategory(id: string): Promise<void> {
+    return this.request<void>(`/catalog/categories/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async listServices(params?: { category_id?: string; service_type?: string; status?: string; q?: string }): Promise<ServiceCatalogItem[]> {
+    const q = new URLSearchParams();
+    if (params?.category_id) q.set('category_id', params.category_id);
+    if (params?.service_type) q.set('service_type', params.service_type);
+    if (params?.status) q.set('status', params.status);
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<ServiceCatalogItem[]>(`/catalog/services${qs}`);
+  }
+
+  public async getService(id: string): Promise<ServiceCatalogItem> {
+    return this.request<ServiceCatalogItem>(`/catalog/services/${id}`);
+  }
+
+  public async createService(payload: Partial<ServiceCatalogItem>): Promise<ServiceCatalogItem> {
+    return this.request<ServiceCatalogItem>('/catalog/services', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateService(id: string, payload: Partial<ServiceCatalogItem>): Promise<ServiceCatalogItem> {
+    return this.request<ServiceCatalogItem>(`/catalog/services/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteService(id: string): Promise<void> {
+    return this.request<void>(`/catalog/services/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async listBundles(params?: { status?: string; q?: string }): Promise<ProductBundleItem[]> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<ProductBundleItem[]>(`/catalog/bundles${qs}`);
+  }
+
+  public async getBundle(id: string): Promise<ProductBundleItem> {
+    return this.request<ProductBundleItem>(`/catalog/bundles/${id}`);
+  }
+
+  public async createBundle(payload: Partial<ProductBundleItem>): Promise<ProductBundleItem> {
+    return this.request<ProductBundleItem>('/catalog/bundles', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateBundle(id: string, payload: Partial<ProductBundleItem>): Promise<ProductBundleItem> {
+    return this.request<ProductBundleItem>(`/catalog/bundles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteBundle(id: string): Promise<void> {
+    return this.request<void>(`/catalog/bundles/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async listAvailability(params?: { status?: string; channel?: string; q?: string }): Promise<ProductAvailabilityItem[]> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.channel) q.set('channel', params.channel);
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<ProductAvailabilityItem[]>(`/catalog/availability${qs}`);
+  }
+
+  public async createAvailability(payload: Partial<ProductAvailabilityItem>): Promise<ProductAvailabilityItem> {
+    return this.request<ProductAvailabilityItem>('/catalog/availability', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateAvailability(id: string, payload: Partial<ProductAvailabilityItem>): Promise<ProductAvailabilityItem> {
+    return this.request<ProductAvailabilityItem>(`/catalog/availability/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteAvailability(id: string): Promise<void> {
+    return this.request<void>(`/catalog/availability/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async listTaxes(params?: { status?: string; region?: string; q?: string }): Promise<TaxRuleItem[]> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.region) q.set('region', params.region);
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<TaxRuleItem[]>(`/inventory/taxes${qs}`);
+  }
+
+  public async createTax(payload: Partial<TaxRuleItem>): Promise<TaxRuleItem> {
+    return this.request<TaxRuleItem>('/inventory/taxes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateTax(id: string, payload: Partial<TaxRuleItem>): Promise<TaxRuleItem> {
+    return this.request<TaxRuleItem>(`/inventory/taxes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteTax(id: string): Promise<void> {
+    return this.request<void>(`/inventory/taxes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async listTerms(params?: { category?: string; status?: string; q?: string }): Promise<CommercialTermsItem[]> {
+    const q = new URLSearchParams();
+    if (params?.category) q.set('category', params.category);
+    if (params?.status) q.set('status', params.status);
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<CommercialTermsItem[]>(`/inventory/terms${qs}`);
+  }
+
+  public async createTerm(payload: Partial<CommercialTermsItem>): Promise<CommercialTermsItem> {
+    return this.request<CommercialTermsItem>('/inventory/terms', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateTerm(id: string, payload: Partial<CommercialTermsItem>): Promise<CommercialTermsItem> {
+    return this.request<CommercialTermsItem>(`/inventory/terms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteTerm(id: string): Promise<void> {
+    return this.request<void>(`/inventory/terms/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async listWarehouseLocations(params?: { is_active?: boolean; q?: string }): Promise<WarehouseLocationItem[]> {
+    const q = new URLSearchParams();
+    if (params?.is_active !== undefined) q.set('is_active', String(params.is_active));
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<WarehouseLocationItem[]>(`/inventory/locations${qs}`);
+  }
+
+  public async createWarehouseLocation(payload: Partial<WarehouseLocationItem>): Promise<WarehouseLocationItem> {
+    return this.request<WarehouseLocationItem>('/inventory/locations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async listStockItems(params?: { location_id?: string; product_id?: string; status?: string; q?: string }): Promise<InventoryStockItem[]> {
+    const q = new URLSearchParams();
+    if (params?.location_id) q.set('location_id', params.location_id);
+    if (params?.product_id) q.set('product_id', params.product_id);
+    if (params?.status) q.set('status', params.status);
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<InventoryStockItem[]>(`/inventory/stock${qs}`);
+  }
+
+  public async createStockItem(payload: Partial<InventoryStockItem>): Promise<InventoryStockItem> {
+    return this.request<InventoryStockItem>('/inventory/stock', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async listStockMovements(params?: { inventory_item_id?: string; movement_type?: string }): Promise<StockMovementItem[]> {
+    const q = new URLSearchParams();
+    if (params?.inventory_item_id) q.set('inventory_item_id', params.inventory_item_id);
+    if (params?.movement_type) q.set('movement_type', params.movement_type);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<StockMovementItem[]>(`/inventory/movements${qs}`);
+  }
+
+  public async recordStockMovement(payload: {
+    inventory_item_id: string;
+    movement_type: string;
+    quantity: number;
+    from_location_id?: string;
+    to_location_id?: string;
+    reference_doc_type?: string;
+    reference_doc_id?: string;
+    reason?: string;
+  }): Promise<StockMovementItem> {
+    return this.request<StockMovementItem>('/inventory/movements', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async listVendors(params?: { vendor_category?: string; status?: string; q?: string }): Promise<VendorProfileItem[]> {
+    const q = new URLSearchParams();
+    if (params?.vendor_category) q.set('vendor_category', params.vendor_category);
+    if (params?.status) q.set('status', params.status);
+    if (params?.q) q.set('q', params.q);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<VendorProfileItem[]>(`/vendors${qs}`);
+  }
+
+  public async getVendor(id: string): Promise<VendorProfileItem> {
+    return this.request<VendorProfileItem>(`/vendors/${id}`);
+  }
+
+  public async createVendor(payload: Partial<VendorProfileItem>): Promise<VendorProfileItem> {
+    return this.request<VendorProfileItem>('/vendors', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateVendor(id: string, payload: Partial<VendorProfileItem>): Promise<VendorProfileItem> {
+    return this.request<VendorProfileItem>(`/vendors/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteVendor(id: string): Promise<void> {
+    return this.request<void>(`/vendors/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async addVendorProduct(vendorId: string, payload: Partial<VendorProductItem>): Promise<VendorProductItem> {
+    return this.request<VendorProductItem>(`/vendors/${vendorId}/products`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async removeVendorProduct(vendorId: string, vendorProductId: string): Promise<void> {
+    return this.request<void>(`/vendors/${vendorId}/products/${vendorProductId}`, {
+      method: 'DELETE',
+    });
   }
 }
 

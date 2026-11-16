@@ -229,6 +229,7 @@ async def update_quote(
     return _serialize_quote(quote)
 
 @router.post("/{id}/revision", response_model=QuoteResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{id}/revisions", response_model=QuoteResponse, status_code=status.HTTP_201_CREATED)
 async def create_revision(
     id: uuid.UUID,
     current_user: User = Depends(get_current_user),
@@ -247,6 +248,24 @@ async def create_revision(
         actor_name=current_user.email
     )
     return _serialize_quote(quote)
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_quote(
+    id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("quotes:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    await quote_service.delete_quote(
+        session=db,
+        tenant_id=tenant_id,
+        quote_id=id,
+        actor_id=current_user.id
+    )
 
 @router.post("/{id}/submit-approval", response_model=QuoteResponse)
 async def submit_for_approval(

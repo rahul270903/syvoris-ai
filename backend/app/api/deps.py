@@ -147,6 +147,22 @@ def require_permission(permission_code: str) -> Callable:
             "resources:write": ["projects:write"],
             "costs:read": ["projects:read"],
             "costs:write": ["projects:write"],
+            "services:read": ["products:read", "quotes:read"],
+            "services:write": ["products:write", "quotes:write"],
+            "categories:read": ["products:read", "quotes:read"],
+            "categories:write": ["products:write", "quotes:write"],
+            "bundles:read": ["products:read", "quotes:read"],
+            "bundles:write": ["products:write", "quotes:write"],
+            "availability:read": ["products:read", "quotes:read"],
+            "availability:write": ["products:write", "quotes:write"],
+            "taxes:read": ["products:read", "quotes:read"],
+            "taxes:write": ["products:write", "quotes:write"],
+            "terms:read": ["products:read", "quotes:read"],
+            "terms:write": ["products:write", "quotes:write"],
+            "inventory:read": ["products:read", "quotes:read"],
+            "inventory:write": ["products:write", "quotes:write"],
+            "vendors:read": ["accounts:read", "products:read"],
+            "vendors:write": ["accounts:write", "products:write"],
         }
         for alias in aliases.get(permission_code, []):
             if alias in permissions:

@@ -155,4 +155,75 @@ class InvoiceService:
         )
         return await self.get_invoice(session, tenant_id, invoice.id)
 
+    async def _generate_invoice_ref(self, session: AsyncSession, tenant_id: uuid.UUID) -> str:
+        current_year = datetime.now(timezone.utc).year
+        prefix = f"INV-{current_year}-"
+        count_query = select(func.count(Invoice.id)).where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.ref.like(f"{prefix}%")
+        )
+        count = (await session.execute(count_query)).scalar() or 0
+        return f"{prefix}{count + 1:05d}"
+
+    async def create_invoice(
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
+        data: InvoiceCreate,
+        actor_id: Optional[uuid.UUID] = None,
+        actor_name: str = "Finance Operations"
+    ) -> Invoice:
+        inv_ref = await self._generate_invoice_ref(session, tenant_id)
+        invoice = Invoice(
+            tenant_id=tenant_id,
+            ref=inv_ref,
+            name=data.name,
+            sales_order_id=data.sales_order_id,
+            account_id=data.account_id,
+            status=data.status or "Issued",
+            issue_date=data.issue_date,
+            due_date=data.due_date,
+            total_amount=data.total_amount,
+            paid_amount=Decimal("0.00"),
+            balance_due=data.total_amount,
+            currency=data.currency or "USD",
+            payment_terms=data.payment_terms or "Net 30",
+            notes=data.notes,
+            owner_id=actor_id,
+            owner_name=actor_name
+        )
+        session.add(invoice)
+        await session.commit()
+        await audit_service.log_event(
+            session,
+            action="invoice.created",
+            resource_type="invoice",
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            actor_name=actor_name,
+            resource_id=str(invoice.id),
+            metadata={"ref": invoice.ref, "total_amount": str(invoice.total_amount)}
+        )
+        return await self.get_invoice(session, tenant_id, invoice.id)
+
+    async def delete_invoice(
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
+        invoice_id: uuid.UUID,
+        actor_id: Optional[uuid.UUID] = None
+    ) -> None:
+        inv = await self.get_invoice(session, tenant_id, invoice_id)
+        inv.deleted_at = datetime.now(timezone.utc)
+        await session.commit()
+        await audit_service.log_event(
+            session,
+            action="invoice.deleted",
+            resource_type="invoice",
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            resource_id=str(inv.id),
+            metadata={"ref": inv.ref, "name": inv.name}
+        )
+
 invoice_service = InvoiceService()

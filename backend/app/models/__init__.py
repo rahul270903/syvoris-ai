@@ -37,6 +37,20 @@ from app.models.project import (
     ProjectCost,
     ProjectActivity,
 )
+from app.models.catalog import (
+    CatalogCategory,
+    ServiceItem,
+    ProductBundle,
+    BundleComponent,
+    ProductAvailability,
+    TaxRule,
+    CommercialTerms,
+    WarehouseLocation,
+    InventoryItem,
+    StockMovement,
+    VendorProfile,
+    VendorProduct,
+)
 
 __all__ = [
     "Base",
@@ -99,4 +113,16 @@ __all__ = [
     "ProjectResource",
     "ProjectCost",
     "ProjectActivity",
+    "CatalogCategory",
+    "ServiceItem",
+    "ProductBundle",
+    "BundleComponent",
+    "ProductAvailability",
+    "TaxRule",
+    "CommercialTerms",
+    "WarehouseLocation",
+    "InventoryItem",
+    "StockMovement",
+    "VendorProfile",
+    "VendorProduct",
 ]

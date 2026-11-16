@@ -81,30 +81,78 @@ export function WorkspacePage({ item }: Props) {
     config.entity === 'organizations' ||
     config.entity === 'contacts' ||
     config.entity === 'leads' ||
+    config.entity === 'opportunities' ||
+    config.entity === 'priceBooks' ||
+    config.entity === 'quotes' ||
+    config.entity === 'salesOrders' ||
+    config.entity === 'invoices' ||
+    (config.entity === 'products' && (item.path === '/catalog/products' || item.path === '/quotes/configuration')) ||
+    item.path === '/sales/pipeline' ||
+    item.path === '/sales/forecasting' ||
+    item.path === '/quotes/builder' ||
+    item.path === '/quotes/approvals' ||
+    item.path === '/orders/details' ||
+    item.path === '/orders/allocation' ||
+    item.path === '/orders/fulfilment' ||
     config.entity === 'projects' ||
     config.entity === 'tasks' ||
     config.entity === 'milestones' ||
     config.entity === 'resources' ||
-    config.entity === 'costs';
+    config.entity === 'costs' ||
+    config.entity === 'campaigns' ||
+    config.entity === 'segments' ||
+    item.path === '/marketing/email-templates' ||
+    config.entity === 'cases' ||
+    config.entity === 'slaPolicies' ||
+    item.path === '/service/sla' ||
+    config.entity === 'knowledge' ||
+    config.entity === 'surveys' ||
+    item.path === '/service/feedback';
   const [liveAccounts, setLiveAccounts] = useState<CRMRecord[]>([]);
   const [liveContacts, setLiveContacts] = useState<CRMRecord[]>([]);
   const [liveLeads, setLiveLeads] = useState<CRMRecord[]>([]);
+  const [liveOpportunities, setLiveOpportunities] = useState<CRMRecord[]>([]);
+  const [livePriceBooks, setLivePriceBooks] = useState<CRMRecord[]>([]);
+  const [liveProducts, setLiveProducts] = useState<CRMRecord[]>([]);
+  const [liveQuotes, setLiveQuotes] = useState<CRMRecord[]>([]);
+  const [liveSalesOrders, setLiveSalesOrders] = useState<CRMRecord[]>([]);
+  const [liveInvoices, setLiveInvoices] = useState<CRMRecord[]>([]);
   const [liveProjects, setLiveProjects] = useState<CRMRecord[]>([]);
   const [liveProjectTasks, setLiveProjectTasks] = useState<CRMRecord[]>([]);
   const [liveProjectMilestones, setLiveProjectMilestones] = useState<CRMRecord[]>([]);
   const [liveProjectResources, setLiveProjectResources] = useState<CRMRecord[]>([]);
   const [liveProjectCosts, setLiveProjectCosts] = useState<CRMRecord[]>([]);
+  const [liveCampaigns, setLiveCampaigns] = useState<CRMRecord[]>([]);
+  const [liveSegments, setLiveSegments] = useState<CRMRecord[]>([]);
+  const [liveEmailTemplates, setLiveEmailTemplates] = useState<CRMRecord[]>([]);
+  const [liveCases, setLiveCases] = useState<CRMRecord[]>([]);
+  const [liveSLAPolicies, setLiveSLAPolicies] = useState<CRMRecord[]>([]);
+  const [liveKnowledge, setLiveKnowledge] = useState<CRMRecord[]>([]);
+  const [liveSurveys, setLiveSurveys] = useState<CRMRecord[]>([]);
   const [availableAccounts, setAvailableAccounts] = useState<AccountItem[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [accountsFetchError, setAccountsFetchError] = useState<string | null>(null);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [contactsLoaded, setContactsLoaded] = useState(false);
   const [leadsLoaded, setLeadsLoaded] = useState(false);
+  const [opportunitiesLoaded, setOpportunitiesLoaded] = useState(false);
+  const [priceBooksLoaded, setPriceBooksLoaded] = useState(false);
+  const [productsLoaded, setProductsLoaded] = useState(false);
+  const [quotesLoaded, setQuotesLoaded] = useState(false);
+  const [salesOrdersLoaded, setSalesOrdersLoaded] = useState(false);
+  const [invoicesLoaded, setInvoicesLoaded] = useState(false);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [milestonesLoaded, setMilestonesLoaded] = useState(false);
   const [resourcesLoaded, setResourcesLoaded] = useState(false);
   const [costsLoaded, setCostsLoaded] = useState(false);
+  const [campaignsLoaded, setCampaignsLoaded] = useState(false);
+  const [segmentsLoaded, setSegmentsLoaded] = useState(false);
+  const [emailTemplatesLoaded, setEmailTemplatesLoaded] = useState(false);
+  const [casesLoaded, setCasesLoaded] = useState(false);
+  const [slaPoliciesLoaded, setSLAPoliciesLoaded] = useState(false);
+  const [knowledgeLoaded, setKnowledgeLoaded] = useState(false);
+  const [surveysLoaded, setSurveysLoaded] = useState(false);
   const [loadingLive, setLoadingLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -454,6 +502,568 @@ export function WorkspacePage({ item }: Props) {
       } finally {
         setLoadingLive(false);
       }
+    } else if (config.entity === 'opportunities' || item.path === '/sales/pipeline' || item.path === '/sales/forecasting') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const [oppsRes, accsRes] = await Promise.all([
+          api.listOpportunities({ limit: 100 }),
+          api.listAccounts({ limit: 100 }),
+        ]);
+        const items = oppsRes?.items || [];
+        if (accsRes?.items) setAvailableAccounts(accsRes.items);
+        const mapped: CRMRecord[] = items.map(opp => ({
+          id: opp.id,
+          ref: opp.ref,
+          title: opp.name,
+          description: `${opp.account_name || 'Organization'} · ${opp.stage} · Win Prob: ${opp.probability}%`,
+          status: opp.stage,
+          owner: opp.owner_name || 'Opportunity Owner',
+          amount: Number(opp.amount || 0),
+          date: opp.expected_close_date || (opp.created_at ? opp.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {
+            organizations: opp.account_id ? [opp.account_id] : [],
+            contacts: opp.contact_id ? [opp.contact_id] : [],
+          },
+          history: (opp.stage_history || []).map((h, idx) => ({
+            id: `hist-${idx}`,
+            action: `Stage transitioned: ${h.from_stage} -> ${h.to_stage}`,
+            actor: h.actor_name || 'Sales Rep',
+            at: h.transition_at ? h.transition_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            details: h.notes || `Duration in stage: ${h.days_in_previous_stage} days`,
+          })),
+          fields: {
+            name: opp.name,
+            customer: opp.account_name || '',
+            accountId: opp.account_id || '',
+            contact: opp.contact_name || '',
+            contactId: opp.contact_id || '',
+            stage: opp.stage,
+            amount: String(opp.amount || 0),
+            probability: String(opp.probability || 0),
+            closeDate: opp.expected_close_date || '',
+            risk: opp.risk_level || 'Low',
+            source: opp.lead_source || 'Direct Outreach',
+            nextStep: opp.next_step || '',
+            owner: opp.owner_name || '',
+            description: opp.description || '',
+            winDescription: opp.win_description || '',
+            lossReason: opp.loss_reason || '',
+          },
+        }));
+        setLiveOpportunities(mapped);
+        setOpportunitiesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load opportunities from backend.');
+        setOpportunitiesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'priceBooks' || item.path === '/price-books') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listPriceBooks({ limit: 100 });
+        const items = res?.items || [];
+        const mapped: CRMRecord[] = items.map(pb => ({
+          id: pb.id,
+          ref: pb.id.slice(0, 8).toUpperCase(),
+          title: pb.name,
+          description: `${(pb.is_default || pb.is_standard) ? 'Default Price Book · ' : ''}Currency: ${pb.currency} · Entries: ${pb.entries?.length || 0} items`,
+          status: pb.is_active ? 'Active' : 'Inactive',
+          owner: 'Commercial Pricing Team',
+          amount: pb.entries?.length || 0,
+          date: pb.created_at ? pb.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {},
+          history: [],
+          fields: {
+            name: pb.name,
+            currency: pb.currency,
+            isDefault: (pb.is_default || pb.is_standard) ? 'Yes' : 'No',
+            status: pb.is_active ? 'Active' : 'Inactive',
+            description: pb.description || '',
+          }
+        }));
+        setLivePriceBooks(mapped);
+        setPriceBooksLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load price books from backend.');
+        setPriceBooksLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'products' && (item.path === '/catalog/products' || item.path === '/quotes/configuration')) {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listProducts({ limit: 100 });
+        const items = res?.items || [];
+        const mapped: CRMRecord[] = items.map(p => ({
+          id: p.id,
+          ref: p.sku || `PRD-${p.id.slice(0, 8)}`,
+          title: p.name,
+          description: `${p.category || 'Product'} · UOM: ${p.unit_of_measure || 'Unit'} · Tax: ${p.tax_category || 'Standard'}`,
+          status: p.is_active ? 'Active' : 'Inactive',
+          owner: 'Catalogue Manager',
+          amount: Number(p.standard_price || 0),
+          date: p.created_at ? p.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {},
+          history: [],
+          fields: {
+            name: p.name,
+            sku: p.sku,
+            category: p.category || '',
+            unitPrice: String(p.standard_price || 0),
+            taxCategory: p.tax_category || 'Standard',
+            description: p.description || '',
+          }
+        }));
+        setLiveProducts(mapped);
+        setProductsLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load product configuration from backend.');
+        setProductsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (
+      config.entity === 'quotes' ||
+      item.path === '/quotes' ||
+      item.path === '/quotes/builder' ||
+      item.path === '/quotes/approvals'
+    ) {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const [quotesRes, accsRes] = await Promise.all([
+          api.listQuotes({ limit: 100 }),
+          api.listAccounts({ limit: 100 }),
+        ]);
+        const items = quotesRes?.items || [];
+        if (accsRes?.items) setAvailableAccounts(accsRes.items);
+        const mapped: CRMRecord[] = items.map(q => ({
+          id: q.id,
+          ref: q.ref,
+          title: q.name,
+          description: `${q.account_name || 'Customer'} · ${q.currency} ${Number(q.grand_total).toLocaleString()} (Disc: ${Number(q.total_discount || 0).toLocaleString()}) · Rev v${q.version}`,
+          status: q.status,
+          owner: q.owner_name || 'Sales Representative',
+          amount: Number(q.grand_total || 0),
+          date: q.created_at ? q.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          lineItems: (q.lines || []).map(l => ({
+            id: l.id || makeId(),
+            productId: l.product_id,
+            name: l.item_name,
+            sku: l.sku || '',
+            quantity: Number(l.quantity),
+            unitPrice: Number(l.unit_price),
+            discount: Number(l.discount_pct || 0),
+            taxRate: Number(l.tax_rate || 0),
+            total: Number(l.line_total),
+          })),
+          links: {
+            organizations: q.account_id ? [q.account_id] : [],
+            opportunities: q.opportunity_id ? [q.opportunity_id] : [],
+          },
+          history: [],
+          fields: {
+            name: q.name,
+            customer: q.account_name || '',
+            opportunity: q.opportunity_ref || '',
+            validUntil: q.valid_until || '',
+            currency: q.currency,
+            discount: String(q.header_discount_pct || 0),
+            tax: String(q.total_tax || 0),
+            paymentTerms: q.payment_terms || 'Net 30',
+            notes: q.notes || '',
+            version: String(q.version),
+            grandTotal: String(q.grand_total),
+          }
+        }));
+        setLiveQuotes(mapped);
+        setQuotesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load quotes from backend.');
+        setQuotesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (
+      config.entity === 'salesOrders' ||
+      item.path === '/sales-orders' ||
+      item.path === '/orders/details' ||
+      item.path === '/orders/allocation' ||
+      item.path === '/orders/fulfilment'
+    ) {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const [ordersRes, accsRes] = await Promise.all([
+          api.listSalesOrders({ limit: 100 }),
+          api.listAccounts({ limit: 100 }),
+        ]);
+        const items = ordersRes?.items || [];
+        if (accsRes?.items) setAvailableAccounts(accsRes.items);
+        const mapped: CRMRecord[] = items.map(o => ({
+          id: o.id,
+          ref: o.ref,
+          title: o.name,
+          description: `${o.account_name || 'Customer'} · ${o.currency} ${Number(o.total_amount).toLocaleString()} · Fulfilment: ${o.fulfilment_stage || 'Draft'}`,
+          status: o.status,
+          owner: o.owner_name || 'Order Operations',
+          amount: Number(o.total_amount || 0),
+          date: o.created_at ? o.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          lineItems: (o.lines || []).map(l => ({
+            id: l.id || makeId(),
+            productId: l.product_id,
+            name: l.item_name,
+            sku: l.sku || '',
+            quantity: Number(l.quantity),
+            unitPrice: Number(l.unit_price),
+            discount: Number(l.discount_pct || 0),
+            taxRate: Number(l.tax_rate || 0),
+            total: Number(l.line_total),
+          })),
+          links: {
+            organizations: o.account_id ? [o.account_id] : [],
+            quotes: o.quote_id ? [o.quote_id] : [],
+            opportunities: o.opportunity_id ? [o.opportunity_id] : [],
+          },
+          history: [],
+          fields: {
+            name: o.name,
+            customer: o.account_name || '',
+            quote: o.quote_ref || '',
+            requestedDate: o.requested_delivery_date || '',
+            warehouse: o.warehouse_location || 'Kingston Central Logistics Hub',
+            paymentTerms: o.payment_terms || 'Net 30',
+            carrier: o.carrier || '',
+            trackingNumber: o.tracking_number || '',
+            fulfilmentStage: o.fulfilment_stage || 'Draft',
+            totalAmount: String(o.total_amount),
+            notes: o.notes || '',
+          }
+        }));
+        setLiveSalesOrders(mapped);
+        setSalesOrdersLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load sales orders from backend.');
+        setSalesOrdersLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'invoices' || item.path === '/invoices') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const [invoicesRes, accsRes] = await Promise.all([
+          api.listInvoices({ limit: 100 }),
+          api.listAccounts({ limit: 100 }),
+        ]);
+        const items = invoicesRes?.items || [];
+        if (accsRes?.items) setAvailableAccounts(accsRes.items);
+        const mapped: CRMRecord[] = items.map(inv => ({
+          id: inv.id,
+          ref: inv.ref,
+          title: inv.name,
+          description: `${inv.account_name || 'Customer'} · ${inv.currency} ${Number(inv.total_amount).toLocaleString()} · Balance Due: ${inv.currency} ${Number(inv.balance_due).toLocaleString()}`,
+          status: inv.status,
+          owner: inv.owner_name || 'Finance & Billing',
+          amount: Number(inv.total_amount || 0),
+          date: inv.issue_date || (inv.created_at ? inv.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {
+            organizations: inv.account_id ? [inv.account_id] : [],
+            salesOrders: inv.sales_order_id ? [inv.sales_order_id] : [],
+          },
+          history: [],
+          fields: {
+            name: inv.name,
+            customer: inv.account_name || '',
+            salesOrder: inv.sales_order_ref || '',
+            dueDate: inv.due_date || '',
+            amount: String(inv.total_amount),
+            paidAmount: String(inv.paid_amount || 0),
+            balanceDue: String(inv.balance_due || 0),
+            terms: inv.payment_terms || 'Net 30',
+            status: inv.status,
+            notes: inv.notes || '',
+          }
+        }));
+        setLiveInvoices(mapped);
+        setInvoicesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load invoices from backend.');
+        setInvoicesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'campaigns' || item.path === '/campaigns' || item.path === '/marketing/performance') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listCampaigns({ limit: 100 });
+        const items = res?.items || [];
+        const mapped: CRMRecord[] = items.map(c => ({
+          id: c.id,
+          ref: c.ref,
+          title: c.name,
+          description: `${c.type} Campaign · Channel: ${c.channel} · Budget: $${Number(c.budget || 0).toLocaleString()} · Actual: $${Number(c.actual_cost || 0).toLocaleString()}`,
+          status: c.status,
+          owner: c.owner_name || 'Marketing Team',
+          amount: Number(c.budget || 0),
+          date: c.start_date ? String(c.start_date) : (c.created_at ? c.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+          links: {},
+          history: [],
+          fields: {
+            name: c.name,
+            type: c.type,
+            channel: c.channel,
+            audience: c.target_audience || 'Target Audience',
+            segment: c.target_audience || '',
+            startDate: c.start_date ? String(c.start_date) : '',
+            endDate: c.end_date ? String(c.end_date) : '',
+            owner: c.owner_name || '',
+            budget: String(c.budget || 0),
+            objective: c.objective || '',
+            actualCost: String(c.actual_cost || 0),
+            expectedRevenue: String(c.expected_revenue || 0),
+            revenueGenerated: String(c.revenue_generated || 0),
+            roi: String(c.roi_percentage || 0),
+            memberCount: String(c.member_count || 0),
+          }
+        }));
+        setLiveCampaigns(mapped);
+        setCampaignsLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load campaigns from backend.');
+        setCampaignsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'segments' || item.path === '/segments') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listSegments({ limit: 100 });
+        const items = res?.items || [];
+        const mapped: CRMRecord[] = items.map(s => ({
+          id: s.id,
+          ref: s.ref,
+          title: s.name,
+          description: `${s.segment_type} Segment · Target: ${s.target_entity} · Members: ${s.member_count || 0}`,
+          status: s.is_active ? 'Active' : 'Inactive',
+          owner: s.owner_name || 'Audience Strategist',
+          amount: s.member_count || 0,
+          date: s.created_at ? s.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {},
+          history: [],
+          fields: {
+            name: s.name,
+            segmentType: s.segment_type,
+            targetEntity: s.target_entity,
+            status: s.is_active ? 'Active' : 'Inactive',
+            description: s.description || '',
+            memberCount: String(s.member_count || 0),
+          }
+        }));
+        setLiveSegments(mapped);
+        setSegmentsLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load segments from backend.');
+        setSegmentsLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (item.path === '/marketing/email-templates') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listEmailTemplates({ limit: 100 });
+        const items = res?.items || [];
+        const mapped: CRMRecord[] = items.map(t => ({
+          id: t.id,
+          ref: t.ref,
+          title: t.name,
+          description: `${t.category} Template · Subject: "${t.subject}" · Tags: ${(t.merge_tags || []).join(', ') || 'None'}`,
+          status: t.is_active ? 'Active' : 'Inactive',
+          owner: t.owner_name || 'Email Marketing Manager',
+          amount: (t.merge_tags || []).length,
+          date: t.created_at ? t.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {},
+          history: [],
+          fields: {
+            name: t.name,
+            subject: t.subject,
+            category: t.category,
+            status: t.is_active ? 'Active' : 'Inactive',
+            bodyHtml: t.body_html || '',
+            mergeTags: (t.merge_tags || []).join(', '),
+          }
+        }));
+        setLiveEmailTemplates(mapped);
+        setEmailTemplatesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load email templates from backend.');
+        setEmailTemplatesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'cases' || item.path === '/cases' || item.path === '/service/queue') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const [casesRes, accsRes] = await Promise.all([
+          api.listCases({ limit: 100 }),
+          api.listAccounts({ limit: 100 }),
+        ]);
+        const items = casesRes?.items || [];
+        if (accsRes?.items) setAvailableAccounts(accsRes.items);
+        const mapped: CRMRecord[] = items.map(c => ({
+          id: c.id,
+          ref: c.ref,
+          title: c.subject,
+          description: `${c.account_name || 'Customer'} · Priority: ${c.priority} · Channel: ${c.channel} · Category: ${c.category}`,
+          status: c.status,
+          owner: c.assigned_user_name || c.assigned_queue || 'Support Queue',
+          amount: c.csat_score || 0,
+          date: c.created_at ? c.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {
+            organizations: c.account_id ? [c.account_id] : [],
+            contacts: c.contact_id ? [c.contact_id] : [],
+          },
+          history: (c.comments || []).map((comm, idx) => ({
+            id: `comm-${idx}`,
+            action: comm.is_internal ? 'Internal Staff Note' : 'Customer Message',
+            actor: comm.author_name || 'Support Agent',
+            at: comm.created_at ? comm.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            details: comm.message,
+          })),
+          fields: {
+            subject: c.subject,
+            customer: c.account_name || '',
+            contact: c.contact_name || '',
+            category: c.category || 'Technical Support',
+            priority: c.priority || 'Normal',
+            assigned: c.assigned_user_name || c.assigned_queue || 'Support Agent',
+            sla: c.sla_breached ? 'Breached' : (c.sla_resolution_deadline ? `Due ${c.sla_resolution_deadline.slice(0, 16)}` : 'Active SLA'),
+            channel: c.channel || 'Portal',
+            sentiment: c.sentiment || 'Neutral',
+            description: c.description || c.subject,
+            resolutionSummary: c.resolution_summary || '',
+            csatScore: c.csat_score ? String(c.csat_score) : '',
+          }
+        }));
+        setLiveCases(mapped);
+        setCasesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load cases from backend.');
+        setCasesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'slaPolicies' || item.path === '/service/sla') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const items = await api.listSLAPolicies();
+        const mapped: CRMRecord[] = (items || []).map(sla => ({
+          id: sla.id,
+          ref: sla.ref,
+          title: sla.name,
+          description: `Priority: ${sla.priority} · First Response: ${sla.first_response_hours}h · Resolution: ${sla.resolution_hours}h · ${sla.business_hours_only ? 'Business Hours Only' : '24x7 Calendar'}`,
+          status: sla.is_active ? 'Active' : 'Inactive',
+          owner: 'SLA Operations Team',
+          amount: sla.resolution_hours,
+          date: sla.created_at ? sla.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {},
+          history: [],
+          fields: {
+            name: sla.name,
+            priority: sla.priority,
+            firstResponseHours: String(sla.first_response_hours),
+            resolutionHours: String(sla.resolution_hours),
+            businessHoursOnly: sla.business_hours_only ? 'Yes' : 'No',
+            status: sla.is_active ? 'Active' : 'Inactive',
+            description: sla.description || '',
+          }
+        }));
+        setLiveSLAPolicies(mapped);
+        setSLAPoliciesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load SLA policies from backend.');
+        setSLAPoliciesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'knowledge' || item.path === '/knowledge') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const res = await api.listKnowledgeArticles({ limit: 100 });
+        const items = res?.items || [];
+        const mapped: CRMRecord[] = items.map(k => ({
+          id: k.id,
+          ref: k.ref,
+          title: k.title,
+          description: `${k.category} · Visibility: ${k.visibility} · Helpful Votes: ${k.helpful_count || 0}`,
+          status: k.status,
+          owner: 'Knowledge Author',
+          amount: k.helpful_count || 0,
+          date: k.created_at ? k.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {},
+          history: [],
+          fields: {
+            title: k.title,
+            category: k.category,
+            visibility: k.visibility,
+            version: 'v1.0',
+            owner: 'Knowledge Author',
+            content: k.content || k.summary || '',
+            helpfulVotes: String(k.helpful_count || 0),
+          }
+        }));
+        setLiveKnowledge(mapped);
+        setKnowledgeLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load knowledge articles from backend.');
+        setKnowledgeLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    } else if (config.entity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const items = await api.listSurveys();
+        const mapped: CRMRecord[] = (items || []).map(s => ({
+          id: s.id,
+          ref: s.ref,
+          title: s.title,
+          description: `${s.survey_type} Survey · Trigger: ${s.trigger_event} · Responses: ${s.response_count || 0} (Avg Score: ${s.average_score || 0})`,
+          status: s.is_active ? 'Active' : 'Inactive',
+          owner: 'Customer Experience Team',
+          amount: Number(s.average_score || 0),
+          date: s.created_at ? s.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {},
+          history: [],
+          fields: {
+            title: s.title,
+            surveyType: s.survey_type,
+            triggerEvent: s.trigger_event,
+            status: s.is_active ? 'Active' : 'Inactive',
+            description: s.title,
+            responseCount: String(s.response_count || 0),
+            averageScore: String(s.average_score || 0),
+          }
+        }));
+        setLiveSurveys(mapped);
+        setSurveysLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to load customer surveys from backend.');
+        setSurveysLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
     }
   };
 
@@ -480,6 +1090,24 @@ export function WorkspacePage({ item }: Props) {
     if (config.entity === 'leads') {
       return leadsLoaded ? liveLeads : [];
     }
+    if (config.entity === 'opportunities' || item.path === '/sales/pipeline' || item.path === '/sales/forecasting') {
+      return opportunitiesLoaded ? liveOpportunities : [];
+    }
+    if (config.entity === 'priceBooks' || item.path === '/price-books') {
+      return priceBooksLoaded ? livePriceBooks : [];
+    }
+    if (config.entity === 'products' && (item.path === '/catalog/products' || item.path === '/quotes/configuration')) {
+      return productsLoaded ? liveProducts : [];
+    }
+    if (config.entity === 'quotes' || item.path === '/quotes' || item.path === '/quotes/builder' || item.path === '/quotes/approvals') {
+      return quotesLoaded ? liveQuotes : [];
+    }
+    if (config.entity === 'salesOrders' || item.path === '/sales-orders' || item.path === '/orders/details' || item.path === '/orders/allocation' || item.path === '/orders/fulfilment') {
+      return salesOrdersLoaded ? liveSalesOrders : [];
+    }
+    if (config.entity === 'invoices' || item.path === '/invoices') {
+      return invoicesLoaded ? liveInvoices : [];
+    }
     if (config.entity === 'projects') {
       return projectsLoaded ? liveProjects : [];
     }
@@ -495,17 +1123,52 @@ export function WorkspacePage({ item }: Props) {
     if (config.entity === 'costs') {
       return costsLoaded ? liveProjectCosts : [];
     }
+    if (config.entity === 'campaigns') {
+      return campaignsLoaded ? liveCampaigns : [];
+    }
+    if (config.entity === 'segments') {
+      return segmentsLoaded ? liveSegments : [];
+    }
+    if (item.path === '/marketing/email-templates') {
+      return emailTemplatesLoaded ? liveEmailTemplates : [];
+    }
+    if (config.entity === 'cases') {
+      return casesLoaded ? liveCases : [];
+    }
+    if (config.entity === 'slaPolicies' || item.path === '/service/sla') {
+      return slaPoliciesLoaded ? liveSLAPolicies : [];
+    }
+    if (config.entity === 'knowledge') {
+      return knowledgeLoaded ? liveKnowledge : [];
+    }
+    if (config.entity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
+      return surveysLoaded ? liveSurveys : [];
+    }
     return localRows;
   }, [
     config.entity,
+    item.path,
     accountsLoaded, liveAccounts,
     contactsLoaded, liveContacts,
     leadsLoaded, liveLeads,
+    opportunitiesLoaded, liveOpportunities,
+    priceBooksLoaded, livePriceBooks,
+    productsLoaded, liveProducts,
+    quotesLoaded, liveQuotes,
+    salesOrdersLoaded, liveSalesOrders,
+    invoicesLoaded, liveInvoices,
     projectsLoaded, liveProjects,
     tasksLoaded, liveProjectTasks,
     milestonesLoaded, liveProjectMilestones,
     resourcesLoaded, liveProjectResources,
     costsLoaded, liveProjectCosts,
+    campaignsLoaded, liveCampaigns,
+    segmentsLoaded, liveSegments,
+    emailTemplatesLoaded, liveEmailTemplates,
+    casesLoaded, liveCases,
+    slaPoliciesLoaded, liveSLAPolicies,
+    knowledgeLoaded, liveKnowledge,
+    surveysLoaded, liveSurveys,
     localRows
   ]);
   const statusOptions = useMemo(() => [...new Set(rows.map(r => r.status))], [rows]);
@@ -543,7 +1206,7 @@ export function WorkspacePage({ item }: Props) {
       ...prefill,
     });
     setLines([initialLine()]);
-    if (config.entity === 'contacts' && availableAccounts.length === 0) {
+    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices') && availableAccounts.length === 0) {
       setLoadingAccounts(true);
       api.listAccounts({ limit: 100 })
         .then(res => {
@@ -565,7 +1228,7 @@ export function WorkspacePage({ item }: Props) {
       organization: record.fields.organization || '',
     });
     setLines(record.lineItems?.length ? record.lineItems : [initialLine()]);
-    if (config.entity === 'contacts' && availableAccounts.length === 0) {
+    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices') && availableAccounts.length === 0) {
       setLoadingAccounts(true);
       api.listAccounts({ limit: 100 })
         .then(res => {
@@ -755,6 +1418,332 @@ export function WorkspacePage({ item }: Props) {
         setEditingId(null);
       } catch (err: any) {
         const msg = err?.message || 'Failed to save lead to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Opportunities: PostgreSQL is the single source of truth
+    if (config.entity === 'opportunities') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        let targetAccountId = form.accountId;
+        if (!targetAccountId) {
+          const accs = await api.listAccounts({ q: fields.customer, limit: 1 });
+          if (accs?.items?.[0]) {
+            targetAccountId = accs.items[0].id;
+          } else {
+            const newAcc = await api.createAccount({
+              name: fields.customer || 'Enterprise Account',
+              account_type: 'Enterprise',
+              industry: 'Technology',
+            });
+            targetAccountId = newAcc.id;
+          }
+        }
+
+        const payload = {
+          name: fields.name || item.label,
+          account_id: targetAccountId,
+          contact_id: fields.contactId || undefined,
+          stage: fields.stage || 'New Opportunity',
+          amount: Number(fields.amount || amount || 0),
+          probability: Number(fields.probability || 10),
+          close_date: fields.closeDate || undefined,
+          source: fields.source || 'Direct Outreach',
+          risk: fields.risk || 'Low',
+          next_step: fields.notes || undefined,
+        };
+
+        if (editingId) {
+          await api.updateOpportunity(editingId, payload);
+          notify('Opportunity updated in PostgreSQL database.');
+        } else {
+          await api.createOpportunity(payload);
+          notify('Opportunity created and saved to PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save opportunity to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Price Books: PostgreSQL is the single source of truth
+    if (config.entity === 'priceBooks') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updatePriceBook(editingId, {
+            name: fields.name,
+            currency: fields.currency || 'USD',
+            is_default: fields.isDefault === 'Yes',
+            is_active: fields.status !== 'Inactive',
+            description: fields.description || undefined,
+          });
+          notify('Price book updated in PostgreSQL.');
+        } else {
+          await api.createPriceBook({
+            name: fields.name,
+            currency: fields.currency || 'USD',
+            is_default: fields.isDefault === 'Yes',
+            is_active: fields.status !== 'Inactive',
+            description: fields.description || undefined,
+          });
+          notify('Price book created in PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save price book.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Products: Product Configuration
+    if (config.entity === 'products' && (item.path === '/catalog/products' || item.path === '/quotes/configuration')) {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateProduct(editingId, {
+            name: fields.name,
+            sku: fields.sku,
+            category: fields.category || 'Product',
+            standard_price: Number(fields.unitPrice || 0),
+            tax_category: fields.taxCategory || 'Standard',
+            description: fields.description || undefined,
+          });
+          notify('Product updated in PostgreSQL.');
+        } else {
+          await api.createProduct({
+            name: fields.name,
+            sku: fields.sku || `PRD-${Date.now().toString().slice(-6)}`,
+            category: fields.category || 'Product',
+            standard_price: Number(fields.unitPrice || 0),
+            tax_category: fields.taxCategory || 'Standard',
+            description: fields.description || undefined,
+          });
+          notify('Product created in PostgreSQL.');
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save product.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Quotes & CPQ: PostgreSQL is the single source of truth
+    if (config.entity === 'quotes') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        let targetAccountId = form.accountId;
+        if (!targetAccountId) {
+          const accs = await api.listAccounts({ q: fields.customer, limit: 1 });
+          if (accs?.items?.[0]) {
+            targetAccountId = accs.items[0].id;
+          } else {
+            const newAcc = await api.createAccount({
+              name: fields.customer || 'Commercial Client',
+              account_type: 'Enterprise',
+              industry: 'Technology',
+            });
+            targetAccountId = newAcc.id;
+          }
+        }
+
+        const quoteLines = (lines || []).map((l, idx) => ({
+          product_id: l.productId || undefined,
+          item_name: l.name || 'Commercial Line Item',
+          sku: l.sku || 'SKU-ITEM',
+          quantity: l.quantity,
+          unit_price: l.unitPrice,
+          cost_price: l.unitPrice * 0.7,
+          discount_pct: l.discount || 0,
+          tax_rate: l.taxRate || 0,
+          sort_order: idx,
+        }));
+
+        if (editingId) {
+          await api.updateQuote(editingId, {
+            name: fields.name,
+            valid_until: fields.validUntil || undefined,
+            currency: fields.currency || 'USD',
+            header_discount_pct: Number(fields.discount || 0),
+            payment_terms: fields.paymentTerms || 'Net 30',
+            notes: fields.notes || undefined,
+            lines: quoteLines.length ? quoteLines : undefined,
+          });
+          notify('Quote updated in PostgreSQL.');
+        } else {
+          const newQuote = await api.createQuote({
+            name: fields.name,
+            account_id: targetAccountId,
+            valid_until: fields.validUntil || undefined,
+            currency: fields.currency || 'USD',
+            header_discount_pct: Number(fields.discount || 0),
+            payment_terms: fields.paymentTerms || 'Net 30',
+            notes: fields.notes || undefined,
+            lines: quoteLines,
+          });
+          if (submit) {
+            await api.submitQuoteForApproval(newQuote.id, 'Automatic submission upon quotation creation');
+            notify(`Quote ${newQuote.ref} created and submitted for managerial approval.`);
+          } else {
+            notify(`Quote ${newQuote.ref} created and saved to PostgreSQL.`);
+          }
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save quote.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Sales Orders: PostgreSQL is the single source of truth
+    if (config.entity === 'salesOrders') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        let targetAccountId = form.accountId;
+        if (!targetAccountId) {
+          const accs = await api.listAccounts({ q: fields.customer, limit: 1 });
+          if (accs?.items?.[0]) {
+            targetAccountId = accs.items[0].id;
+          } else {
+            const newAcc = await api.createAccount({
+              name: fields.customer || 'Commercial Client',
+              account_type: 'Enterprise',
+              industry: 'Technology',
+            });
+            targetAccountId = newAcc.id;
+          }
+        }
+
+        const orderLines = (lines || []).map((l, idx) => ({
+          product_id: l.productId || undefined,
+          item_name: l.name || 'Order Item',
+          sku: l.sku || 'SKU-ITEM',
+          quantity: l.quantity,
+          unit_price: l.unitPrice,
+          discount_pct: l.discount || 0,
+          tax_rate: l.taxRate || 0,
+          sort_order: idx,
+        }));
+
+        if (editingId) {
+          await api.updateSalesOrder(editingId, {
+            name: fields.name,
+            status: (fields.status as any) || undefined,
+            fulfilment_stage: fields.fulfilmentStage || undefined,
+            warehouse_location: fields.warehouse || undefined,
+            requested_delivery_date: fields.requestedDate || undefined,
+            carrier: fields.carrier || undefined,
+            tracking_number: fields.trackingNumber || undefined,
+            payment_terms: fields.paymentTerms || undefined,
+            notes: fields.notes || undefined,
+          });
+          notify('Sales order updated in PostgreSQL.');
+        } else {
+          const newOrder = await api.createSalesOrder({
+            name: fields.name,
+            account_id: targetAccountId,
+            warehouse_location: fields.warehouse || 'Kingston Central Logistics Hub',
+            requested_delivery_date: fields.requestedDate || undefined,
+            payment_terms: fields.paymentTerms || 'Net 30',
+            notes: fields.notes || undefined,
+            lines: orderLines as any,
+          });
+          notify(`Sales order ${newOrder.ref} created in PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save sales order.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Invoices: PostgreSQL is the single source of truth
+    if (config.entity === 'invoices') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        let targetAccountId = form.accountId;
+        if (!targetAccountId) {
+          const accs = await api.listAccounts({ q: fields.customer, limit: 1 });
+          if (accs?.items?.[0]) {
+            targetAccountId = accs.items[0].id;
+          } else {
+            const newAcc = await api.createAccount({
+              name: fields.customer || 'Billing Client',
+              account_type: 'Enterprise',
+              industry: 'Technology',
+            });
+            targetAccountId = newAcc.id;
+          }
+        }
+
+        if (editingId) {
+          await api.updateInvoice(editingId, {
+            status: (fields.status as any) || undefined,
+            due_date: fields.dueDate || undefined,
+            notes: fields.notes || undefined,
+          });
+          notify('Invoice updated in PostgreSQL.');
+        } else {
+          const newInv = await api.createInvoice({
+            name: fields.name,
+            account_id: targetAccountId,
+            status: 'Issued',
+            issue_date: new Date().toISOString().slice(0, 10) as any,
+            due_date: (fields.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)) as any,
+            total_amount: Number(fields.amount || amount || 0),
+            currency: 'USD',
+            payment_terms: fields.terms || 'Net 30',
+            notes: fields.notes || undefined,
+          });
+          notify(`Invoice ${newInv.ref} created in PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save invoice.';
         setFormError(msg);
         notify(`Error: ${msg}`);
       } finally {
@@ -986,6 +1975,287 @@ export function WorkspacePage({ item }: Props) {
       return;
     }
 
+    // Campaigns: PostgreSQL is the single source of truth
+    if (config.entity === 'campaigns') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateCampaign(editingId, {
+            name: fields.name || item.label,
+            type: fields.type || 'Email',
+            channel: fields.channel || 'Email',
+            target_audience: fields.audience || fields.segment || undefined,
+            start_date: (fields.startDate || undefined) as any,
+            end_date: (fields.endDate || undefined) as any,
+            budget: Number(fields.budget || amount || 0),
+            objective: fields.objective || undefined,
+            status: statusValue,
+          });
+          notify('Campaign updated in PostgreSQL database.');
+        } else {
+          const newC = await api.createCampaign({
+            name: fields.name || item.label,
+            type: fields.type || 'Email',
+            channel: fields.channel || 'Email',
+            target_audience: fields.audience || fields.segment || undefined,
+            start_date: (fields.startDate || new Date().toISOString().slice(0, 10)) as any,
+            end_date: (fields.endDate || undefined) as any,
+            budget: Number(fields.budget || amount || 0),
+            objective: fields.objective || undefined,
+          });
+          notify(`Campaign ${newC.ref} created and saved to PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save campaign to backend.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Audience Segments: PostgreSQL is the single source of truth
+    if (config.entity === 'segments') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateSegment(editingId, {
+            name: fields.name || item.label,
+            segment_type: fields.segmentType || 'Dynamic',
+            target_entity: fields.targetEntity || 'contacts',
+            description: fields.description || undefined,
+            is_active: fields.status === 'Active',
+          });
+          notify('Segment updated in PostgreSQL database.');
+        } else {
+          const newS = await api.createSegment({
+            name: fields.name || item.label,
+            segment_type: fields.segmentType || 'Dynamic',
+            target_entity: fields.targetEntity || 'contacts',
+            description: fields.description || undefined,
+            is_active: fields.status !== 'Inactive',
+          });
+          notify(`Audience segment ${newS.ref} created in PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save audience segment.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Email Templates: PostgreSQL is the single source of truth
+    if (item.path === '/marketing/email-templates') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateEmailTemplate(editingId, {
+            name: fields.name || item.label,
+            subject: fields.subject || 'Subject',
+            category: fields.category || 'Promotional',
+            body_html: fields.bodyHtml || '<p>Template Content</p>',
+            is_active: fields.status === 'Active',
+          });
+          notify('Email template updated in PostgreSQL database.');
+        } else {
+          const newT = await api.createEmailTemplate({
+            name: fields.name || item.label,
+            subject: fields.subject || 'Subject',
+            category: fields.category || 'Promotional',
+            body_html: fields.bodyHtml || '<p>Template Content</p>',
+            is_active: fields.status !== 'Inactive',
+          });
+          notify(`Email template ${newT.ref} created in PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save email template.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Customer Service Cases: PostgreSQL is the single source of truth
+    if (config.entity === 'cases') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        let targetAccountId = form.accountId;
+        if (!targetAccountId && fields.customer) {
+          const accs = await api.listAccounts({ q: fields.customer, limit: 1 });
+          if (accs?.items?.[0]) {
+            targetAccountId = accs.items[0].id;
+          } else {
+            const newAcc = await api.createAccount({
+              name: fields.customer,
+              account_type: 'Enterprise',
+              industry: 'Technology',
+            });
+            targetAccountId = newAcc.id;
+          }
+        }
+        if (editingId) {
+          await api.updateCase(editingId, {
+            subject: fields.subject || item.label,
+            priority: fields.priority || 'Normal',
+            category: fields.category || 'Technical Support',
+            channel: fields.channel || 'Portal',
+            sentiment: fields.sentiment || 'Neutral',
+            description: fields.description || undefined,
+            status: statusValue,
+          });
+          notify('Service case updated in PostgreSQL database.');
+        } else {
+          const newC = await api.createCase({
+            subject: fields.subject || item.label,
+            account_id: targetAccountId || undefined,
+            priority: fields.priority || 'Normal',
+            category: fields.category || 'Technical Support',
+            channel: fields.channel || 'Portal',
+            sentiment: fields.sentiment || 'Neutral',
+            description: fields.description || fields.subject || 'Issue description',
+          });
+          notify(`Service case ${newC.ref} logged and saved to PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save service case.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // SLA Policies: PostgreSQL is the single source of truth
+    if (config.entity === 'slaPolicies' || item.path === '/service/sla') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateSLAPolicy(editingId, {
+            name: fields.name || item.label,
+            priority: fields.priority || 'Normal',
+            first_response_hours: Number(fields.firstResponseHours || 4),
+            resolution_hours: Number(fields.resolutionHours || 24),
+            business_hours_only: fields.businessHoursOnly === 'Yes',
+            is_active: fields.status !== 'Inactive',
+            description: fields.description || undefined,
+          });
+          notify('SLA policy updated in PostgreSQL database.');
+        } else {
+          const newSla = await api.createSLAPolicy({
+            name: fields.name || item.label,
+            priority: fields.priority || 'Normal',
+            first_response_hours: Number(fields.firstResponseHours || 4),
+            resolution_hours: Number(fields.resolutionHours || 24),
+            business_hours_only: fields.businessHoursOnly === 'Yes',
+            is_active: fields.status !== 'Inactive',
+            description: fields.description || undefined,
+          });
+          notify(`SLA policy ${newSla.ref} created in PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save SLA policy.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Knowledge Base Articles: PostgreSQL is the single source of truth
+    if (config.entity === 'knowledge') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        if (editingId) {
+          await api.updateKnowledgeArticle(editingId, {
+            title: fields.title || item.label,
+            category: fields.category || 'Troubleshooting',
+            visibility: fields.visibility || 'Customer-facing',
+            content: fields.content || 'Article content',
+            status: fields.status || 'Published',
+          });
+          notify('Knowledge article updated in PostgreSQL database.');
+        } else {
+          const newK = await api.createKnowledgeArticle({
+            title: fields.title || item.label,
+            category: fields.category || 'Troubleshooting',
+            visibility: fields.visibility || 'Customer-facing',
+            content: fields.content || 'Article content',
+            status: 'Published',
+          });
+          notify(`Knowledge article ${newK.ref} published in PostgreSQL.`);
+        }
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save knowledge article.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Customer Surveys: PostgreSQL is the single source of truth
+    if (config.entity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const newS = await api.createSurvey({
+          title: fields.title || item.label,
+          survey_type: fields.surveyType || 'CSAT',
+          trigger_event: fields.triggerEvent || 'case.resolved',
+          is_active: fields.status !== 'Inactive',
+          custom_fields: {
+            questions: [
+              { id: "q1", text: "How satisfied are you with our service?", scale: 5 }
+            ]
+          }
+        });
+        notify(`Customer survey ${newS.ref} created in PostgreSQL.`);
+        await fetchLiveCRMData();
+        setModal(false);
+        setEditingId(null);
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save customer survey.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     // Default prototype entities (opportunities, quotes, etc.)
     if (editingId) {
       update(
@@ -1025,7 +2295,25 @@ export function WorkspacePage({ item }: Props) {
     setEditingId(null);
   };
 
-  const transition = (record: CRMRecord, newStatus: string, action?: string) => {
+  const transition = async (record: CRMRecord, newStatus: string, action?: string) => {
+    if (config.entity === 'opportunities') {
+      try {
+        await api.transitionOpportunityStage(record.id, {
+          to_stage: newStatus,
+          budget_confirmed: newStatus === 'Proposal' || newStatus === 'Negotiation' ? true : undefined,
+          decision_maker_bought_in: newStatus === 'Negotiation' ? true : undefined,
+          win_description: newStatus === 'Closed Won' ? (action || 'Deal closed successfully with customer acceptance') : undefined,
+          loss_reason: newStatus === 'Closed Lost' ? (action || 'Competitor pricing / budget constraints') : undefined,
+          notes: action || `Advanced stage to ${newStatus}`,
+        });
+        notify(`${record.ref} advanced to ${newStatus} in PostgreSQL.`);
+        await fetchLiveCRMData();
+      } catch (err: any) {
+        const errMsg = err?.message || `Cannot advance to ${newStatus}`;
+        notify(`Stage Gate Blocked: ${errMsg}`);
+      }
+      return;
+    }
     update(
       config.entity,
       record.id,
@@ -1159,6 +2447,75 @@ export function WorkspacePage({ item }: Props) {
   };
 
   const runAction = (record: CRMRecord, action: string) => {
+    if (config.entity === 'campaigns') {
+      if (action === 'Launch Campaign' || action === 'Activate Campaign') {
+        api.transitionCampaignStatus(record.id, 'Active')
+          .then(() => {
+            notify(`Campaign ${record.ref} launched and active.`);
+            fetchLiveCRMData();
+          })
+          .catch(err => notify(`Campaign launch failed: ${err?.message || 'Error'}`));
+        return;
+      }
+      if (action === 'Pause Campaign') {
+        api.transitionCampaignStatus(record.id, 'Paused')
+          .then(() => {
+            notify(`Campaign ${record.ref} paused.`);
+            fetchLiveCRMData();
+          })
+          .catch(err => notify(`Campaign pause failed: ${err?.message || 'Error'}`));
+        return;
+      }
+      if (action === 'Complete Campaign') {
+        api.transitionCampaignStatus(record.id, 'Completed')
+          .then(() => {
+            notify(`Campaign ${record.ref} marked as Completed.`);
+            fetchLiveCRMData();
+          })
+          .catch(err => notify(`Campaign completion failed: ${err?.message || 'Error'}`));
+        return;
+      }
+    }
+    if (config.entity === 'cases') {
+      if (action === 'Resolve Case' || action === 'Mark Resolved') {
+        api.transitionCase(record.id, { target_status: 'Resolved', resolution_summary: 'Issue resolved by support engineering' })
+          .then(() => {
+            notify(`Case ${record.ref} marked as Resolved.`);
+            fetchLiveCRMData();
+          })
+          .catch(err => notify(`Case resolution failed: ${err?.message || 'Error'}`));
+        return;
+      }
+      if (action === 'Close Case') {
+        api.transitionCase(record.id, { target_status: 'Closed' })
+          .then(() => {
+            notify(`Case ${record.ref} closed.`);
+            fetchLiveCRMData();
+          })
+          .catch(err => notify(`Case close failed: ${err?.message || 'Error'}`));
+        return;
+      }
+      if (action === 'Wait for Customer') {
+        api.transitionCase(record.id, { target_status: 'Awaiting Customer' })
+          .then(() => {
+            notify(`Case ${record.ref} placed in Awaiting Customer (SLA paused).`);
+            fetchLiveCRMData();
+          })
+          .catch(err => notify(`Case status update failed: ${err?.message || 'Error'}`));
+        return;
+      }
+    }
+    if (config.entity === 'knowledge') {
+      if (action === 'Upvote' || action === 'Mark Helpful') {
+        api.voteKnowledgeHelpful(record.id)
+          .then(() => {
+            notify(`Helpful vote recorded for ${record.ref}.`);
+            fetchLiveCRMData();
+          })
+          .catch((err: any) => notify(`Vote failed: ${err?.message || 'Error'}`));
+        return;
+      }
+    }
     if (config.entity === 'leads') {
       if (action === 'Qualify Lead') {
         api.updateLead(record.id, { status: 'Qualified' })
@@ -1216,37 +2573,70 @@ export function WorkspacePage({ item }: Props) {
         return;
       }
       if (action === 'Submit for Approval') {
-        transition(record, 'Pending Approval', 'Quote submitted for managerial sign-off');
-        create('decisions', {
-          name: `Quote Sign-off: ${record.title}`,
-          agent: 'Quote Agent',
-          action: `Approve Quote ${record.ref} (${money(record.amount)})`,
-          reason: 'Discount exceeds 5% threshold',
-          evidence: `Customer: ${record.fields.customer} · Amount: ${money(record.amount)}`,
-          policy: 'Commercial Discount Guardrail v2.1',
-          confidence: '0.94',
-          status: 'Pending Approval',
-        }, { status: 'Pending Approval', links: { quotes: [record.id] } });
+        setSubmitting(true);
+        api.submitQuoteForApproval(record.id, 'Discount / Commercial terms sign-off requested')
+          .then(async () => {
+            notify(`Quote ${record.ref} submitted for managerial approval in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch((err) => {
+            notify(`Approval submission failed: ${err?.message || 'Unknown error'}`);
+          })
+          .finally(() => setSubmitting(false));
         return;
       }
       if (action === 'Approve Quote') {
-        transition(record, 'Approved', 'Quote approved by authorized manager');
+        setSubmitting(true);
+        api.approveQuote(record.id, true, 'Approved by commercial manager')
+          .then(async () => {
+            notify(`Quote ${record.ref} approved in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch((err) => {
+            notify(`Approval failed: ${err?.message || 'Unknown error'}`);
+          })
+          .finally(() => setSubmitting(false));
         return;
       }
       if (action === 'Reject Quote') {
-        transition(record, 'Rejected', 'Quote rejected by manager');
+        setSubmitting(true);
+        api.approveQuote(record.id, false, 'Discount outside standard delegation limits')
+          .then(async () => {
+            notify(`Quote ${record.ref} rejected in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch((err) => {
+            notify(`Rejection failed: ${err?.message || 'Unknown error'}`);
+          })
+          .finally(() => setSubmitting(false));
         return;
       }
-      if (action === 'Accept Quote') {
-        transition(record, 'Accepted', 'Customer accepted commercial proposal');
-        return;
-      }
-      if (action === 'Convert to Sales Order') {
-        convertQuote(record);
+      if (action === 'Accept Quote' || action === 'Convert to Sales Order') {
+        setSubmitting(true);
+        api.acceptQuote(record.id, { notes: 'Accepted by customer and converted to order' })
+          .then(async (order) => {
+            notify(`Quote ${record.ref} accepted! Sales Order ${order.ref} created in PostgreSQL.`);
+            await fetchLiveCRMData();
+            navigate('/sales-orders', { state: { openRecordId: order.id } });
+          })
+          .catch((err) => {
+            notify(`Quote acceptance failed: ${err?.message || 'Unknown error'}`);
+          })
+          .finally(() => setSubmitting(false));
         return;
       }
       if (action === 'Revise Quote') {
-        openEdit(record);
+        setSubmitting(true);
+        api.createQuoteRevision(record.id)
+          .then(async (revised) => {
+            notify(`New revision v${revised.version} created for quote ${record.ref}.`);
+            await fetchLiveCRMData();
+            setSelectedId(revised.id);
+          })
+          .catch((err) => {
+            notify(`Revision creation failed: ${err?.message || 'Unknown error'}`);
+          })
+          .finally(() => setSubmitting(false));
         return;
       }
     }
@@ -1281,35 +2671,59 @@ export function WorkspacePage({ item }: Props) {
     }
     if (config.entity === 'salesOrders') {
       if (action === 'Confirm Order') {
-        transition(record, 'Confirmed', 'Order confirmed');
+        api.updateSalesOrder(record.id, { status: 'Confirmed' })
+          .then(async () => {
+            notify(`Sales order ${record.ref} confirmed in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Confirm failed: ${err?.message || 'Unknown error'}`));
         return;
       }
       if (action === 'Check Inventory (ERP Boundary)') {
-        notify('Radium ERP Inventory Boundary: 100% Stock Available (Warehouse: Kingston Hub · Reserved 5,000m fiber cable).');
+        notify('Inventory Boundary: 100% Stock Available (Warehouse: Kingston Hub · Reserved line items).');
         return;
       }
       if (action === 'Mark Fulfilled') {
-        transition(record, 'Fulfilled', 'Fulfilment completed (Simulated)');
+        api.updateSalesOrder(record.id, { status: 'Fulfilled', fulfilment_stage: 'Delivered' })
+          .then(async () => {
+            notify(`Sales order ${record.ref} fulfilled in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Fulfillment update failed: ${err?.message || 'Unknown error'}`));
         return;
       }
       if (action === 'Generate Invoice') {
-        const invoice = create(
-          'invoices',
-          {
-            name: `Invoice for ${record.ref}`,
-            customer: record.fields.customer || record.title,
-            salesOrder: record.ref,
-            dueDate: '',
-            amount: String(record.amount),
-            terms: record.fields.paymentTerms || 'Net 30',
-            notes: 'Invoice generated from fulfilled sales order.',
-          },
-          { status: 'Issued', amount: record.amount, links: { salesOrders: [record.id], organizations: record.links.organizations || [] } }
-        );
-        update('salesOrders', record.id, { links: { invoices: [...new Set([...(record.links.invoices || []), invoice.id])] } }, 'Invoice linked');
-        notify(`Invoice ${invoice.ref} generated.`);
-        navigate('/invoices');
-        setSelectedId(null);
+        setSubmitting(true);
+        api.generateInvoiceFromOrder(record.id)
+          .then(async (inv) => {
+            notify(`Invoice ${inv.ref} generated from sales order ${record.ref} in PostgreSQL.`);
+            await fetchLiveCRMData();
+            navigate('/invoices', { state: { openRecordId: inv.id } });
+          })
+          .catch(err => notify(`Invoice generation failed: ${err?.message || 'Unknown error'}`))
+          .finally(() => setSubmitting(false));
+        return;
+      }
+    }
+    if (config.entity === 'invoices') {
+      if (action === 'Record Payment') {
+        setSubmitting(true);
+        api.recordInvoicePayment(record.id, { amount: record.amount })
+          .then(async (inv) => {
+            notify(`Payment recorded for ${inv.ref}. Balance due: $${inv.balance_due}. Status: ${inv.status}.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Record payment failed: ${err?.message || 'Unknown error'}`))
+          .finally(() => setSubmitting(false));
+        return;
+      }
+      if (action === 'Mark Void') {
+        api.updateInvoice(record.id, { status: 'Void' })
+          .then(async () => {
+            notify(`Invoice ${record.ref} marked as Void in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Void failed: ${err?.message || 'Unknown error'}`));
         return;
       }
     }
@@ -1339,6 +2753,8 @@ export function WorkspacePage({ item }: Props) {
       return record.status === 'Resolved' ? ['Close Case'] : record.status === 'Closed' ? [] : ['Start Case', 'Escalate Case', 'Wait for Customer', 'Resolve Case'];
     if (config.entity === 'salesOrders')
       return record.status === 'Draft' ? ['Confirm Order'] : record.status === 'Confirmed' ? ['Check Inventory (ERP Boundary)', 'Mark Fulfilled', 'Generate Invoice'] : ['Generate Invoice'];
+    if (config.entity === 'invoices')
+      return record.status === 'Paid' ? [] : ['Record Payment', 'Mark Void'];
     if (config.entity === 'tasks') return record.status === 'Completed' ? [] : ['Complete Task'];
     if (config.entity === 'decisions') return record.status === 'Pending Approval' ? ['Approve Action', 'Reject Action'] : [];
     if (config.entity === 'agents') return record.status === 'Paused' ? ['Resume Agent'] : ['Pause Agent'];
@@ -2155,6 +3571,201 @@ export function WorkspacePage({ item }: Props) {
                       }
                       return;
                     }
+                    if (config.entity === 'opportunities') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteOpportunity(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Opportunity archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'priceBooks') {
+                      setSubmitting(true);
+                      try {
+                        await api.deletePriceBook(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Price book archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'products') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteProduct(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Product archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'quotes') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteQuote(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Quote archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'salesOrders') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteSalesOrder(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Sales order archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'invoices') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteInvoice(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Invoice archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'campaigns') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteCampaign(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Campaign archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'segments') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteSegment(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Segment archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (item.path === '/marketing/email-templates') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteEmailTemplate(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Email template archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'cases') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteCase(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Service case archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'slaPolicies' || item.path === '/service/sla') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteSLAPolicy(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('SLA policy archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'knowledge') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteKnowledgeArticle(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Knowledge article archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
+                    if (config.entity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
+                      setSubmitting(true);
+                      try {
+                        await api.deleteSurvey(selected.id);
+                        await fetchLiveCRMData();
+                        setSelectedId(null);
+                        setConfirmDelete(false);
+                        notify('Survey archived in PostgreSQL.');
+                      } catch (err: any) {
+                        notify(`Delete failed: ${err?.message || 'Unknown error'}`);
+                      } finally {
+                        setSubmitting(false);
+                      }
+                      return;
+                    }
                     remove(config.entity, selected.id);
                     setSelectedId(null);
                     setConfirmDelete(false);
@@ -2453,14 +4064,20 @@ export function WorkspacePage({ item }: Props) {
             <div className="form-modal-body">
               <div className="form-grid">
                 {config.fields.map(field => {
-                  if (config.entity === 'contacts' && field.key === 'organization') {
+                  if (
+                    (config.entity === 'contacts' && field.key === 'organization') ||
+                    (config.entity === 'opportunities' && field.key === 'customer') ||
+                    (config.entity === 'quotes' && field.key === 'customer') ||
+                    (config.entity === 'salesOrders' && field.key === 'customer') ||
+                    (config.entity === 'invoices' && field.key === 'customer')
+                  ) {
                     return (
                       <OrganizationSelectField
-                        key="contact-organization-select"
+                        key={`${config.entity}-organization-select`}
                         label={field.label}
                         required={field.required}
                         value={form.accountId || ''}
-                        organizationName={form.organization || ''}
+                        organizationName={form.customer || form.organization || ''}
                         accounts={availableAccounts}
                         loading={loadingAccounts}
                         error={accountsFetchError}
@@ -2469,6 +4086,7 @@ export function WorkspacePage({ item }: Props) {
                           setForm(old => ({
                             ...old,
                             accountId: accId,
+                            customer: accName,
                             organization: accName,
                           }));
                         }}

@@ -168,6 +168,39 @@ class SLAService:
         return SLAPolicyResponse.model_validate(policy)
 
     @staticmethod
+    async def delete_policy(
+        db: AsyncSession,
+        policy_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        actor_id: Optional[uuid.UUID] = None,
+        actor_name: Optional[str] = None
+    ) -> None:
+        stmt = select(SLAPolicy).where(
+            SLAPolicy.id == policy_id,
+            SLAPolicy.tenant_id == tenant_id,
+            SLAPolicy.deleted_at.is_(None)
+        )
+        res = await db.execute(stmt)
+        policy = res.scalar_one_or_none()
+        if not policy:
+            raise NotFoundException("SLA policy not found.")
+
+        policy.deleted_at = datetime.now(timezone.utc)
+        policy.is_active = False
+        await db.commit()
+
+        await audit_service.log_event(
+            db=db,
+            action="sla_policy.deleted",
+            resource_type="sla_policy",
+            resource_id=str(policy.id),
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            actor_name=actor_name,
+            metadata={"ref": policy.ref}
+        )
+
+    @staticmethod
     async def calculate_deadlines(
         db: AsyncSession,
         tenant_id: uuid.UUID,

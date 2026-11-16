@@ -218,13 +218,18 @@ async def test_quote_lifecycle_approvals_and_revisions(client: AsyncClient):
     quote_approval = next(a for a in approvals if a["entity_id"] == quote_id)
     assert quote_approval["status"] == "Pending"
 
-    # Manager approves quote
-    dec_resp = await client.post(f"/api/v1/quotes/{quote_id}/approve", json={
-        "approved": True,
-        "comments": "Strategic aerospace account authorized by VP Sales."
+    # Manager approves via Approvals endpoint
+    dec_resp = await client.post(f"/api/v1/approvals/{quote_approval['id']}/decision", json={
+        "decision": "approve",
+        "notes": "Strategic aerospace account authorized by VP Sales."
     }, headers=headers)
     assert dec_resp.status_code == 200
     assert dec_resp.json()["status"] == "Approved"
+
+    # Verify underlying Quote status is updated to Approved
+    q_check = await client.get(f"/api/v1/quotes/{quote_id}", headers=headers)
+    assert q_check.status_code == 200
+    assert q_check.json()["status"] == "Approved"
 
     # Direct edit on Approved quote is prohibited (locked!)
     patch_resp = await client.patch(f"/api/v1/quotes/{quote_id}", json={
@@ -369,3 +374,93 @@ async def test_quote_acceptance_order_conversion_and_invoicing(client: AsyncClie
     inv_full = pay2_resp.json()
     assert inv_full["status"] == "Paid"
     assert float(inv_full["balance_due"]) == 0.00
+
+
+@pytest.mark.asyncio
+async def test_sales_direct_crud_and_soft_delete(client: AsyncClient):
+    """
+    Verifies direct creation and soft deletion of Sales Orders, Invoices, Price Books, and Quotes.
+    """
+    reg = await client.post("/api/v1/auth/register", json={
+        "organization_name": "Titanium Aerospace Systems",
+        "tenant_slug": "titanium-aero-crud",
+        "first_name": "Marcus",
+        "last_name": "Vance",
+        "email": "marcus@titanium-aero.example",
+        "password": "Password123!"
+    })
+    assert reg.status_code == 201
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create account
+    acc = (await client.post("/api/v1/accounts", json={"name": "Delta Avionics Global"}, headers=headers)).json()
+    acc_id = acc["id"]
+
+    # 1. Price Book direct create and delete
+    pb_resp = await client.post("/api/v1/price-books", json={
+        "name": "Aerospace Tier 1 Pricing",
+        "currency": "USD",
+        "is_default": False
+    }, headers=headers)
+    assert pb_resp.status_code == 201
+    pb_id = pb_resp.json()["id"]
+
+    del_pb = await client.delete(f"/api/v1/price-books/{pb_id}", headers=headers)
+    assert del_pb.status_code == 204
+
+    # 2. Quote direct create and delete
+    q_resp = await client.post("/api/v1/quotes", json={
+        "name": "Avionics Refit Quote",
+        "account_id": acc_id,
+        "currency": "USD",
+        "lines": [{
+            "item_name": "Turbine Controller Unit",
+            "quantity": 2,
+            "unit_price": 5000.00,
+            "discount_pct": 0.00,
+            "tax_rate": 0.00
+        }]
+    }, headers=headers)
+    assert q_resp.status_code == 201
+    q_id = q_resp.json()["id"]
+
+    del_q = await client.delete(f"/api/v1/quotes/{q_id}", headers=headers)
+    assert del_q.status_code == 204
+
+    # 3. Direct Sales Order create and delete
+    so_resp = await client.post("/api/v1/sales-orders", json={
+        "name": "Direct Avionics Work Order",
+        "account_id": acc_id,
+        "currency": "USD",
+        "warehouse_location": "Kingston Logistics Hub",
+        "lines": [{
+            "item_name": "Flight Telemetry Module",
+            "quantity": 1,
+            "unit_price": 12000.00,
+            "discount_pct": 0.00,
+            "tax_rate": 0.00
+        }]
+    }, headers=headers)
+    assert so_resp.status_code == 201
+    so_id = so_resp.json()["id"]
+    assert so_resp.json()["ref"].startswith("SO-")
+
+    del_so = await client.delete(f"/api/v1/sales-orders/{so_id}", headers=headers)
+    assert del_so.status_code == 204
+
+    # 4. Direct Invoice create and delete
+    inv_resp = await client.post("/api/v1/invoices", json={
+        "name": "Direct Service Fee Invoice",
+        "account_id": acc_id,
+        "issue_date": "2026-11-16",
+        "due_date": "2026-12-16",
+        "total_amount": 7500.00,
+        "currency": "USD"
+    }, headers=headers)
+    assert inv_resp.status_code == 201
+    inv_id = inv_resp.json()["id"]
+    assert inv_resp.json()["ref"].startswith("INV-")
+
+    del_inv = await client.delete(f"/api/v1/invoices/{inv_id}", headers=headers)
+    assert del_inv.status_code == 204

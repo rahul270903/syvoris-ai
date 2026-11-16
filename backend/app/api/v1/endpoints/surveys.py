@@ -124,3 +124,23 @@ async def get_survey(
         raise ValidationException("No active organization context.")
 
     return await FeedbackService.get_survey(db, survey_id=id, tenant_id=tenant_id)
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_survey(
+    id: uuid.UUID,
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_permission("surveys:write")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Soft delete a customer survey."""
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    await FeedbackService.delete_survey(
+        db=db,
+        survey_id=id,
+        tenant_id=tenant_id,
+        actor_id=current_user.id,
+        actor_name=current_user.full_name
+    )

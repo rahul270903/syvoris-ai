@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.models.user import User
 from app.api.deps import (
+    get_current_user,
     get_current_active_tenant_id,
     require_permission
 )
-from app.schemas.sales import ApprovalRequestResponse
+from app.schemas.sales import ApprovalRequestResponse, ApprovalDecisionRequest
 from app.schemas.crm import PaginatedList
 from app.services.approval_service import approval_service
 from app.core.errors import ValidationException
@@ -62,4 +64,27 @@ async def get_approval(
         session=db,
         tenant_id=tenant_id,
         approval_id=id
+    )
+
+@router.post("/{id}/decision", response_model=ApprovalRequestResponse)
+async def decide_approval(
+    id: uuid.UUID,
+    data: ApprovalDecisionRequest,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("quotes:approve")),
+    db: AsyncSession = Depends(get_db)
+):
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    approver_name = f"{current_user.first_name} {current_user.last_name}".strip() or current_user.email
+    return await approval_service.decide_approval(
+        session=db,
+        tenant_id=tenant_id,
+        approval_id=id,
+        decision=data.decision,
+        comments=data.notes or data.comments,
+        approver_id=current_user.id,
+        approver_name=approver_name
     )

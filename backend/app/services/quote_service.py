@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional, Tuple, Dict, Any
 from decimal import Decimal
 from sqlalchemy import select, func, and_, or_, desc
@@ -190,7 +190,7 @@ class QuoteService:
             contact_id=data.contact_id,
             price_book_id=data.price_book_id,
             status=status,
-            valid_until=data.valid_until,
+            valid_until=data.valid_until or (date.today() + timedelta(days=30)),
             currency=data.currency,
             header_discount_pct=cpq_calc.header_discount_pct,
             subtotal=cpq_calc.subtotal,
@@ -670,5 +670,27 @@ class QuoteService:
         order.contact = quote.contact
         order.opportunity = opp
         return order
+
+    async def delete_quote(
+        self,
+        session: AsyncSession,
+        tenant_id: uuid.UUID,
+        quote_id: uuid.UUID,
+        actor_id: Optional[uuid.UUID] = None
+    ) -> None:
+        quote = await self.get_quote(session, tenant_id, quote_id)
+        if quote.status == "Accepted":
+            raise ValidationException("Cannot delete an accepted quotation.")
+        quote.deleted_at = datetime.now(timezone.utc)
+        await session.commit()
+        await audit_service.log_event(
+            session,
+            action="quote.deleted",
+            resource_type="quote",
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            resource_id=str(quote.id),
+            metadata={"ref": quote.ref, "name": quote.name}
+        )
 
 quote_service = QuoteService()
