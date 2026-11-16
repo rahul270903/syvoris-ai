@@ -132,6 +132,10 @@ STANDARD_PERMISSIONS: List[Dict[str, str]] = [
     {"code": "webhooks:read", "module": "integrations", "description": "View outbound webhook subscriptions, delivery logs and dead-letter queues"},
     {"code": "webhooks:write", "module": "integrations", "description": "Create, edit, retry, and delete webhook subscriptions and deliveries"},
 
+    # SaaS Commercialization, Metering & Billing (Phase 9)
+    {"code": "billing:read", "module": "billing", "description": "View tenant subscription plan, billing history, and usage meters"},
+    {"code": "billing:manage", "module": "billing", "description": "Upgrade or downgrade subscription plans, manage Stripe portal, and configure payment methods"},
+
     # Global SuperAdmin
     {"code": "platform:admin", "module": "platform", "description": "SaaS SuperAdmin global control"},
 ]

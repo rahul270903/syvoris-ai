@@ -34,7 +34,8 @@ from app.api.v1.endpoints import (
     workflows,
     ai,
     analytics,
-    integrations
+    integrations,
+    billing
 )
 
 api_router = APIRouter()
@@ -89,3 +90,7 @@ api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytic
 
 # Integrations, Webhook Fabric & Radium ERP Workstream (Phase 8)
 api_router.include_router(integrations.router, prefix="/integrations", tags=["Integrations & Webhooks"])
+
+# SaaS Commercialization, Metering & Billing Workstream (Phase 9)
+api_router.include_router(billing.router, prefix="/billing", tags=["SaaS Commercialization & Metering"])
+api_router.include_router(billing.router, prefix="/admin/billing", tags=["SaaS Commercialization & Metering Alias"])

@@ -66,6 +66,12 @@ from app.models.integration import (
     WebhookDelivery,
     RadiumSyncLog,
 )
+from app.models.billing import (
+    TenantSubscription,
+    TenantUsageMeter,
+    UsageEvent,
+    StripeEventLog,
+)
 
 __all__ = [
     "Base",
@@ -154,4 +160,8 @@ __all__ = [
     "WebhookSubscription",
     "WebhookDelivery",
     "RadiumSyncLog",
+    "TenantSubscription",
+    "TenantUsageMeter",
+    "UsageEvent",
+    "StripeEventLog",
 ]

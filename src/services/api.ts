@@ -1829,6 +1829,68 @@ export interface RadiumStatusResponse {
   active_mappings_count: number;
 }
 
+// Phase 9: SaaS Commercialization, Metering & Subscriptions
+export interface CommercialPlanItem {
+  tier: string;
+  name: string;
+  description: string;
+  monthly_price: number;
+  annual_price_per_month: number;
+  currency: string;
+  seats_limit: number;
+  storage_gb: number;
+  ai_tokens_limit: number;
+  api_calls_limit: number;
+  features: string[];
+}
+
+export interface TenantSubscriptionItem {
+  id: string;
+  tenant_id: string;
+  stripe_customer_id: string;
+  stripe_subscription_id?: string | null;
+  plan_tier: string;
+  billing_cycle: string;
+  status: string;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at?: string | null;
+  trial_ends_at?: string | null;
+  created_at: string;
+}
+
+export interface TenantUsageMeterItem {
+  id: string;
+  tenant_id: string;
+  billing_period_start: string;
+  billing_period_end: string;
+  seats_limit: number;
+  seats_used: number;
+  storage_bytes_limit: number;
+  storage_bytes_used: number;
+  storage_gb_used: number;
+  ai_tokens_limit: number;
+  ai_tokens_used: number;
+  api_calls_limit: number;
+  api_calls_used: number;
+  seats_percent: number;
+  storage_percent: number;
+  ai_tokens_percent: number;
+  api_calls_percent: number;
+}
+
+export interface CheckoutSessionResponse {
+  session_id: string;
+  checkout_url: string;
+  plan_tier: string;
+  billing_cycle: string;
+}
+
+export interface CustomerPortalResponse {
+  portal_url: string;
+}
+
 class ApiClient {
   private getAccessToken(): string | null {
     return localStorage.getItem('syvoris:access_token');
@@ -4082,6 +4144,52 @@ class ApiClient {
 
   public async getRadiumStatus(): Promise<RadiumStatusResponse> {
     return this.request<RadiumStatusResponse>('/integrations/radium/status');
+  }
+
+  // --- Phase 9: SaaS Commercialization, Metering & Subscriptions ---
+
+  public async getBillingPlans(): Promise<CommercialPlanItem[]> {
+    return this.request<CommercialPlanItem[]>('/billing/plans');
+  }
+
+  public async getSubscription(): Promise<TenantSubscriptionItem> {
+    return this.request<TenantSubscriptionItem>('/billing/subscription');
+  }
+
+  public async createCheckoutSession(payload: {
+    plan_tier: string;
+    billing_cycle?: string;
+    success_url?: string;
+    cancel_url?: string;
+  }): Promise<CheckoutSessionResponse> {
+    return this.request<CheckoutSessionResponse>('/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async createCustomerPortal(payload?: { return_url?: string }): Promise<CustomerPortalResponse> {
+    return this.request<CustomerPortalResponse>('/billing/portal', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    });
+  }
+
+  public async getUsageMeters(): Promise<TenantUsageMeterItem> {
+    return this.request<TenantUsageMeterItem>('/billing/usage');
+  }
+
+  public async recordUsage(payload: {
+    meter_type: string;
+    quantity: number;
+    idempotency_key?: string;
+    description?: string;
+    metadata?: Record<string, any>;
+  }): Promise<any> {
+    return this.request<any>('/billing/usage/record', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 }
 

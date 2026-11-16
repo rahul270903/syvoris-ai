@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: syvoris-backend-svc
+  namespace: syvoris-production
+  labels:
+    app.kubernetes.io/name: syvoris-backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+  selector:
+    app.kubernetes.io/name: syvoris-backend
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: syvoris-frontend-svc
+  namespace: syvoris-production
+  labels:
+    app.kubernetes.io/name: syvoris-frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  selector:
+    app.kubernetes.io/name: syvoris-frontend

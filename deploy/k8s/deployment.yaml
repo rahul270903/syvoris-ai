@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: syvoris-backend
+  namespace: syvoris-production
+  labels:
+    app.kubernetes.io/name: syvoris-backend
+    app.kubernetes.io/part-of: syvoris-ai
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: syvoris-backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: syvoris-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+        - name: backend
+          image: ghcr.io/rahul270903/syvoris-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: syvoris-config
+            - secretRef:
+                name: syvoris-secrets
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: syvoris-frontend
+  namespace: syvoris-production
+  labels:
+    app.kubernetes.io/name: syvoris-frontend
+    app.kubernetes.io/part-of: syvoris-ai
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: syvoris-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: syvoris-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/rahul270903/syvoris-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

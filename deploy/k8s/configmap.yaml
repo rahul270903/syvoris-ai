@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: syvoris-config
+  namespace: syvoris-production
+data:
+  PROJECT_NAME: "SYVORIS Ai Enterprise CRM"
+  POSTGRES_RLS_ENABLED: "true"
+  CORS_ORIGINS: '["https://crm.syvoris.ai"]'
+  STRIPE_PUBLIC_KEY: "pk_live_syvoris_production"

@@ -36,6 +36,7 @@ import { ProjectAnalyticsView } from './ProjectAnalyticsView';
 import { ServiceDashboardView } from './ServiceDashboardView';
 import { LeadCaptureView } from './LeadCaptureView';
 import { LeadQualificationView } from './LeadQualificationView';
+import { BillingWorkspace } from '../billing/BillingWorkspace';
 import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
@@ -3221,6 +3222,15 @@ export function WorkspacePage({ item }: Props) {
     return (
       <div className="workspace-page">
         <AuditTrailView />
+      </div>
+    );
+  }
+
+  // SAAS COMMERCIALIZATION, BILLING & SUBSCRIPTIONS VIEW
+  if (item.path === '/admin/integrations') {
+    return (
+      <div className="workspace-page">
+        <BillingWorkspace />
       </div>
     );
   }
