@@ -119,6 +119,13 @@ STANDARD_PERMISSIONS: List[Dict[str, str]] = [
     {"code": "workflows:read", "module": "workflows", "description": "View automated workflow triggers, rules and execution logs"},
     {"code": "workflows:write", "module": "workflows", "description": "Create, edit, toggle and execute automated workflows and approval rules"},
 
+    # Analytics, Reporting & Governed AI Intelligence (Phase 7)
+    {"code": "ai:read", "module": "ai", "description": "Access Copilot chat, view specialist workforce and proposals"},
+    {"code": "ai:manage", "module": "ai", "description": "Configure agent autonomy levels, prompt parameters and tools"},
+    {"code": "ai:proposals:decide", "module": "ai", "description": "Approve or reject high-risk AI proposals and actions"},
+    {"code": "analytics:read", "module": "analytics", "description": "View sales forecast rollups and revenue digital twin simulations"},
+    {"code": "reports:write", "module": "analytics", "description": "Create, customize and publish custom business reports"},
+
     # Global SuperAdmin
     {"code": "platform:admin", "module": "platform", "description": "SaaS SuperAdmin global control"},
 ]

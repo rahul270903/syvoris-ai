@@ -1626,6 +1626,112 @@ export interface ApprovalRuleItem {
   updated_at: string;
 }
 
+// --- AI Intelligence & Analytics Types (Phase 7) ---
+
+export interface AIAgentItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  persona: string;
+  module: string;
+  role_description?: string | null;
+  autonomy_level: 'Suggest Only' | 'Act with Approval' | 'Act Autonomously' | string;
+  status: 'Active' | 'Paused' | 'Disabled' | string;
+  system_prompt?: string | null;
+  tool_permissions: string[];
+  primary_kpi?: string | null;
+  owner_id?: string | null;
+  owner_name?: string | null;
+  metrics: {
+    proposals_count?: number;
+    approved_count?: number;
+    accuracy_score?: number;
+    [key: string]: any;
+  };
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AIProposalItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  agent_id: string;
+  agent_name: string;
+  action: string;
+  reasoning: string;
+  evidence?: string | null;
+  confidence?: number | null;
+  policy_check: string;
+  status: 'Pending Approval' | 'Approved' | 'Rejected' | 'Executed' | string;
+  payload: Record<string, any>;
+  decided_by_id?: string | null;
+  decided_by_name?: string | null;
+  decided_at?: string | null;
+  decision_notes?: string | null;
+  created_at: string;
+}
+
+export interface AIChatMessageItem {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  grounding_sources: Record<string, any>[];
+  suggested_links: { label: string; path: string }[];
+  token_count: number;
+  created_at: string;
+}
+
+export interface AIChatQueryResponse {
+  session_id: string;
+  reply: AIChatMessageItem;
+  provider_used: string;
+}
+
+export interface RevenueTwinSimulateResult {
+  baseline_weighted_value: number;
+  simulated_weighted_value: number;
+  delta_value: number;
+  open_pipeline_total: number;
+  open_deals_count: number;
+  probability_uplift: number;
+  launch_delay_days: number;
+  discount_pct: number;
+  summary_commentary: string;
+}
+
+export interface RevenueScenarioItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  description?: string | null;
+  probability_uplift: number;
+  launch_delay_days: number;
+  discount_pct: number;
+  baseline_pipeline_value: number;
+  projected_pipeline_value: number;
+  delta_value: number;
+  assumptions: Record<string, any>;
+  status: string;
+  created_by_name?: string | null;
+  created_at: string;
+}
+
+export interface ForecastSummaryItem {
+  total_pipeline: number;
+  weighted_pipeline: number;
+  commit_value: number;
+  best_case_value: number;
+  closed_won_value: number;
+  closed_lost_value: number;
+  quota_attainment_pct: number;
+  by_category: Record<string, number>;
+  by_stage: Record<string, number>;
+}
+
 class ApiClient {
   private getAccessToken(): string | null {
     return localStorage.getItem('syvoris:access_token');
@@ -3689,6 +3795,102 @@ class ApiClient {
     return this.request<void>(`/workflows/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // --- AI Intelligence & Governed Workforce (Phase 7) ---
+
+  public async listAIAgents(params?: {
+    persona?: string;
+    module?: string;
+    autonomy_level?: string;
+    status?: string;
+  }): Promise<AIAgentItem[]> {
+    const q = new URLSearchParams();
+    if (params?.persona) q.set('persona', params.persona);
+    if (params?.module) q.set('module', params.module);
+    if (params?.autonomy_level) q.set('autonomy_level', params.autonomy_level);
+    if (params?.status) q.set('status', params.status);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<AIAgentItem[]>(`/ai/agents${qs}`);
+  }
+
+  public async getAIAgent(id: string): Promise<AIAgentItem> {
+    return this.request<AIAgentItem>(`/ai/agents/${id}`);
+  }
+
+  public async updateAIAgent(id: string, payload: Partial<AIAgentItem>): Promise<AIAgentItem> {
+    return this.request<AIAgentItem>(`/ai/agents/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async listAIProposals(params?: { status?: string; agent_id?: string }): Promise<AIProposalItem[]> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set('status', params.status);
+    if (params?.agent_id) q.set('agent_id', params.agent_id);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<AIProposalItem[]>(`/ai/proposals${qs}`);
+  }
+
+  public async createAIProposal(payload: Partial<AIProposalItem>): Promise<AIProposalItem> {
+    return this.request<AIProposalItem>('/ai/proposals', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async decideAIProposal(id: string, payload: { approved: boolean; notes?: string }): Promise<AIProposalItem> {
+    return this.request<AIProposalItem>(`/ai/proposals/${id}/decide`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async chatWithCopilot(payload: {
+    message: string;
+    session_id?: string;
+    provider?: string;
+  }): Promise<AIChatQueryResponse> {
+    return this.request<AIChatQueryResponse>('/ai/copilot/chat', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async simulateRevenueTwin(params?: {
+    probability_uplift?: number;
+    launch_delay_days?: number;
+    discount_pct?: number;
+  }): Promise<RevenueTwinSimulateResult> {
+    const q = new URLSearchParams();
+    if (params?.probability_uplift !== undefined) q.set('probability_uplift', String(params.probability_uplift));
+    if (params?.launch_delay_days !== undefined) q.set('launch_delay_days', String(params.launch_delay_days));
+    if (params?.discount_pct !== undefined) q.set('discount_pct', String(params.discount_pct));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<RevenueTwinSimulateResult>(`/ai/revenue-twin/simulate${qs}`);
+  }
+
+  public async saveRevenueScenario(payload: {
+    name: string;
+    description?: string;
+    probability_uplift?: number;
+    launch_delay_days?: number;
+    discount_pct?: number;
+    assumptions?: Record<string, any>;
+  }): Promise<RevenueScenarioItem> {
+    return this.request<RevenueScenarioItem>('/ai/revenue-twin/scenarios', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async listRevenueScenarios(): Promise<RevenueScenarioItem[]> {
+    return this.request<RevenueScenarioItem[]>('/ai/revenue-twin/scenarios');
+  }
+
+  public async getForecastSummary(): Promise<ForecastSummaryItem> {
+    return this.request<ForecastSummaryItem>('/analytics/forecast');
   }
 }
 

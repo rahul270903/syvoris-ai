@@ -52,6 +52,14 @@ from app.models.catalog import (
     VendorProfile,
     VendorProduct,
 )
+from app.models.ai import (
+    AIAgent,
+    AIProposal,
+    AIChatSession,
+    AIChatMessage,
+    RevenueScenario,
+    CustomReport,
+)
 
 __all__ = [
     "Base",
@@ -130,4 +138,10 @@ __all__ = [
     "StockMovement",
     "VendorProfile",
     "VendorProduct",
+    "AIAgent",
+    "AIProposal",
+    "AIChatSession",
+    "AIChatMessage",
+    "RevenueScenario",
+    "CustomReport",
 ]

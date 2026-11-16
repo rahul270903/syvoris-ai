@@ -31,7 +31,9 @@ from app.api.v1.endpoints import (
     catalog,
     inventory,
     vendors,
-    workflows
+    workflows,
+    ai,
+    analytics
 )
 
 api_router = APIRouter()
@@ -79,3 +81,7 @@ api_router.include_router(catalog.router, tags=["Catalogue Direct Aliases"])
 api_router.include_router(inventory.router, prefix="/inventory", tags=["Tax & Inventory Management"])
 api_router.include_router(vendors.router, prefix="/vendors", tags=["Vendor Management"])
 api_router.include_router(vendors.router, prefix="/catalog/vendors", tags=["Vendor Management"])
+
+# AI Intelligence & Analytics Workstream (Phase 7)
+api_router.include_router(ai.router, prefix="/ai", tags=["Governed AI Intelligence & Workforce"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics & Revenue Forecasting"])
