@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Workflow, Play, Pause, Plus, Check, X,
-  ArrowRight, ShieldCheck, Zap, Bell, CheckCircle2,
-  FolderKanban, Ticket, Mail, RefreshCw
+  Play, Pause, Plus, Check, X,
+  ShieldCheck, Zap, CheckCircle2,
+  RefreshCw, FastForward
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { SectionHeading } from '../../components/SectionHeading';
 import { StatusPill } from '../../components/StatusPill';
+import { api, WorkflowItem } from '../../services/api';
 
 interface AutomationRule {
   id: string;
+  ref?: string;
   name: string;
   trigger: string;
   condition: string;
@@ -23,6 +25,7 @@ interface AutomationRule {
 const defaultRules: AutomationRule[] = [
   {
     id: 'wf-1',
+    ref: 'WF-DEF-001',
     name: 'Strategic Lead Auto-Assignment',
     category: 'Sales',
     trigger: 'Event: lead.created',
@@ -34,6 +37,7 @@ const defaultRules: AutomationRule[] = [
   },
   {
     id: 'wf-2',
+    ref: 'WF-DEF-002',
     name: 'Discount Governance & Approval Escalation',
     category: 'CPQ',
     trigger: 'Event: quote.submitted',
@@ -45,6 +49,7 @@ const defaultRules: AutomationRule[] = [
   },
   {
     id: 'wf-3',
+    ref: 'WF-DEF-003',
     name: 'Closed-Won Deal Delivery Handover',
     category: 'Delivery',
     trigger: 'Event: deal.stage_changed (Closed Won)',
@@ -56,6 +61,7 @@ const defaultRules: AutomationRule[] = [
   },
   {
     id: 'wf-4',
+    ref: 'WF-DEF-004',
     name: 'High-Priority Case SLA Escalation',
     category: 'Service',
     trigger: 'Timer: case.inactivity > 3 hours',
@@ -67,6 +73,7 @@ const defaultRules: AutomationRule[] = [
   },
   {
     id: 'wf-5',
+    ref: 'WF-DEF-005',
     name: 'New Client Onboarding Journey Enrollment',
     category: 'Marketing',
     trigger: 'Event: order.fulfilled',
@@ -82,6 +89,7 @@ export function WorkflowDesignerView() {
   const { addEvent, addAudit } = useCRM();
 
   const [rules, setRules] = useState<AutomationRule[]>(defaultRules);
+  const [loading, setLoading] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newRule, setNewRule] = useState({
     name: '',
@@ -91,47 +99,137 @@ export function WorkflowDesignerView() {
     action: 'Action: Send instant notification to rep',
   });
   const [toast, setToast] = useState('');
+  const [executingId, setExecutingId] = useState<string | null>(null);
 
   const notify = (msg: string) => {
     setToast(msg);
-    window.setTimeout(() => setToast(''), 3000);
+    window.setTimeout(() => setToast(''), 3500);
   };
 
-  const toggleStatus = (id: string) => {
+  const transformApiWorkflow = (w: WorkflowItem): AutomationRule => ({
+    id: w.id,
+    ref: w.ref,
+    name: w.name,
+    category: (['Sales', 'CPQ', 'Service', 'Delivery', 'Marketing'].includes(w.category)
+      ? w.category
+      : 'Sales') as AutomationRule['category'],
+    trigger: w.trigger_type === 'event' ? `Event: ${w.trigger_event}` : `${w.trigger_type}: ${w.trigger_event}`,
+    condition: w.condition_expression ? `Filter: ${w.condition_expression}` : 'Filter: Default evaluate',
+    action: w.action_summary ? `Action: ${w.action_summary}` : 'Action: Standard automated sequence',
+    status: w.status === 'Active' ? 'Active' : 'Paused',
+    executionsThisWeek: w.executions_count || 0,
+    lastRun: w.last_executed_at ? new Date(w.last_executed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never',
+  });
+
+  const loadWorkflows = async () => {
+    setLoading(true);
+    try {
+      const res = await api.listWorkflows({ limit: 100 });
+      if (res && res.items && res.items.length > 0) {
+        setRules(res.items.map(transformApiWorkflow));
+      }
+    } catch {
+      // Gracefully preserve current rules if offline or mock environment
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWorkflows();
+  }, []);
+
+  const toggleStatus = async (id: string) => {
+    const target = rules.find(r => r.id === id);
+    const nextStatus = target?.status === 'Active' ? 'Paused' : 'Active';
+
+    // Optimistic UI update
     setRules(prev =>
-      prev.map(r => {
-        if (r.id === id) {
-          const next = r.status === 'Active' ? 'Paused' : 'Active';
-          addAudit('Workflow Rule Toggled', 'Demo User', `${r.name}: ${next}`);
-          notify(`Workflow "${r.name}" set to ${next}.`);
-          return { ...r, status: next };
-        }
-        return r;
-      })
+      prev.map(r => (r.id === id ? { ...r, status: nextStatus } : r))
     );
+
+    try {
+      await api.toggleWorkflowStatus(id);
+      addAudit('Workflow Rule Toggled', 'User', `${target?.name}: ${nextStatus}`);
+      notify(`Workflow "${target?.name || id}" set to ${nextStatus}.`);
+    } catch {
+      // If API error or offline mode, keep state and log audit
+      addAudit('Workflow Rule Toggled', 'Demo User', `${target?.name}: ${nextStatus}`);
+      notify(`Workflow "${target?.name || id}" set to ${nextStatus} (local state).`);
+    }
   };
 
-  const handleCreateRule = () => {
+  const handleTestExecute = async (rule: AutomationRule) => {
+    setExecutingId(rule.id);
+    try {
+      const simPayload = {
+        payload: {
+          lead_score: 95,
+          company_revenue: 15000000,
+          employee_count: 350,
+          discount_pct: 18,
+          priority: 'High'
+        }
+      };
+      const exec = await api.executeWorkflow(rule.id, simPayload);
+      notify(`Execution triggered: ${exec.status} in ${exec.duration_ms}ms (${exec.execution_log.length} steps).`);
+      setRules(prev =>
+        prev.map(r => (r.id === rule.id ? { ...r, executionsThisWeek: r.executionsThisWeek + 1, lastRun: 'Just now' } : r))
+      );
+    } catch {
+      notify(`Simulated execution recorded for "${rule.name}".`);
+      setRules(prev =>
+        prev.map(r => (r.id === rule.id ? { ...r, executionsThisWeek: r.executionsThisWeek + 1, lastRun: 'Just now' } : r))
+      );
+    } finally {
+      setExecutingId(null);
+    }
+  };
+
+  const handleCreateRule = async () => {
     if (!newRule.name.trim()) {
       notify('Workflow name is required.');
       return;
     }
-    const created: AutomationRule = {
-      id: `wf-${Date.now()}`,
-      name: newRule.name.trim(),
-      category: newRule.category,
-      trigger: newRule.trigger,
-      condition: newRule.condition,
-      action: newRule.action,
-      status: 'Active',
-      executionsThisWeek: 0,
-      lastRun: 'Never',
-    };
-    setRules(prev => [...prev, created]);
+
+    const cleanTrigger = newRule.trigger.replace(/^Event:\s*/i, '').trim();
+    const cleanCondition = newRule.condition.replace(/^Filter:\s*/i, '').trim();
+    const cleanAction = newRule.action.replace(/^Action:\s*/i, '').trim();
+
+    try {
+      const createdItem = await api.createWorkflow({
+        name: newRule.name.trim(),
+        category: newRule.category,
+        trigger_type: 'event',
+        trigger_event: cleanTrigger || 'lead.created',
+        condition_expression: cleanCondition,
+        action_summary: cleanAction,
+        status: 'Active',
+        actions: [{ type: 'notification', description: cleanAction }]
+      });
+
+      const transformed = transformApiWorkflow(createdItem);
+      setRules(prev => [transformed, ...prev]);
+      notify(`Workflow "${transformed.name}" created and deployed.`);
+    } catch {
+      const fallbackRule: AutomationRule = {
+        id: `wf-${Date.now()}`,
+        name: newRule.name.trim(),
+        category: newRule.category,
+        trigger: newRule.trigger,
+        condition: newRule.condition,
+        action: newRule.action,
+        status: 'Active',
+        executionsThisWeek: 0,
+        lastRun: 'Never',
+      };
+      setRules(prev => [fallbackRule, ...prev]);
+      notify(`Workflow "${fallbackRule.name}" created and activated.`);
+    }
+
     setShowAddModal(false);
-    addEvent('workflow.created', { ref: created.id }, `Created automation workflow: ${created.name}`);
-    addAudit('Workflow Automation Created', 'Demo User', created.name);
-    notify(`Workflow "${created.name}" created and activated.`);
+    addEvent('workflow.created', { ref: newRule.name }, `Created automation workflow: ${newRule.name}`);
+    addAudit('Workflow Automation Created', 'User', newRule.name);
     setNewRule({
       name: '',
       category: 'Sales',
@@ -149,6 +247,15 @@ export function WorkflowDesignerView() {
         subtitle="Configure event-driven business rules, automated task handoffs and customer journey triggers."
         action={
           <div className="flex items-center gap-2">
+            <button
+              onClick={loadWorkflows}
+              disabled={loading}
+              className="btn secondary flex items-center gap-1.5 text-xs py-1.5 px-3"
+              title="Refresh workflows from live engine"
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="btn primary flex items-center gap-1.5 text-xs py-1.5 px-3"
@@ -175,6 +282,11 @@ export function WorkflowDesignerView() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-slate-900">{rule.name}</span>
+                  {rule.ref && (
+                    <span className="text-[10px] bg-sky-50 text-sky-700 font-mono px-1.5 py-0.5 rounded border border-sky-100">
+                      {rule.ref}
+                    </span>
+                  )}
                   <span className="text-[10px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded">
                     {rule.category}
                   </span>
@@ -186,6 +298,15 @@ export function WorkflowDesignerView() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleTestExecute(rule)}
+                  disabled={executingId === rule.id || rule.status !== 'Active'}
+                  className="btn secondary text-xs py-1 px-2.5 flex items-center gap-1 hover:bg-slate-100"
+                  title="Test-run this workflow with synthetic payload"
+                >
+                  <FastForward size={13} className={executingId === rule.id ? 'animate-pulse text-sky-600' : ''} />
+                  <span>Test Run</span>
+                </button>
                 <button
                   onClick={() => toggleStatus(rule.id)}
                   className={`btn text-xs py-1 px-3 flex items-center gap-1 ${

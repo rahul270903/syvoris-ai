@@ -30,7 +30,8 @@ from app.api.v1.endpoints import (
     projects,
     catalog,
     inventory,
-    vendors
+    vendors,
+    workflows
 )
 
 api_router = APIRouter()
@@ -68,6 +69,8 @@ api_router.include_router(sla.router, prefix="/service/sla", tags=["SLA Policies
 api_router.include_router(knowledge.router, prefix="/knowledge", tags=["Knowledge Base"])
 api_router.include_router(surveys.router, prefix="/surveys", tags=["Surveys & Feedback"])
 api_router.include_router(projects.router, prefix="/projects", tags=["Project Management"])
+api_router.include_router(workflows.router, prefix="/workflows", tags=["Visual Workflow Automation"])
+api_router.include_router(workflows.router, prefix="/admin/workflows", tags=["Visual Workflow Automation Alias"])
 
 # Product & Service Catalogue, Pricing & Inventory Workstream
 api_router.include_router(catalog.router, prefix="/catalog", tags=["Product & Service Catalogue"])

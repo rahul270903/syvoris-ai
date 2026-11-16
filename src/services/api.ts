@@ -1565,6 +1565,67 @@ export interface ProjectAnalyticsSummary {
   overallocated_resources: number;
 }
 
+// --- Workflow Automation & Approval Engine Types (Phase 6) ---
+
+export interface WorkflowItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  description?: string | null;
+  category: string;
+  trigger_type: string;
+  trigger_event: string;
+  trigger_config: Record<string, any>;
+  condition_expression?: string | null;
+  conditions: Record<string, any>;
+  action_summary?: string | null;
+  actions: Record<string, any>[];
+  status: 'Active' | 'Paused' | 'Draft' | string;
+  executions_count: number;
+  last_executed_at?: string | null;
+  owner_id?: string | null;
+  owner_name?: string | null;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowExecutionItem {
+  id: string;
+  tenant_id: string;
+  workflow_id: string;
+  ref: string;
+  trigger_event: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  status: 'Success' | 'Failed' | 'Running' | 'Skipped' | string;
+  input_payload: Record<string, any>;
+  execution_log: Record<string, any>[];
+  error_message?: string | null;
+  duration_ms: number;
+  started_at: string;
+  completed_at?: string | null;
+  created_at: string;
+}
+
+export interface ApprovalRuleItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  entity_type: string;
+  condition_type: string;
+  threshold_value: number;
+  required_role: string;
+  escalation_timeout_hours: number;
+  is_active: boolean;
+  description?: string | null;
+  custom_fields: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
 class ApiClient {
   private getAccessToken(): string | null {
     return localStorage.getItem('syvoris:access_token');
@@ -3555,6 +3616,77 @@ class ApiClient {
 
   public async removeVendorProduct(vendorId: string, vendorProductId: string): Promise<void> {
     return this.request<void>(`/vendors/${vendorId}/products/${vendorProductId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // --- Workflow Automation & Approvals (Phase 6) ---
+
+  public async listWorkflows(params?: {
+    q?: string;
+    category?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResult<WorkflowItem>> {
+    const q = new URLSearchParams();
+    if (params?.q) q.set('q', params.q);
+    if (params?.category) q.set('category', params.category);
+    if (params?.status) q.set('status', params.status);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<PaginatedResult<WorkflowItem>>(`/workflows${qs}`);
+  }
+
+  public async getWorkflow(id: string): Promise<WorkflowItem> {
+    return this.request<WorkflowItem>(`/workflows/${id}`);
+  }
+
+  public async createWorkflow(payload: Partial<WorkflowItem>): Promise<WorkflowItem> {
+    return this.request<WorkflowItem>('/workflows', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateWorkflow(id: string, payload: Partial<WorkflowItem>): Promise<WorkflowItem> {
+    return this.request<WorkflowItem>(`/workflows/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async toggleWorkflowStatus(id: string): Promise<WorkflowItem> {
+    return this.request<WorkflowItem>(`/workflows/${id}/toggle`, {
+      method: 'POST',
+    });
+  }
+
+  public async executeWorkflow(id: string, payload?: {
+    payload?: Record<string, any>;
+    entity_type?: string;
+    entity_id?: string;
+  }): Promise<WorkflowExecutionItem> {
+    return this.request<WorkflowExecutionItem>(`/workflows/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    });
+  }
+
+  public async listWorkflowExecutions(id: string, params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResult<WorkflowExecutionItem>> {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<PaginatedResult<WorkflowExecutionItem>>(`/workflows/${id}/executions${qs}`);
+  }
+
+  public async deleteWorkflow(id: string): Promise<void> {
+    return this.request<void>(`/workflows/${id}`, {
       method: 'DELETE',
     });
   }

@@ -115,6 +115,10 @@ STANDARD_PERMISSIONS: List[Dict[str, str]] = [
     {"code": "vendors:read", "module": "catalog", "description": "View vendor profiles and supply catalogs"},
     {"code": "vendors:write", "module": "catalog", "description": "Manage vendor relationships and supply pricing"},
 
+    # Workflow Automation & Approval Engine (Phase 6)
+    {"code": "workflows:read", "module": "workflows", "description": "View automated workflow triggers, rules and execution logs"},
+    {"code": "workflows:write", "module": "workflows", "description": "Create, edit, toggle and execute automated workflows and approval rules"},
+
     # Global SuperAdmin
     {"code": "platform:admin", "module": "platform", "description": "SaaS SuperAdmin global control"},
 ]

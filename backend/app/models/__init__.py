@@ -5,7 +5,8 @@ from app.models.rbac import Role, Permission, UserRole, role_permissions
 from app.models.token import RefreshToken, PasswordResetToken, EmailVerificationToken
 from app.models.audit import AuditEvent
 from app.models.crm import Account, Contact, CRMActivity, Opportunity, Lead, Pipeline, OpportunityStageHistory
-from app.models.sales import Product, PriceBook, PriceBookEntry, Quote, QuoteLineItem, SalesOrder, Invoice
+from app.models.sales import Product, PriceBook, PriceBookEntry, Quote, QuoteLineItem, SalesOrder, Invoice, ApprovalRequest
+from app.models.workflow import Workflow, WorkflowExecution, ApprovalRule
 from app.models.marketing import Campaign, CampaignMember, AudienceSegment, EmailTemplate, MarketingWorkflow
 from app.models.service import (
     Case,
@@ -82,6 +83,10 @@ __all__ = [
     "QuoteLineItem",
     "SalesOrder",
     "Invoice",
+    "ApprovalRequest",
+    "Workflow",
+    "WorkflowExecution",
+    "ApprovalRule",
     "Campaign",
     "CampaignMember",
     "AudienceSegment",
