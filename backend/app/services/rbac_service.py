@@ -126,6 +126,12 @@ STANDARD_PERMISSIONS: List[Dict[str, str]] = [
     {"code": "analytics:read", "module": "analytics", "description": "View sales forecast rollups and revenue digital twin simulations"},
     {"code": "reports:write", "module": "analytics", "description": "Create, customize and publish custom business reports"},
 
+    # Integrations, Webhook Fabric & Radium ERP (Phase 8)
+    {"code": "integrations:read", "module": "integrations", "description": "View connected integrations, Radium ERP bridge status and telemetry logs"},
+    {"code": "integrations:manage", "module": "integrations", "description": "Configure external connectors, credentials, and trigger Radium sync"},
+    {"code": "webhooks:read", "module": "integrations", "description": "View outbound webhook subscriptions, delivery logs and dead-letter queues"},
+    {"code": "webhooks:write", "module": "integrations", "description": "Create, edit, retry, and delete webhook subscriptions and deliveries"},
+
     # Global SuperAdmin
     {"code": "platform:admin", "module": "platform", "description": "SaaS SuperAdmin global control"},
 ]

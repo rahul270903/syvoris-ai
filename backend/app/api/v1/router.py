@@ -33,7 +33,8 @@ from app.api.v1.endpoints import (
     vendors,
     workflows,
     ai,
-    analytics
+    analytics,
+    integrations
 )
 
 api_router = APIRouter()
@@ -85,3 +86,6 @@ api_router.include_router(vendors.router, prefix="/catalog/vendors", tags=["Vend
 # AI Intelligence & Analytics Workstream (Phase 7)
 api_router.include_router(ai.router, prefix="/ai", tags=["Governed AI Intelligence & Workforce"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics & Revenue Forecasting"])
+
+# Integrations, Webhook Fabric & Radium ERP Workstream (Phase 8)
+api_router.include_router(integrations.router, prefix="/integrations", tags=["Integrations & Webhooks"])

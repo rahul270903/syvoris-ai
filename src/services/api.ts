@@ -1732,6 +1732,103 @@ export interface ForecastSummaryItem {
   by_stage: Record<string, number>;
 }
 
+// --- Integrations, Webhooks & Radium ERP Types (Phase 8) ---
+
+export interface IntegrationConnectorItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  connector_type: string;
+  description?: string | null;
+  owner?: string | null;
+  boundary_notes?: string | null;
+  status: string;
+  endpoint_url?: string | null;
+  auth_type: string;
+  config: Record<string, any>;
+  health_status: string;
+  health_latency_ms: number;
+  last_sync_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookSubscriptionItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  name: string;
+  target_url: string;
+  secret_key: string;
+  events: string[];
+  is_active: boolean;
+  max_retries: number;
+  retry_backoff_seconds: number;
+  custom_headers: Record<string, string>;
+  deliveries_count: number;
+  last_delivered_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookDeliveryItem {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  ref: string;
+  event_name: string;
+  payload: Record<string, any>;
+  signature: string;
+  status: string;
+  status_code?: number | null;
+  response_body?: string | null;
+  retry_count: number;
+  next_retry_at?: string | null;
+  duration_ms: number;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface RadiumSyncResponse {
+  sync_log_id: string;
+  ref: string;
+  entity_type: string;
+  direction: string;
+  status: string;
+  records_synced: number;
+  records_failed: number;
+  latency_ms: number;
+  details: string;
+  timestamp: string;
+}
+
+export interface RadiumSyncLogItem {
+  id: string;
+  tenant_id: string;
+  ref: string;
+  entity_type: string;
+  direction: string;
+  status: string;
+  records_synced: number;
+  records_failed: number;
+  details: string;
+  payload_summary: Record<string, any>;
+  latency_ms: number;
+  initiated_by: string;
+  created_at: string;
+}
+
+export interface RadiumStatusResponse {
+  bridge_status: string;
+  latency_ms: number;
+  tunnel_encryption: string;
+  last_sync_time?: string | null;
+  total_records_synced: number;
+  error_count: number;
+  active_mappings_count: number;
+}
+
 class ApiClient {
   private getAccessToken(): string | null {
     return localStorage.getItem('syvoris:access_token');
@@ -3891,6 +3988,100 @@ class ApiClient {
 
   public async getForecastSummary(): Promise<ForecastSummaryItem> {
     return this.request<ForecastSummaryItem>('/analytics/forecast');
+  }
+
+  // --- Integrations, Webhook Fabric & Radium ERP (Phase 8) ---
+
+  public async listConnectors(params?: {
+    connector_type?: string;
+    status?: string;
+  }): Promise<IntegrationConnectorItem[]> {
+    const q = new URLSearchParams();
+    if (params?.connector_type) q.set('connector_type', params.connector_type);
+    if (params?.status) q.set('status', params.status);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<IntegrationConnectorItem[]>(`/integrations/connectors${qs}`);
+  }
+
+  public async getConnector(id: string): Promise<IntegrationConnectorItem> {
+    return this.request<IntegrationConnectorItem>(`/integrations/connectors/${id}`);
+  }
+
+  public async updateConnector(id: string, payload: Partial<IntegrationConnectorItem>): Promise<IntegrationConnectorItem> {
+    return this.request<IntegrationConnectorItem>(`/integrations/connectors/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async testConnector(id: string): Promise<{ status: string; latency_ms: number; message: string }> {
+    return this.request<{ status: string; latency_ms: number; message: string }>(`/integrations/connectors/${id}/test`, {
+      method: 'POST',
+    });
+  }
+
+  public async listWebhooks(params?: { is_active?: boolean }): Promise<WebhookSubscriptionItem[]> {
+    const q = new URLSearchParams();
+    if (params?.is_active !== undefined) q.set('is_active', String(params.is_active));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<WebhookSubscriptionItem[]>(`/integrations/webhooks${qs}`);
+  }
+
+  public async createWebhook(payload: Partial<WebhookSubscriptionItem>): Promise<WebhookSubscriptionItem> {
+    return this.request<WebhookSubscriptionItem>('/integrations/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateWebhook(id: string, payload: Partial<WebhookSubscriptionItem>): Promise<WebhookSubscriptionItem> {
+    return this.request<WebhookSubscriptionItem>(`/integrations/webhooks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async deleteWebhook(id: string): Promise<void> {
+    return this.request<void>(`/integrations/webhooks/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async testWebhook(id: string): Promise<WebhookDeliveryItem[]> {
+    return this.request<WebhookDeliveryItem[]>(`/integrations/webhooks/${id}/test`, {
+      method: 'POST',
+    });
+  }
+
+  public async listWebhookDeliveries(params?: {
+    subscription_id?: string;
+    status?: string;
+    limit?: number;
+  }): Promise<WebhookDeliveryItem[]> {
+    const q = new URLSearchParams();
+    if (params?.subscription_id) q.set('subscription_id', params.subscription_id);
+    if (params?.status) q.set('status', params.status);
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return this.request<WebhookDeliveryItem[]>(`/integrations/webhooks/deliveries${qs}`);
+  }
+
+  public async triggerRadiumSync(payload: {
+    entity_type: string;
+    direction?: string;
+  }): Promise<RadiumSyncResponse> {
+    return this.request<RadiumSyncResponse>('/integrations/radium/sync', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async listRadiumLogs(limit = 20): Promise<RadiumSyncLogItem[]> {
+    return this.request<RadiumSyncLogItem[]>(`/integrations/radium/logs?limit=${limit}`);
+  }
+
+  public async getRadiumStatus(): Promise<RadiumStatusResponse> {
+    return this.request<RadiumStatusResponse>('/integrations/radium/status');
   }
 }
 

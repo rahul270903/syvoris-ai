@@ -60,6 +60,12 @@ from app.models.ai import (
     RevenueScenario,
     CustomReport,
 )
+from app.models.integration import (
+    IntegrationConnector,
+    WebhookSubscription,
+    WebhookDelivery,
+    RadiumSyncLog,
+)
 
 __all__ = [
     "Base",
@@ -144,4 +150,8 @@ __all__ = [
     "AIChatMessage",
     "RevenueScenario",
     "CustomReport",
+    "IntegrationConnector",
+    "WebhookSubscription",
+    "WebhookDelivery",
+    "RadiumSyncLog",
 ]
