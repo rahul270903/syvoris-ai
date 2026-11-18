@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowDownRight, ArrowRight, ArrowUpRight,
@@ -111,11 +111,24 @@ export function Dashboard() {
   const activeFinancialData = financialPerformanceMap[timeframe] || financialPerformanceMap['Last 6 months'];
   const activeCashFlowData = cashFlowTrendMap[timeframe] || cashFlowTrendMap['Last 6 months'];
 
-  // Dynamic time-of-day greeting
+  // Reactive clock state that ticks automatically
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Time-of-day greeting according to standard natural and business hours
+  // 05:00 - 11:59: Good morning
+  // 12:00 - 16:59: Good afternoon
+  // 17:00 - 04:59: Good evening
   const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
+    const hour = currentDate.getHours();
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
 
@@ -126,7 +139,7 @@ export function Dashboard() {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
-    }).format(new Date());
+    }).format(currentDate);
   };
 
   return (
