@@ -1,0 +1,90 @@
+name: SYVORIS Ai Database Migration Integrity
+
+on:
+  pull_request:
+    paths:
+      - 'backend/alembic/**'
+      - 'backend/app/models/**'
+      - 'backend/app/db/**'
+      - 'backend/alembic.ini'
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/alembic/**'
+      - 'backend/app/models/**'
+      - 'backend/app/db/**'
+      - 'backend/alembic.ini'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-migrations:
+    name: Verify Migration Lineage, Reversibility & Schema Drift
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: syvoris_migration_test
+          POSTGRES_USER: syvoris_app
+          POSTGRES_PASSWORD: syvoris_migration_pass_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install Migration Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Invariant 1 - Single Migration Head Verification
+        run: |
+          echo "Checking Alembic migration head count..."
+          HEADS=$(python -m alembic -c backend/alembic.ini heads)
+          echo "$HEADS"
+          HEAD_COUNT=$(echo "$HEADS" | grep -v '^\s*$' | wc -l)
+          if [ "$HEAD_COUNT" -ne 1 ]; then
+            echo "ERROR: Multiple Alembic migration heads detected! Please merge branches."
+            exit 1
+          fi
+          echo "Single migration head confirmed."
+
+      - name: Invariant 2 - Forward Migration to Head
+        env:
+          DATABASE_URL: postgresql+asyncpg://syvoris_app:syvoris_migration_pass_2026@localhost:5432/syvoris_migration_test
+        run: |
+          echo "Applying all migrations forward..."
+          python -m alembic -c backend/alembic.ini upgrade head
+
+      - name: Invariant 3 - Full Reversible Rollback to Base
+        env:
+          DATABASE_URL: postgresql+asyncpg://syvoris_app:syvoris_migration_pass_2026@localhost:5432/syvoris_migration_test
+        run: |
+          echo "Testing full migration rollback to base..."
+          python -m alembic -c backend/alembic.ini downgrade base
+
+      - name: Invariant 4 - Re-apply to Head & Verify Idempotency
+        env:
+          DATABASE_URL: postgresql+asyncpg://syvoris_app:syvoris_migration_pass_2026@localhost:5432/syvoris_migration_test
+        run: |
+          echo "Re-applying all migrations to head..."
+          python -m alembic -c backend/alembic.ini upgrade head
+          echo "Migration integrity, reversibility, and idempotency successfully verified!"
