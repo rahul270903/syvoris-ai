@@ -189,6 +189,8 @@ export function WorkspacePage({ item }: Props) {
             ownership: acc.ownership || 'Private',
             creditLimit: String(acc.credit_limit || 0),
             description: acc.description || '',
+            parentId: acc.parent_id || '',
+            parent: acc.parent_id ? (items.find(x => x.id === acc.parent_id)?.name || '') : '',
           }
         }));
         setLiveAccounts(mapped);
@@ -1203,11 +1205,13 @@ export function WorkspacePage({ item }: Props) {
       currency: 'USD',
       owner: 'Arjun Mehta',
       accountId: '',
+      parentId: '',
+      parent: '',
       organization: '',
       ...prefill,
     });
     setLines([initialLine()]);
-    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices') && availableAccounts.length === 0) {
+    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices' || config.entity === 'organizations') && availableAccounts.length === 0) {
       setLoadingAccounts(true);
       api.listAccounts({ limit: 100 })
         .then(res => {
@@ -1226,10 +1230,12 @@ export function WorkspacePage({ item }: Props) {
     setForm({
       ...record.fields,
       accountId: existingAccountId,
+      parentId: record.fields.parentId || '',
+      parent: record.fields.parent || '',
       organization: record.fields.organization || '',
     });
     setLines(record.lineItems?.length ? record.lineItems : [initialLine()]);
-    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices') && availableAccounts.length === 0) {
+    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices' || config.entity === 'organizations') && availableAccounts.length === 0) {
       setLoadingAccounts(true);
       api.listAccounts({ limit: 100 })
         .then(res => {
@@ -1281,6 +1287,7 @@ export function WorkspacePage({ item }: Props) {
       setSubmitting(true);
       setFormError(null);
       try {
+        const parentIdPayload = fields.parentId && fields.parentId.trim() ? fields.parentId.trim() : undefined;
         if (editingId) {
           await api.updateAccount(editingId, {
             name: fields.name || item.label,
@@ -1293,6 +1300,7 @@ export function WorkspacePage({ item }: Props) {
             status: statusValue,
             description: fields.description || undefined,
             credit_limit: amount,
+            parent_id: parentIdPayload,
           });
           notify('Organization updated in PostgreSQL database.');
         } else {
@@ -1307,6 +1315,7 @@ export function WorkspacePage({ item }: Props) {
             status: statusValue,
             description: fields.description || undefined,
             credit_limit: amount,
+            parent_id: parentIdPayload,
           });
           notify('Organization created and saved to PostgreSQL.');
         }
@@ -4098,6 +4107,29 @@ export function WorkspacePage({ item }: Props) {
                             accountId: accId,
                             customer: accName,
                             organization: accName,
+                          }));
+                        }}
+                        onRefresh={() => fetchLiveCRMData()}
+                      />
+                    );
+                  }
+                  if (config.entity === 'organizations' && field.key === 'parent') {
+                    return (
+                      <OrganizationSelectField
+                        key="organizations-parent-select"
+                        label="Parent organization"
+                        required={field.required}
+                        value={form.parentId || ''}
+                        organizationName={form.parent || ''}
+                        accounts={editingId ? availableAccounts.filter(a => a.id !== editingId) : availableAccounts}
+                        loading={loadingAccounts}
+                        error={accountsFetchError}
+                        disabled={submitting}
+                        onChange={(accId, accName) => {
+                          setForm(old => ({
+                            ...old,
+                            parentId: accId,
+                            parent: accName,
                           }));
                         }}
                         onRefresh={() => fetchLiveCRMData()}

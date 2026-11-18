@@ -362,11 +362,13 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               <Menu size={18} />
             </button>
             <div className="breadcrumbs">
-              <Link to="/dashboard" className="hover:text-blue-600 transition-colors">Workspace</Link>
-              <ChevronRight size={13} className="text-slate-400" />
-              <strong>{activeItem?.label || (location.pathname === '/dashboard' ? 'Executive Dashboard' : 'Workspace')}</strong>
-              {activeGroup && (
-                <span className="hidden xl:inline-flex items-center text-[10.5px] font-medium text-slate-500 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md ml-1">
+              <Link to="/dashboard" className="text-slate-500 hover:text-blue-600 transition-colors font-medium">Workspace</Link>
+              <ChevronRight size={14} className="text-slate-400 flex-none" />
+              <strong className="text-slate-900 font-bold">
+                {activeItem?.label || (location.pathname === '/dashboard' ? 'Executive Dashboard' : 'Workspace')}
+              </strong>
+              {activeGroup && activeGroup.label !== 'Command Centre' && location.pathname !== '/dashboard' && (
+                <span className="hidden xl:inline-flex items-center text-[10.5px] font-semibold text-slate-500 bg-slate-100 border border-slate-200/80 px-2.5 py-0.5 rounded-full ml-1 whitespace-nowrap">
                   {activeGroup.label}
                 </span>
               )}
@@ -374,6 +376,25 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
           </div>
 
           <div className="topbar-right">
+            {/* Global Search Bar */}
+            <button className="global-search" onClick={() => setSearchOpen(true)}>
+              <Search size={15} />
+              <span>Search anything...</span>
+              <kbd>
+                <Command size={10} /> K
+              </kbd>
+            </button>
+
+            {/* AI Copilot Quick Trigger */}
+            <button
+              onClick={() => navigate('/ai/copilot')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 border border-blue-200 text-blue-700 text-xs font-semibold hover:border-blue-300 transition-all shadow-2xs"
+              title="Open SYVORIS Ai Assistant"
+            >
+              <Sparkles size={14} className="text-blue-600 animate-pulse" />
+              <span>Ask AI</span>
+            </button>
+
             {/* Quick Action: + New Record Dropdown */}
             <div className="top-menu-wrap">
               <button
@@ -424,24 +445,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               )}
             </div>
 
-            {/* AI Copilot Quick Trigger */}
-            <button
-              onClick={() => navigate('/ai/copilot')}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 border border-blue-200 text-blue-700 text-xs font-semibold hover:border-blue-300 transition-all shadow-2xs"
-              title="Open SYVORIS Ai Assistant"
-            >
-              <Sparkles size={14} className="text-blue-600 animate-pulse" />
-              <span>Ask AI</span>
-            </button>
-
-            {/* Global Search Bar */}
-            <button className="global-search" onClick={() => setSearchOpen(true)}>
-              <Search size={15} />
-              <span>Search anything...</span>
-              <kbd>
-                <Command size={10} /> K
-              </kbd>
-            </button>
+            <div className="topbar-divider hidden md:block" />
 
             {/* Live System Telemetry Status (Replaces wireframe Demo environment) */}
             <div className="top-menu-wrap">
@@ -584,6 +588,8 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               )}
             </div>
 
+            <div className="topbar-divider hidden lg:block" />
+
             {/* User Profile Trigger & Menu */}
             <div className="top-menu-wrap profile-menu">
               <button
@@ -594,15 +600,17 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                   setQuickCreateOpen(false);
                   setTelemetryOpen(false);
                 }}
+                title="User Profile & Organization Settings"
+                aria-label="User profile"
               >
                 <span className="profile-avatar">
                   {userProfile.user ? `${userProfile.user.first_name[0] || 'A'}${userProfile.user.last_name[0] || 'M'}` : 'AM'}
                 </span>
-                <span>
-                  <b>{userProfile.user?.full_name || 'Arjun Mehta'}</b>
-                  <small>{userProfile.active_tenant?.role || 'Tenant Owner'}</small>
+                <span className="profile-info">
+                  <b className="profile-name">{userProfile.user?.full_name || 'Arjun Mehta'}</b>
+                  <small className="profile-role">{userProfile.active_tenant?.role || 'Tenant Owner'}</small>
                 </span>
-                <ChevronDown size={14} />
+                <ChevronDown size={13} className={`profile-chevron ${profileOpen ? 'open' : ''}`} />
               </button>
 
               {profileOpen && (

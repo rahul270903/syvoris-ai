@@ -9,7 +9,7 @@ import {
 import { useCRM } from '../../store/CRMStore';
 import { money, shortDate, type CRMRecord } from '../../data/models';
 import { StatusPill } from '../../components/StatusPill';
-import { api, Customer360Data } from '../../services/api';
+import { api, Customer360Data, AccountItem } from '../../services/api';
 
 export function Customer360View({
   selectedOrgId,
@@ -25,10 +25,12 @@ export function Customer360View({
   const { records } = useCRM();
   const navigate = useNavigate();
   const [liveAccounts, setLiveAccounts] = useState<CRMRecord[]>([]);
+  const [rawAccounts, setRawAccounts] = useState<AccountItem[]>([]);
 
   useEffect(() => {
     api.listAccounts({ limit: 100 }).then(res => {
       if (res && res.items) {
+        setRawAccounts(res.items);
         const mapped: CRMRecord[] = res.items.map(acc => ({
           id: acc.id,
           ref: acc.ref,
@@ -51,6 +53,7 @@ export function Customer360View({
             ownership: acc.ownership || 'Private',
             creditLimit: String(acc.credit_limit || 0),
             description: acc.description || '',
+            parentId: acc.parent_id || '',
           }
         }));
         setLiveAccounts(mapped);
@@ -75,6 +78,20 @@ export function Customer360View({
   const currentOrg = useMemo(() => {
     return orgs.find(o => o.id === (selectedOrgId || activeOrgId)) || orgs[0];
   }, [orgs, selectedOrgId, activeOrgId]);
+
+  const currentRaw = useMemo(() => {
+    return rawAccounts.find(a => a.id === currentOrg?.id);
+  }, [rawAccounts, currentOrg]);
+
+  const parentOrg = useMemo(() => {
+    if (!currentRaw?.parent_id) return null;
+    return rawAccounts.find(a => a.id === currentRaw.parent_id) || null;
+  }, [rawAccounts, currentRaw]);
+
+  const childOrgs = useMemo(() => {
+    if (!currentOrg?.id) return [];
+    return rawAccounts.filter(a => a.parent_id === currentOrg.id);
+  }, [rawAccounts, currentOrg]);
 
   const selectAccount = (id: string) => {
     setActiveOrgId(id);
@@ -445,7 +462,21 @@ export function Customer360View({
                 <div><span>Credit Limit</span><strong>{money(Number(currentOrg.fields.creditLimit || 75000))}</strong></div>
                 <div><span>Account Owner</span><strong>{currentOrg.owner}</strong></div>
                 <div><span>Communication Consent</span><strong className="text-emerald-700">{currentOrg.fields.consent || 'Email and phone permitted'}</strong></div>
-                <div><span>Parent Organization</span><strong>{currentOrg.fields.parent || 'Seiretsu Enterprise Group'}</strong></div>
+                <div>
+                  <span>Parent Organization</span>
+                  <strong>
+                    {parentOrg ? (
+                      <button
+                        onClick={() => selectAccount(parentOrg.id)}
+                        className="text-blue-600 hover:text-blue-800 underline text-left font-semibold"
+                      >
+                        {parentOrg.name} ({parentOrg.ref})
+                      </button>
+                    ) : (
+                      'None (Top-Level Holding Entity)'
+                    )}
+                  </strong>
+                </div>
               </div>
             </section>
 
@@ -455,30 +486,56 @@ export function Customer360View({
                   <h2>Enterprise Hierarchy & Subsidiaries</h2>
                   <p>Parent-child corporate structure and subsidiary operating units.</p>
                 </div>
-                <Network size={18} className="text-blue-500"/>
+                <button
+                  onClick={() => navigate('/accounts/hierarchies')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors cursor-pointer"
+                >
+                  <Network size={14} className="text-blue-600"/>
+                  <span>Manage in Hierarchies</span>
+                </button>
               </div>
               <div className="c360-hierarchy-box">
                 <div className="c360-hierarchy-parent">
                   <span className="eyebrow">PARENT HOLDING ENTITY</span>
-                  <strong>{currentOrg.fields.parent || 'Seiretsu Enterprise Group'}</strong>
-                  <small>Ultimate Beneficiary & Master Agreement</small>
+                  {parentOrg ? (
+                    <button
+                      onClick={() => selectAccount(parentOrg.id)}
+                      className="text-left font-bold text-slate-900 hover:text-blue-600 transition-colors"
+                    >
+                      {parentOrg.name}
+                      <small className="block text-slate-500 font-normal">{parentOrg.ref} · {parentOrg.industry || 'Holding Entity'}</small>
+                    </button>
+                  ) : (
+                    <div>
+                      <strong className="text-slate-800">None (Top-Level Holding Entity)</strong>
+                      <small className="block text-slate-500 font-normal">Ultimate Beneficiary & Master Account</small>
+                    </div>
+                  )}
                 </div>
                 <div className="c360-hierarchy-connector"/>
                 <div className="c360-hierarchy-current">
                   <span className="eyebrow">PRIMARY ACCOUNT (THIS ENTITY)</span>
                   <strong>{currentOrg.title}</strong>
-                  <small>{currentOrg.ref} · {currentOrg.fields.industry}</small>
+                  <small>{currentOrg.ref} · {currentOrg.fields.industry || 'Corporate Account'}</small>
                 </div>
                 <div className="c360-hierarchy-connector"/>
                 <div className="c360-hierarchy-children">
-                  <div className="c360-child-node">
-                    <strong>Kingston Operations Hub</strong>
-                    <small>Regional Data Centre & Network Operations</small>
-                  </div>
-                  <div className="c360-child-node">
-                    <strong>Montego Bay Branch Office</strong>
-                    <small>Commercial & Customer Support Terminal</small>
-                  </div>
+                  {childOrgs.length > 0 ? (
+                    childOrgs.map(child => (
+                      <div
+                        key={child.id}
+                        className="c360-child-node cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all"
+                        onClick={() => selectAccount(child.id)}
+                      >
+                        <strong>{child.name}</strong>
+                        <small>{child.ref} · {child.industry || 'Operating Unit'}</small>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200 w-full">
+                      No subsidiaries or child entities registered under this account.
+                    </div>
+                  )}
                 </div>
               </div>
             </section>

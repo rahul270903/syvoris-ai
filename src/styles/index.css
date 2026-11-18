@@ -225,21 +225,90 @@ body { font-size: 16px; line-height: 1.5; }
 }
 
 /* Top header: breadcrumbs, global search and profile metadata */
-.topbar { min-height: 68px; }
-.breadcrumbs { font-size: 14px; gap: 10px; color: #64748b; }
-.breadcrumbs strong { color: #263b57; font-weight: 700; }
-.breadcrumbs svg { width: 16px; height: 16px; }
-.global-search { min-height: 42px; height: 42px; }
-.global-search > svg { width: 18px; height: 18px; }
-.global-search span { font-size: 14px; color: #64748b; }
-.global-search kbd { font-size: 12px; padding: 4px 6px; color: #475569; }
-.environment-indicator { font-size: 13px; color: #475569; }
-.profile-trigger b { font-size: 14px; color: #263b57; }
-.profile-trigger small { font-size: 14px; color: #64748b; }
-.profile-avatar { width: 36px; height: 36px; font-size: 13px; }
-.top-icon { width: 38px; height: 38px; }
-.top-icon svg { width: 20px; height: 20px; }
-.notif-count { font-size: 12px; }
+.topbar { min-height: 64px; height: 64px; padding: 0 24px; background: #ffffff; border-bottom: 1px solid #e2e8f0; }
+.breadcrumbs { font-size: 13.5px; gap: 8px; color: #64748b; white-space: nowrap; }
+.breadcrumbs a { color: #64748b; font-weight: 500; text-decoration: none; transition: color .15s ease; }
+.breadcrumbs a:hover { color: #2563eb; }
+.breadcrumbs strong { color: #0f172a; font-weight: 700; font-size: 13.5px; letter-spacing: -0.15px; }
+.breadcrumbs svg { width: 14px; height: 14px; color: #94a3b8; flex-shrink: 0; }
+.topbar-right { gap: 10px; }
+.topbar-divider { width: 1px; height: 20px; background: #e2e8f0; margin: 0 2px; }
+
+.global-search { min-height: 36px; height: 36px; width: 220px; padding: 0 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; transition: all .15s ease; }
+.global-search:hover { background: #ffffff; border-color: #cbd5e1; }
+.global-search > svg { width: 15px; height: 15px; color: #64748b; }
+.global-search span { font-size: 12.5px; color: #94a3b8; }
+.global-search kbd { font-size: 10px; padding: 2px 5px; color: #64748b; border: 1px solid #e2e8f0; border-radius: 4px; background: #ffffff; font-weight: 600; }
+
+.environment-indicator { font-size: 12px; }
+.top-icon { width: 36px; height: 36px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; color: #64748b; transition: all .15s ease; }
+.top-icon:hover, .top-icon.selected { background: #ffffff; border-color: #cbd5e1; color: #0f172a; }
+.top-icon svg { width: 17px; height: 17px; }
+.notif-count { font-size: 10px; min-width: 17px; height: 17px; }
+
+/* Polished Enterprise User Profile Pill */
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  background: #f8fafc;
+  color: #334155;
+  transition: all .15s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.profile-trigger:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.profile-trigger .profile-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(37,99,235,0.3);
+  flex-shrink: 0;
+}
+.profile-trigger .profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+.profile-trigger b, .profile-trigger .profile-name {
+  font-size: 12px;
+  font-weight: 650;
+  color: #0f172a;
+  line-height: 1.2;
+  letter-spacing: -0.1px;
+}
+.profile-trigger small, .profile-trigger .profile-role {
+  font-size: 10px;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.1;
+}
+.profile-trigger svg, .profile-trigger .profile-chevron {
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
+  margin-left: 1px;
+  flex-shrink: 0;
+  transition: transform .15s ease;
+}
+.profile-trigger .profile-chevron.open {
+  transform: rotate(180deg);
+}
 
 /* Shared title / helper hierarchy */
 .eyebrow { font-size: 12px; color: #52657e; letter-spacing: 1px; }

@@ -111,6 +111,24 @@ export function Dashboard() {
   const activeFinancialData = financialPerformanceMap[timeframe] || financialPerformanceMap['Last 6 months'];
   const activeCashFlowData = cashFlowTrendMap[timeframe] || cashFlowTrendMap['Last 6 months'];
 
+  // Dynamic time-of-day greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  // Dynamic formatted live date string
+  const getLiveDateString = () => {
+    return new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(new Date());
+  };
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
       {/* 1. OVERVIEW / ENTERPRISE WORKSPACE HEADER */}
@@ -120,10 +138,10 @@ export function Dashboard() {
             OVERVIEW / ENTERPRISE COMMAND COCKPIT
           </div>
           <h1 className="text-3xl md:text-[32px] font-bold text-slate-900 tracking-tight font-manrope">
-            Good morning
+            {getGreeting()}
           </h1>
           <p className="text-[13px] text-slate-500 mt-1 font-normal">
-            Saturday, November 7, 2026 · Unified enterprise operations, commercial revenue & AI workforce intelligence.
+            {getLiveDateString()} · Unified enterprise operations, commercial revenue & AI workforce intelligence.
           </p>
         </div>
 
