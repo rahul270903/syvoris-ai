@@ -154,7 +154,7 @@ export function WorkflowDesignerView() {
       notify(`Workflow "${target?.name || id}" set to ${nextStatus}.`);
     } catch {
       // If API error or offline mode, keep state and log audit
-      addAudit('Workflow Rule Toggled', 'Demo User', `${target?.name}: ${nextStatus}`);
+      addAudit('Workflow Rule Toggled', 'Arjun Mehta', `${target?.name}: ${nextStatus}`);
       notify(`Workflow "${target?.name || id}" set to ${nextStatus} (local state).`);
     }
   };

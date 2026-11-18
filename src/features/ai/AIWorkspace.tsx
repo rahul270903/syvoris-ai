@@ -215,7 +215,7 @@ export function AIWorkspace({ path, title, description }: { path: string; title:
       const decision = records('decisions').find(d => d.id === proposalId);
       if (decision) {
         update('decisions', decision.id, { status: approved ? 'Approved' : 'Rejected' }, approved ? 'Human approval granted' : 'Human approval rejected');
-        addAudit(approved ? 'AI proposal approved' : 'AI proposal rejected', 'Demo User', decision.ref);
+        addAudit(approved ? 'AI proposal approved' : 'AI proposal rejected', 'Arjun Mehta', decision.ref);
         notify(`${decision.ref} ${approved ? 'approved' : 'rejected'}.`);
       }
     }

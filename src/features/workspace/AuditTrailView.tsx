@@ -57,13 +57,13 @@ export function AuditTrailView() {
   }, [records, liveEvents]);
 
   const actors = useMemo<string[]>(() => {
-    const list = new Set(auditRows.map(a => a.fields.actor || a.owner || 'Demo User'));
+    const list = new Set(auditRows.map(a => a.fields.actor || a.owner || 'Arjun Mehta'));
     return ['All', ...Array.from(list)];
   }, [auditRows]);
 
   const filtered = useMemo<CRMRecord[]>(() => {
     return auditRows.filter((a: CRMRecord) => {
-      const actor = a.fields.actor || a.owner || 'Demo User';
+      const actor = a.fields.actor || a.owner || 'Arjun Mehta';
       const matchActor = filterActor === 'All' || actor === filterActor;
       const matchQuery = [a.fields.name || a.title, a.fields.details || a.description, a.ref, actor]
         .join(' ')
@@ -175,7 +175,7 @@ export function AuditTrailView() {
                   <td className="py-3 px-4">
                     <span className="inline-flex items-center gap-1 font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
                       <User size={11} className="text-slate-500" />
-                      {entry.fields.actor || entry.owner || 'Demo User'}
+                      {entry.fields.actor || entry.owner || 'Arjun Mehta'}
                     </span>
                   </td>
                   <td className="py-3 px-4 font-bold text-slate-900">

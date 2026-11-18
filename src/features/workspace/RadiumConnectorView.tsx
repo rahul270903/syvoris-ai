@@ -81,7 +81,7 @@ export function RadiumConnectorView() {
     try {
       const res = await api.triggerRadiumSync({ entity_type: 'All Core Entities' });
       addEvent('integration.radium_synced', { ref: 'RADIUM-BRIDGE-1' }, 'Bidirectional sync successfully completed');
-      addAudit('Radium ERP Sync Triggered', 'Demo User', 'Full reconciliation pipeline');
+      addAudit('Radium ERP Sync Triggered', 'Arjun Mehta', 'Full reconciliation pipeline');
       notify(`Radium ERP sync completed successfully (${res.records_synced} records synced).`);
       await refreshData();
     } catch {
@@ -98,7 +98,7 @@ export function RadiumConnectorView() {
         };
         setLogs(prev => [newLog, ...prev]);
         addEvent('integration.radium_synced', { ref: 'RADIUM-BRIDGE-1' }, 'Bidirectional sync successfully completed');
-        addAudit('Radium ERP Sync Triggered', 'Demo User', 'Full reconciliation pipeline');
+        addAudit('Radium ERP Sync Triggered', 'Arjun Mehta', 'Full reconciliation pipeline');
         notify('Radium ERP sync completed successfully (24 records updated).');
       }, 800);
     } finally {

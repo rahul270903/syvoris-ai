@@ -43,7 +43,7 @@ const initialMessages: Message[] = [
     starred: true,
     replies: [
       {
-        sender: 'Demo User (SYVORIS)',
+        sender: 'Arjun Mehta (SYVORIS)',
         time: '10:45 AM',
         body: 'Hi Marcus, thanks for reaching out. Our principal architect is available tomorrow at 2:30 PM EST. I will send over a calendar invite shortly.',
         isUser: true,
@@ -154,7 +154,7 @@ export function UnifiedInboxView() {
   const handleSendReply = () => {
     if (!replyText.trim() || !active) return;
     const newReply = {
-      sender: 'Demo User (SYVORIS Rep)',
+      sender: 'Arjun Mehta (SYVORIS Rep)',
       time: 'Just now',
       body: replyText.trim(),
       isUser: true,
@@ -173,7 +173,7 @@ export function UnifiedInboxView() {
     );
     addAudit(
       'Simulated Message Dispatched',
-      'Demo User',
+      'Arjun Mehta',
       `${active.channel.toUpperCase()} to ${active.email}`
     );
     notify(`Simulated response dispatched to ${active.sender} via ${active.channel.toUpperCase()}.`);

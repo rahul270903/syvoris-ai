@@ -119,7 +119,7 @@ export function OrderFulfilmentView() {
       prev.map(o => (o.id === order.id ? { ...o, stage: nextStage, updatedAt: 'Just now' } : o))
     );
     addEvent('order.fulfilment_updated', { ref: order.orderRef }, `Fulfillment progressed to ${nextStage} for ${order.customer}`);
-    addAudit('Fulfillment Milestone Advanced', 'Demo User', `${order.orderRef}: ${order.stage} -> ${nextStage}`);
+    addAudit('Fulfillment Milestone Advanced', 'Arjun Mehta', `${order.orderRef}: ${order.stage} -> ${nextStage}`);
     notify(`${order.orderRef} advanced to "${stages[idx + 1].label}". Customer notified.`);
   };
 

@@ -113,7 +113,7 @@ export function QuoteDocumentView() {
   const handleSendClient = () => {
     if (!activeQuote) return;
     addEvent('quote.sent', activeQuote, `PDF quotation ${activeQuote.ref} dispatched to ${linkedOrg?.title}`);
-    addAudit('Commercial Quote Dispatched', 'Demo User', `${activeQuote.ref} to ${linkedOrg?.title}`);
+    addAudit('Commercial Quote Dispatched', 'Arjun Mehta', `${activeQuote.ref} to ${linkedOrg?.title}`);
     notify(`Quotation ${activeQuote.ref} successfully dispatched to client contact via encrypted link.`);
   };
 
@@ -135,7 +135,7 @@ export function QuoteDocumentView() {
     }
     update('quotes', activeQuote.id, { status: 'Accepted' }, 'Quote accepted by client');
     addEvent('quote.accepted', activeQuote, `Quotation ${activeQuote.ref} signed and accepted`);
-    addAudit('Quote Accepted', 'Demo User', `${activeQuote.ref} converted to accepted state`);
+    addAudit('Quote Accepted', 'Arjun Mehta', `${activeQuote.ref} converted to accepted state`);
     notify(`Quote ${activeQuote.ref} accepted! Ready to convert into Sales Order.`);
   };
 
@@ -249,7 +249,7 @@ export function QuoteDocumentView() {
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ISSUED BY (SYVORIS)</div>
             <div className="font-bold text-sm text-slate-900">Commercial Operations Division</div>
             <div className="text-slate-600 mt-1 leading-relaxed">
-              Account Executive: {activeQuote?.owner || 'Demo User'}<br />
+              Account Executive: {activeQuote?.owner || 'Arjun Mehta'}<br />
               Territory: Enterprise Commercial Accounts<br />
               Direct: +1 (800) 555-0199<br />
               commercial@syvoris.example

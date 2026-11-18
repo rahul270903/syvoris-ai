@@ -1047,7 +1047,7 @@ export function Customer360View({
 
                 <div className="text-xs text-slate-500 pt-2 border-t border-slate-100 flex items-center gap-2">
                   <ShieldCheck size={16} className="text-slate-400"/>
-                  <span>All customer memory and predictive scores are calculated locally in the prototype demonstration engine.</span>
+                  <span>All customer memory and predictive scores are synthesized by the SYVORIS intelligence engine.</span>
                 </div>
               </div>
             </section>

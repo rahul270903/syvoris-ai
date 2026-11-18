@@ -87,7 +87,7 @@ export function LeadConversionModal({
     d.setDate(d.getDate() + 60);
     return d.toISOString().slice(0, 10);
   });
-  const [dealOwner, setDealOwner] = useState(lead.owner || 'Demo User');
+  const [dealOwner, setDealOwner] = useState(lead.owner || 'Arjun Mehta');
   const [submitting, setSubmitting] = useState(false);
   const [conversionError, setConversionError] = useState<string | null>(null);
   const [completedResult, setCompletedResult] = useState<{

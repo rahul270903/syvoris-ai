@@ -28,7 +28,7 @@ const defaultEvents: CalEvent[] = [
     time: '10:00 AM - 11:00 AM',
     type: 'Meeting',
     account: 'NovaTech Solutions',
-    attendees: ['Marcus Vance', 'Demo User', 'Principal Architect'],
+    attendees: ['Marcus Vance', 'Arjun Mehta', 'Principal Architect'],
     location: 'Microsoft Teams (Virtual)',
     description: 'Review failover clustering, multi-region database latency, and 99.99% uptime guarantees.'
   },
@@ -45,14 +45,14 @@ const defaultEvents: CalEvent[] = [
   },
   {
     id: 'cal-3',
-    title: 'Logistics Fleet Telematics Solution Demo',
+    title: 'Logistics Fleet Telematics Solution Walkthrough',
     date: '2026-11-10',
     time: '11:00 AM - 12:00 PM',
     type: 'Demo',
     account: 'Apex Global Logistics',
     attendees: ['Elena Rostova', 'Fleet Ops Director', 'Solutions Engineer'],
     location: 'Google Meet',
-    description: 'Interactive demonstration of real-time route optimization engine and ERP inventory bridge.'
+    description: 'Technical review of real-time route optimization engine and ERP inventory bridge.'
   },
   {
     id: 'cal-4',
@@ -132,7 +132,7 @@ export function CalendarView() {
     time: '02:00 PM - 03:00 PM',
     type: 'Meeting' as CalEvent['type'],
     account: 'NovaTech Solutions',
-    attendees: 'Demo User, Client Stakeholder',
+    attendees: 'Arjun Mehta, Client Stakeholder',
     location: 'Virtual Conference (Teams)',
     description: '',
   });
@@ -167,7 +167,7 @@ export function CalendarView() {
     setSelectedEvent(created);
     setShowAddModal(false);
     addEvent('calendar.event_created', { ref: created.id }, `Scheduled ${created.type}: ${created.title}`);
-    addAudit('Calendar Event Created', 'Demo User', `${created.title} on ${created.date}`);
+    addAudit('Calendar Event Created', 'Arjun Mehta', `${created.title} on ${created.date}`);
     notify(`Appointment "${created.title}" scheduled successfully.`);
     setNewEvent({
       title: '',
@@ -175,7 +175,7 @@ export function CalendarView() {
       time: '02:00 PM - 03:00 PM',
       type: 'Meeting',
       account: 'NovaTech Solutions',
-      attendees: 'Demo User, Client Stakeholder',
+      attendees: 'Arjun Mehta, Client Stakeholder',
       location: 'Virtual Conference (Teams)',
       description: '',
     });

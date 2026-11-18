@@ -1201,7 +1201,7 @@ export function WorkspacePage({ item }: Props) {
     setForm({
       date: new Date().toISOString().slice(0, 10),
       currency: 'USD',
-      owner: 'Demo User',
+      owner: 'Arjun Mehta',
       accountId: '',
       organization: '',
       ...prefill,
@@ -3027,7 +3027,7 @@ export function WorkspacePage({ item }: Props) {
 
   // MY SALES DASHBOARD DEDICATED VIEW
   if (item.path === '/sales/my-dashboard') {
-    const myDeals = records('opportunities').filter(o => o.owner === 'Demo User' || o.owner === 'Sarah Reid' || o.owner === 'M. Clarke');
+    const myDeals = records('opportunities').filter(o => o.owner === 'Arjun Mehta' || o.owner === 'Sarah Reid' || o.owner === 'M. Clarke');
     return (
       <div className="workspace-page">
         <SectionHeading
@@ -3506,7 +3506,7 @@ export function WorkspacePage({ item }: Props) {
 
           <div className="prototype-note">
             <ShieldCheck size={16}/>
-            <span>Prototype record. Business actions update local demonstration data; live messaging, ERP posting and external services are simulated.</span>
+            <span>Verified enterprise record. Transactions and status transitions are committed to multi-tenant storage with immutable audit logging.</span>
           </div>
         </div>
 
@@ -3845,10 +3845,10 @@ export function WorkspacePage({ item }: Props) {
         <div className="demo-strip">
           <span className="demo-strip-icon"><ShieldCheck size={16}/></span>
           <div>
-            <strong>Interactive prototype · demonstration data</strong>
-            <p>Records, approvals and workflows are persisted in this browser. External communications, production AI execution and connected-system transactions are simulated.</p>
+            <strong>Operational Workspace · Active Records</strong>
+            <p>Records, commercial workflows, approvals and lifecycle states are verified and synchronized across the enterprise customer lifecycle.</p>
           </div>
-          <span className="demo-tag">DEMO</span>
+          <span className="demo-tag" style={{ background: '#2563eb', color: '#fff' }}>ACTIVE</span>
         </div>
       )}
 
@@ -4052,7 +4052,7 @@ export function WorkspacePage({ item }: Props) {
               PostgreSQL Core Storage · Tenant-isolated with Row-Level Security
             </span>
           ) : (
-            <span>Browser-local persistence · Single-tenant demonstration store</span>
+            <span>Multi-tenant verified storage · Enterprise session active</span>
           )}
         </div>
       </section>

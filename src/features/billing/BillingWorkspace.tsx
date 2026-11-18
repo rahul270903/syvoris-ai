@@ -139,7 +139,7 @@ export function BillingWorkspace() {
   return (
     <div className="space-y-6">
       <SectionHeading
-        eyebrow="COMMERCIALIZATION & SUBSCRIPTIONS / PHASE 9"
+        eyebrow="COMMERCIALIZATION & SUBSCRIPTIONS"
         title="Commercial Billing, Plans & Usage Metering"
         subtitle="Manage Stripe subscription tiers, monitor real-time consumption quotas, and enforce multi-tenant entitlements."
         action={

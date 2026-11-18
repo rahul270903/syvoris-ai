@@ -35,7 +35,7 @@ export function CommunicationModal({
   const [emailSubject, setEmailSubject] = useState('Follow-up regarding Enterprise Fiber Connectivity Proposal');
   const [emailTemplate, setEmailTemplate] = useState('custom');
   const [emailBody, setEmailBody] = useState(
-    `Hi ${selectedContact?.fields.firstName || 'there'},\n\nThank you for taking the time to discuss your regional connectivity requirements. I've prepared our initial proposal and would welcome 15 minutes this week to review the fiber build timeline.\n\nBest regards,\nDemo User · SYVORIS Ai`
+    `Hi ${selectedContact?.fields.firstName || 'there'},\n\nThank you for taking the time to discuss your regional connectivity requirements. I've prepared our initial proposal and would welcome 15 minutes this week to review the fiber build timeline.\n\nBest regards,\nArjun Mehta · SYVORIS Ai`
   );
 
   // Call State
@@ -94,7 +94,7 @@ export function CommunicationModal({
       }, 'Logged sent email to customer timeline');
     }
 
-    addAudit('Simulated email logged', 'Demo User', `To: ${selectedContact?.fields.email} · ${emailSubject}`);
+    addAudit('Simulated email logged', 'Arjun Mehta', `To: ${selectedContact?.fields.email} · ${emailSubject}`);
     addEvent('communication.email_sent', interaction, `Email sent to ${selectedContact?.fields.email}`);
     onLogged(`Email to ${selectedContact?.fields.email} recorded in customer timeline.`);
     onClose();
@@ -127,7 +127,7 @@ export function CommunicationModal({
       }, 'Logged telephone call to customer timeline');
     }
 
-    addAudit('Telephone call logged', 'Demo User', `${callDirection} · ${selectedContact?.title} · ${callOutcome}`);
+    addAudit('Telephone call logged', 'Arjun Mehta', `${callDirection} · ${selectedContact?.title} · ${callOutcome}`);
     addEvent('communication.call_logged', interaction, `${callDirection} call with ${selectedContact?.title}`);
     onLogged(`Call with ${selectedContact?.title} logged to activity history.`);
     onClose();
@@ -155,7 +155,7 @@ export function CommunicationModal({
       },
     });
 
-    addAudit('SMS message logged', 'Demo User', `To: ${selectedContact?.fields.phone}`);
+    addAudit('SMS message logged', 'Arjun Mehta', `To: ${selectedContact?.fields.phone}`);
     addEvent('communication.sms_sent', interaction, `SMS dispatched to ${selectedContact?.fields.phone}`);
     onLogged(`SMS to ${selectedContact?.fields.phone} recorded in customer timeline.`);
     onClose();
@@ -179,7 +179,7 @@ export function CommunicationModal({
       },
     });
 
-    addAudit('Customer meeting scheduled', 'Demo User', `${meetingTitle} on ${meetingDate}`);
+    addAudit('Customer meeting scheduled', 'Arjun Mehta', `${meetingTitle} on ${meetingDate}`);
     addEvent('meeting.scheduled', interaction, `Meeting scheduled for ${meetingDate}`);
     onLogged(`Meeting scheduled with ${selectedContact?.title}.`);
     onClose();
@@ -200,7 +200,7 @@ export function CommunicationModal({
       description: 'Lead converted from website live chat session: 10Gbps dedicated fiber request.',
     }, { status: 'New', score: 75 });
 
-    addAudit('Chat converted to lead', 'Demo User', lead.ref);
+    addAudit('Chat converted to lead', 'Arjun Mehta', lead.ref);
     addEvent('chat.converted_to_lead', lead, `Live chat converted to lead ${lead.ref}`);
     onLogged(`Live chat converted into qualified lead ${lead.ref}!`);
     onClose();
@@ -278,7 +278,7 @@ export function CommunicationModal({
                     setEmailTemplate(e.target.value);
                     if (e.target.value === 'quote') {
                       setEmailSubject('Commercial Proposal: Regional Fiber Infrastructure Deployment');
-                      setEmailBody(`Hi ${selectedContact?.fields.firstName},\n\nPlease find attached the official commercial quote QT-2026-00112 for your review. We have reflected the 8% volume incentive as agreed.\n\nBest regards,\nDemo User`);
+                      setEmailBody(`Hi ${selectedContact?.fields.firstName},\n\nPlease find attached the official commercial quote QT-2026-00112 for your review. We have reflected the 8% volume incentive as agreed.\n\nBest regards,\nArjun Mehta`);
                     }
                   }}
                 >

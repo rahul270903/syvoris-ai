@@ -206,7 +206,7 @@ export function ApprovalsView() {
       }
     }
     addEvent('approval.granted', { ref: item.ref }, `Executive approved ${item.category} for ${item.entityRef}`);
-    addAudit('Commercial Approval Granted', 'Demo User', `${item.ref}: ${item.title}`);
+    addAudit('Commercial Approval Granted', 'Arjun Mehta', `${item.ref}: ${item.title}`);
     notify(`Approved ${item.ref} (${money(item.amount)}). Audit record logged.`);
   };
 
@@ -240,7 +240,7 @@ export function ApprovalsView() {
       }
     }
     addEvent('approval.rejected', { ref: selectedItem.ref }, `Executive rejected ${selectedItem.category} for ${selectedItem.entityRef}`);
-    addAudit('Commercial Approval Rejected', 'Demo User', `${selectedItem.ref}: ${note}`);
+    addAudit('Commercial Approval Rejected', 'Arjun Mehta', `${selectedItem.ref}: ${note}`);
     setRejectionModal(false);
     notify(`Rejected ${selectedItem.ref}. Record returned to requester.`);
   };

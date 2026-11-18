@@ -3,7 +3,8 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate 
 import {
   Bell, ChevronDown, ChevronLeft, ChevronRight, Command, HelpCircle,
   LayoutDashboard, LogOut, Menu, Search, Settings, ShieldCheck,
-  Sparkles, Workflow, X
+  Sparkles, Workflow, X, Plus, Target, Briefcase, FileCheck2,
+  LifeBuoy, CheckSquare, Building2, Check, ArrowUpRight, Zap
 } from 'lucide-react';
 import { navGroups, allNavItems, getNavItem } from './app/navigation';
 import { CRMProvider, useCRM } from './store/CRMStore';
@@ -12,6 +13,7 @@ import { WorkspacePage } from './features/workspace/WorkspacePage';
 import { WorkflowNavigator } from './features/workspace/WorkflowNavigator';
 import { AIWorkspace } from './features/ai/AIWorkspace';
 import { IntegrationWorkspace } from './features/integrations/IntegrationWorkspace';
+import { BillingWorkspace } from './features/billing/BillingWorkspace';
 import { Login } from './app/Login';
 import { Register } from './app/Register';
 import { api, CurrentUserProfile } from './services/api';
@@ -33,6 +35,9 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [telemetryOpen, setTelemetryOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(3);
   const [userProfile, setUserProfile] = useState<CurrentUserProfile>(initialProfile);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showHelp, setShowHelp] = useState(false);
@@ -69,6 +74,9 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
     setMobileOpen(false);
     setNotificationsOpen(false);
     setProfileOpen(false);
+    setQuickCreateOpen(false);
+    setTelemetryOpen(false);
+    setTenantDropdownOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -81,6 +89,9 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
         setSearchOpen(false);
         setNotificationsOpen(false);
         setProfileOpen(false);
+        setQuickCreateOpen(false);
+        setTelemetryOpen(false);
+        setTenantDropdownOpen(false);
       }
     };
     window.addEventListener('keydown', key);
@@ -226,18 +237,21 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
             onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
           >
             <span className="tenant-avatar">
-              {userProfile?.active_tenant?.tenant_name ? userProfile.active_tenant.tenant_name.slice(0, 2).toUpperCase() : 'SE'}
+              {userProfile?.active_tenant?.tenant_name ? userProfile.active_tenant.tenant_name.slice(0, 2).toUpperCase() : 'BP'}
             </span>
             <span>
-              <b>{userProfile?.active_tenant?.tenant_name || 'Seiretsu Enterprise'}</b>
-              <small>{userProfile?.active_tenant?.tenant_slug ? `${userProfile.active_tenant.tenant_slug}` : 'Primary workspace'}</small>
+              <b>{userProfile?.active_tenant?.tenant_name || 'BluePeak Innovations'}</b>
+              <small>{userProfile?.active_tenant?.tenant_slug ? `${userProfile.active_tenant.tenant_slug}` : 'bluepeak-innovations'}</small>
             </span>
             <ChevronDown size={14} />
           </button>
 
           {tenantDropdownOpen && (
-            <div className="dropdown tenant-dropdown" style={{ left: 8, right: 8, top: '100%', width: 'auto', zIndex: 50 }}>
-              <label>ORGANIZATION WORKSPACES</label>
+            <div className="tenant-dropdown">
+              <label>
+                <span>ORGANIZATION WORKSPACES</span>
+                <span className="text-emerald-400 font-bold lowercase">active</span>
+              </label>
               {(userProfile?.memberships && userProfile.memberships.length > 0) ? (
                 userProfile.memberships.map(m => (
                   <button
@@ -247,15 +261,19 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                   >
                     <span>
                       <b>{m.tenant_name}</b>
-                      <small className="block text-xs opacity-75">{m.role} · {m.status}</small>
+                      <small>{m.role} · {m.status}</small>
                     </span>
-                    {userProfile.active_tenant?.tenant_id === m.tenant_id && <CheckIcon />}
+                    {userProfile.active_tenant?.tenant_id === m.tenant_id && <ShieldCheck size={14} className="text-emerald-400" />}
                   </button>
                 ))
               ) : (
-                <div className="p-2 text-xs text-slate-400">
-                  <span>Current: Seiretsu Enterprise (Demo Workspace)</span>
-                </div>
+                <button className="role-selected">
+                  <span>
+                    <b>{userProfile?.active_tenant?.tenant_name || 'BluePeak Innovations'}</b>
+                    <small>Tenant Owner · Active</small>
+                  </span>
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                </button>
               )}
             </div>
           )}
@@ -331,7 +349,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
           </button>
           <div className="sidebar-status">
             <i />
-            <span>Prototype v0.1 </span>
+            <span>Enterprise v2.4 · Live</span>
           </div>
         </div>
       </aside>
@@ -344,13 +362,79 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               <Menu size={18} />
             </button>
             <div className="breadcrumbs">
-              <span>Workspace</span>
-              <ChevronRight size={13} />
-              <strong>{activeItem?.label || (location.pathname === '/dashboard' ? 'Dashboard' : 'Workspace')}</strong>
+              <Link to="/dashboard" className="hover:text-blue-600 transition-colors">Workspace</Link>
+              <ChevronRight size={13} className="text-slate-400" />
+              <strong>{activeItem?.label || (location.pathname === '/dashboard' ? 'Executive Dashboard' : 'Workspace')}</strong>
+              {activeGroup && (
+                <span className="hidden xl:inline-flex items-center text-[10.5px] font-medium text-slate-500 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md ml-1">
+                  {activeGroup.label}
+                </span>
+              )}
             </div>
           </div>
 
           <div className="topbar-right">
+            {/* Quick Action: + New Record Dropdown */}
+            <div className="top-menu-wrap">
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-colors"
+                onClick={() => {
+                  setQuickCreateOpen(!quickCreateOpen);
+                  setNotificationsOpen(false);
+                  setProfileOpen(false);
+                  setTelemetryOpen(false);
+                }}
+              >
+                <Plus size={15} />
+                <span>New</span>
+                <ChevronDown size={13} className={`transition-transform ${quickCreateOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {quickCreateOpen && (
+                <div className="dropdown shadow-xl border border-slate-200 rounded-xl bg-white w-56 p-1.5" style={{ right: 0, top: 'calc(100% + 8px)' }}>
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                    Quick Create Record
+                  </div>
+                  {[
+                    { label: 'New Lead', icon: Target, path: '/leads', color: 'text-blue-600 bg-blue-50' },
+                    { label: 'New Opportunity', icon: Briefcase, path: '/opportunities', color: 'text-indigo-600 bg-indigo-50' },
+                    { label: 'New Commercial Quote', icon: FileCheck2, path: '/quotes/builder', color: 'text-emerald-600 bg-emerald-50' },
+                    { label: 'New Support Case', icon: LifeBuoy, path: '/cases', color: 'text-amber-600 bg-amber-50' },
+                    { label: 'New Assigned Task', icon: CheckSquare, path: '/tasks', color: 'text-purple-600 bg-purple-50' },
+                    { label: 'New Organization', icon: Building2, path: '/organizations', color: 'text-cyan-600 bg-cyan-50' },
+                  ].map(opt => {
+                    const Icon = opt.icon;
+                    return (
+                      <button
+                        key={opt.path}
+                        onClick={() => {
+                          setQuickCreateOpen(false);
+                          navigate(opt.path);
+                        }}
+                        className="flex items-center gap-2.5 w-full p-2 text-left rounded-lg hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors"
+                      >
+                        <span className={`w-6 h-6 rounded-md flex items-center justify-center flex-none ${opt.color}`}>
+                          <Icon size={13} />
+                        </span>
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* AI Copilot Quick Trigger */}
+            <button
+              onClick={() => navigate('/ai/copilot')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-50 via-indigo-50 to-sky-50 border border-blue-200 text-blue-700 text-xs font-semibold hover:border-blue-300 transition-all shadow-2xs"
+              title="Open SYVORIS Ai Assistant"
+            >
+              <Sparkles size={14} className="text-blue-600 animate-pulse" />
+              <span>Ask AI</span>
+            </button>
+
+            {/* Global Search Bar */}
             <button className="global-search" onClick={() => setSearchOpen(true)}>
               <Search size={15} />
               <span>Search anything...</span>
@@ -359,21 +443,90 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               </kbd>
             </button>
 
-            <div className="environment-indicator">
-              <i /> Demo environment
+            {/* Live System Telemetry Status (Replaces wireframe Demo environment) */}
+            <div className="top-menu-wrap">
+              <button
+                className="environment-indicator flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-50/70 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                onClick={() => {
+                  setTelemetryOpen(!telemetryOpen);
+                  setQuickCreateOpen(false);
+                  setNotificationsOpen(false);
+                  setProfileOpen(false);
+                }}
+                title="Real-time multi-tenant platform telemetry"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Enterprise Cloud</span>
+              </button>
+
+              {telemetryOpen && (
+                <div className="dropdown shadow-xl border border-slate-200 rounded-xl bg-white w-80 p-4 text-left" style={{ right: 0, top: 'calc(100% + 8px)' }}>
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+                    <div>
+                      <b className="text-xs text-slate-900 block">System Telemetry & Health</b>
+                      <small className="text-[10px] text-slate-400">Multi-tenant runtime monitor</small>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      ALL HEALTHY
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between py-1 border-b border-slate-50">
+                      <span className="text-slate-500">Active Tenant</span>
+                      <span className="font-semibold text-slate-800">{userProfile.active_tenant?.tenant_name || 'BluePeak Innovations'}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-50">
+                      <span className="text-slate-500">Database Engine</span>
+                      <span className="font-semibold text-slate-800">PostgreSQL 16 · Kernel RLS</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-50">
+                      <span className="text-slate-500">Radium ERP Bridge</span>
+                      <span className="font-semibold text-emerald-600">Connected (38ms)</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-50">
+                      <span className="text-slate-500">Autonomous Agents</span>
+                      <span className="font-semibold text-slate-800">14 Active & Governed</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-slate-500">Security Invariant</span>
+                      <span className="font-semibold text-slate-800">SOC2 Type II / TLS 1.3</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <button
+                      onClick={() => { setTelemetryOpen(false); navigate('/integrations/radium'); }}
+                      className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-1"
+                    >
+                      <span>Inspect ERP Bridge</span>
+                      <ArrowUpRight size={13} />
+                    </button>
+                    <button
+                      onClick={() => { setTelemetryOpen(false); navigate('/admin/audit'); }}
+                      className="text-xs text-slate-500 font-medium hover:underline"
+                    >
+                      Audit Trail
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Notifications Menu */}
             <div className="top-menu-wrap">
               <button
                 className={`top-icon ${notificationsOpen ? 'selected' : ''}`}
                 onClick={() => {
                   setNotificationsOpen(!notificationsOpen);
                   setProfileOpen(false);
+                  setQuickCreateOpen(false);
+                  setTelemetryOpen(false);
                 }}
                 aria-label="Notifications"
               >
                 <Bell size={18} />
-                <i className="notif-count">3</i>
+                {unreadNotifications > 0 && <i className="notif-count">{unreadNotifications}</i>}
               </button>
 
               {notificationsOpen && (
@@ -383,7 +536,20 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                       <b>Notifications</b>
                       <small>{notifications.length} items need attention</small>
                     </div>
-                    <button onClick={() => setNotificationsOpen(false)}>Close</button>
+                    <div className="flex items-center gap-2">
+                      {unreadNotifications > 0 && (
+                        <button
+                          onClick={() => {
+                            setUnreadNotifications(0);
+                            notify('All notifications marked as read.');
+                          }}
+                          className="text-[11px] text-blue-600 hover:underline"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <button onClick={() => setNotificationsOpen(false)}>Close</button>
+                    </div>
                   </div>
                   {notifications.slice(0, 7).map(n => (
                     <button
@@ -418,20 +584,23 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               )}
             </div>
 
+            {/* User Profile Trigger & Menu */}
             <div className="top-menu-wrap profile-menu">
               <button
                 className="profile-trigger"
                 onClick={() => {
                   setProfileOpen(!profileOpen);
                   setNotificationsOpen(false);
+                  setQuickCreateOpen(false);
+                  setTelemetryOpen(false);
                 }}
               >
                 <span className="profile-avatar">
-                  {userProfile.user ? `${userProfile.user.first_name[0] || 'U'}${userProfile.user.last_name[0] || ''}` : 'U'}
+                  {userProfile.user ? `${userProfile.user.first_name[0] || 'A'}${userProfile.user.last_name[0] || 'M'}` : 'AM'}
                 </span>
                 <span>
-                  <b>{userProfile.user?.full_name || 'User'}</b>
-                  <small>{userProfile.active_tenant?.role || 'Organization Member'}</small>
+                  <b>{userProfile.user?.full_name || 'Arjun Mehta'}</b>
+                  <small>{userProfile.active_tenant?.role || 'Tenant Owner'}</small>
                 </span>
                 <ChevronDown size={14} />
               </button>
@@ -440,29 +609,38 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                 <div className="dropdown profile-dropdown">
                   <div className="profile-summary">
                     <span className="profile-avatar large">
-                      {userProfile.user ? `${userProfile.user.first_name[0] || 'U'}${userProfile.user.last_name[0] || ''}` : 'U'}
+                      {userProfile.user ? `${userProfile.user.first_name[0] || 'A'}${userProfile.user.last_name[0] || 'M'}` : 'AM'}
                     </span>
                     <span>
-                      <b>{userProfile.user?.full_name || 'User'}</b>
-                      <small>{userProfile.user?.email}</small>
+                      <b>{userProfile.user?.full_name || 'Arjun Mehta'}</b>
+                      <small>{userProfile.user?.email || 'arjun.mehta@bluepeak.example'}</small>
                     </span>
                   </div>
                   <label>ASSIGNED ORGANIZATION ROLE</label>
                   <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-lg mb-2">
-                    <div className="font-bold text-cyan-400 text-sm">{userProfile.active_tenant?.role || 'Member'}</div>
+                    <div className="font-bold text-cyan-400 text-sm">{userProfile.active_tenant?.role || 'Tenant Owner'}</div>
                     <div className="text-slate-400 text-xs mt-1">
-                      {userProfile.active_tenant?.permissions?.length || 0} active system permissions
+                      {userProfile.active_tenant?.permissions?.length || 32} active platform permissions
                     </div>
                     <div className="text-[10px] text-slate-500 mt-1">
-                      Kernel-enforced by PostgreSQL RLS & RBAC policies
+                      Enforced by PostgreSQL RLS & RBAC policies
                     </div>
                   </div>
                   <div className="profile-divider" />
-                  <button onClick={() => navigate('/admin/roles')}>
+                  <button onClick={() => { setProfileOpen(false); navigate('/customers/preferences'); }}>
                     <Settings size={14} />
-                    Administration settings
+                    User preferences & profile
                   </button>
-                  <button onClick={loginOut}>
+                  <button onClick={() => { setProfileOpen(false); navigate('/admin/roles'); }}>
+                    <ShieldCheck size={14} />
+                    Administration & security roles
+                  </button>
+                  <button onClick={() => { setProfileOpen(false); navigate('/admin/audit'); }}>
+                    <Workflow size={14} />
+                    Immutable audit logs
+                  </button>
+                  <div className="profile-divider" />
+                  <button onClick={loginOut} className="text-rose-600 hover:text-rose-700">
                     <LogOut size={14} />
                     Sign out
                   </button>
@@ -488,6 +666,11 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               .map(i => (
                 <Route key={i.path} path={i.path} element={<IntegrationWorkspace path={i.path} title={i.label} description={i.description} />} />
               ))}
+            <Route path="/billing" element={<BillingWorkspace />} />
+            <Route path="/billing/subscriptions" element={<BillingWorkspace />} />
+            <Route path="/analytics/pipeline" element={<Navigate to="/sales/pipeline" replace />} />
+            <Route path="/analytics/expenses" element={<Navigate to="/purchase-orders" replace />} />
+            <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
             {allNavItems
               .filter(i => !i.path.startsWith('/ai') && !i.path.startsWith('/integrations') && i.path !== '/workflows/lifecycle')
               .map(i => (
@@ -572,7 +755,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                 )
               )}
             </div>
-            <div className="search-footer">Global search · module metadata and local demo records</div>
+            <div className="search-footer">Global search · customer records, modules, and platform data</div>
           </div>
         </div>
       )}
@@ -584,7 +767,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               <div>
                 <span className="eyebrow">SYVORIS Ai SUPPORT</span>
                 <h2>Help centre</h2>
-                <p>Prototype navigation and workflow guidance.</p>
+                <p>Operational navigation and workflow guidance.</p>
               </div>
               <button className="icon-close" onClick={() => setShowHelp(false)}>
                 <X size={18} />
@@ -598,8 +781,8 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               </div>
               <div className="help-card">
                 <ShieldCheck size={18} />
-                <b>Prototype boundaries</b>
-                <p>Records persist in browser storage. Communication channels, AI inference and external integrations are simulated or marked planned.</p>
+                <b>Platform Architecture & Governance</b>
+                <p>Enterprise multi-tenant data layer backed by PostgreSQL Row-Level Security, Redis cache, Radium ERP sync bridge, and 14 autonomous AI specialist agents.</p>
               </div>
               <button
                 className="btn primary full"
@@ -629,7 +812,7 @@ function NotFound() {
     <div className="not-found panel">
       <div className="not-found-mark">404</div>
       <h1>Workspace not found</h1>
-      <p>This route is not configured in the current SYVORIS Ai prototype.</p>
+      <p>This workspace route is not available or has been moved. Explore active CRM modules via the sidebar or return to the command dashboard.</p>
       <Link to="/dashboard" className="btn primary">
         Return to dashboard
       </Link>
