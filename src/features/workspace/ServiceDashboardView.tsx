@@ -408,25 +408,25 @@ export function ServiceDashboardView() {
         </div>
 
         <div
-          onClick={() => navigate('/service/mailroom')}
-          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm cursor-pointer transition-all"
-        >
-          <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 w-fit mb-2">
-            <Mail size={18} />
-          </div>
-          <h4 className="text-xs font-bold text-slate-900">Support Mailroom</h4>
-          <p className="text-[11px] text-slate-500 mt-0.5">Email-to-case scanner</p>
-        </div>
-
-        <div
-          onClick={() => navigate('/service/live-chats')}
+          onClick={() => navigate('/service/sla')}
           className="p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:shadow-sm cursor-pointer transition-all"
         >
           <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 w-fit mb-2">
-            <MessageCircle size={18} />
+            <Clock size={18} />
           </div>
-          <h4 className="text-xs font-bold text-slate-900">Live Chats</h4>
-          <p className="text-[11px] text-slate-500 mt-0.5">Real-time visitor chats</p>
+          <h4 className="text-xs font-bold text-slate-900">SLA Management</h4>
+          <p className="text-[11px] text-slate-500 mt-0.5">Targets & compliance</p>
+        </div>
+
+        <div
+          onClick={() => navigate('/service/analytics')}
+          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm cursor-pointer transition-all"
+        >
+          <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 w-fit mb-2">
+            <BarChart3 size={18} />
+          </div>
+          <h4 className="text-xs font-bold text-slate-900">Service Analytics</h4>
+          <p className="text-[11px] text-slate-500 mt-0.5">Resolution & CSAT trends</p>
         </div>
 
         <div

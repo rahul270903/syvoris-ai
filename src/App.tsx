@@ -689,6 +689,9 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
             <Route path="/orders/allocation" element={<Navigate to="/orders/fulfilment" replace />} />
             <Route path="/segments" element={<Navigate to="/campaigns" replace />} />
             <Route path="/marketing/segments" element={<Navigate to="/campaigns" replace />} />
+            <Route path="/service/mailroom" element={<Navigate to="/service" replace />} />
+            <Route path="/service/live-chats" element={<Navigate to="/service" replace />} />
+            <Route path="/service/trackers" element={<Navigate to="/service" replace />} />
             {allNavItems
               .filter(i => !i.path.startsWith('/ai') && !i.path.startsWith('/integrations') && i.path !== '/workflows/lifecycle')
               .map(i => (

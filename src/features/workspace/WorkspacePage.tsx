@@ -44,6 +44,13 @@ import { OrganizationSelectField } from './OrganizationSelectField';
 import { ProjectDetailsView } from './ProjectDetailsView';
 import { ProjectAnalyticsView } from './ProjectAnalyticsView';
 import { ServiceDashboardView } from './ServiceDashboardView';
+import { CasesWorkspaceView } from './CasesWorkspaceView';
+import { SupportQueueView } from './SupportQueueView';
+import { SLAManagementView } from './SLAManagementView';
+import { BusinessHoursView } from './BusinessHoursView';
+import { SupportWebformsView } from './SupportWebformsView';
+import { AppointmentPagesView } from './AppointmentPagesView';
+import { ServiceAnalyticsView } from './ServiceAnalyticsView';
 import { LeadCaptureView } from './LeadCaptureView';
 import { LeadQualificationView } from './LeadQualificationView';
 import { LeadAssignmentView } from './LeadAssignmentView';
@@ -3272,20 +3279,28 @@ export function WorkspacePage({ item }: Props) {
           )}
           <div className="form-modal-footer">
             <button className="btn secondary" disabled={submitting} onClick={closeModal}>Cancel</button>
-            <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(false)}>
-              {submitting ? 'Saving...' : 'Save draft'}
-            </button>
-            <button className="btn primary" disabled={submitting} onClick={() => saveRecord(true)}>
-              <Send size={15}/> {submitting ? 'Submitting...' : 'Submit for approval'}
-            </button>
-            {['organizations', 'contacts'].includes(activeModalEntity) && (
-              <button
-                className="btn primary"
-                style={{ background: '#16a34a', borderColor: '#15803d', color: '#fff' }}
-                disabled={submitting}
-                onClick={() => saveRecord('Active')}
-              >
-                <BadgeCheck size={15}/> {submitting ? 'Approving...' : 'Approve & Activate'}
+            {['quotes', 'salesOrders', 'purchaseOrders', 'decisions', 'discounts', 'organizations'].includes(activeModalEntity) ? (
+              <>
+                <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(false)}>
+                  {submitting ? 'Saving...' : 'Save draft'}
+                </button>
+                <button className="btn primary" disabled={submitting} onClick={() => saveRecord(true)}>
+                  <Send size={15}/> {submitting ? 'Submitting...' : 'Submit for approval'}
+                </button>
+                {activeModalEntity === 'organizations' && (
+                  <button
+                    className="btn primary"
+                    style={{ background: '#16a34a', borderColor: '#15803d', color: '#fff' }}
+                    disabled={submitting}
+                    onClick={() => saveRecord('Active')}
+                  >
+                    <BadgeCheck size={15}/> {submitting ? 'Approving...' : 'Approve & Activate'}
+                  </button>
+                )}
+              </>
+            ) : (
+              <button className="btn primary" disabled={submitting} onClick={() => saveRecord(false)}>
+                <Check size={15}/> {submitting ? 'Saving...' : editingId ? 'Save Changes' : `Create ${activeModalConfig.title.replace(/s$/, '')}`}
               </button>
             )}
           </div>
@@ -3755,10 +3770,73 @@ export function WorkspacePage({ item }: Props) {
   }
 
   // SERVICE DASHBOARD DEDICATED VIEW
-  if (item.path === '/service/dashboard') {
+  if (item.path === '/service' || item.path === '/service/dashboard') {
     return (
       <div className="workspace-page">
         <ServiceDashboardView />
+      </div>
+    );
+  }
+
+  // CASES MANAGEMENT DEDICATED VIEW
+  if (item.path === '/cases') {
+    return (
+      <div className="workspace-page">
+        <CasesWorkspaceView />
+      </div>
+    );
+  }
+
+  // SUPPORT QUEUE DEDICATED VIEW
+  if (item.path === '/service/queue') {
+    return (
+      <div className="workspace-page">
+        <SupportQueueView />
+      </div>
+    );
+  }
+
+  // SLA MANAGEMENT DEDICATED VIEW
+  if (item.path === '/service/sla') {
+    return (
+      <div className="workspace-page">
+        <SLAManagementView />
+      </div>
+    );
+  }
+
+  // BUSINESS HOURS DEDICATED VIEW
+  if (item.path === '/service/business-hours') {
+    return (
+      <div className="workspace-page">
+        <BusinessHoursView />
+      </div>
+    );
+  }
+
+  // SUPPORT WEBFORMS DEDICATED VIEW
+  if (item.path === '/service/webforms') {
+    return (
+      <div className="workspace-page">
+        <SupportWebformsView />
+      </div>
+    );
+  }
+
+  // APPOINTMENT PAGES DEDICATED VIEW
+  if (item.path === '/service/appointments') {
+    return (
+      <div className="workspace-page">
+        <AppointmentPagesView />
+      </div>
+    );
+  }
+
+  // SERVICE ANALYTICS DEDICATED VIEW
+  if (item.path === '/service/analytics') {
+    return (
+      <div className="workspace-page">
+        <ServiceAnalyticsView />
       </div>
     );
   }

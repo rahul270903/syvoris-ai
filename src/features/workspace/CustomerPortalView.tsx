@@ -173,22 +173,22 @@ export function CustomerPortalView() {
       />
 
       {/* Hero Banner */}
-      <div className="panel p-6 bg-gradient-to-r from-sky-950 via-slate-900 to-indigo-950 text-white border-0 shadow-lg rounded-2xl">
+      <div className="panel p-6 bg-white border border-slate-200 shadow-sm rounded-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-sky-400 text-xs font-bold uppercase tracking-wider">
-              <Globe2 size={16} />
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
+              <Globe2 size={14} className="text-sky-600" />
               <span>Enterprise Client Workspace · NovaTech Solutions</span>
             </div>
-            <h2 className="text-2xl font-black tracking-tight">Welcome to your SYVORIS Client Workspace</h2>
-            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome to your SYVORIS Client Workspace</h2>
+            <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
               Track open technical support cases in real-time, communicate directly with assigned engineering leads, inspect verified SLA target deadlines, and book consultations.
             </p>
           </div>
 
           <button
             onClick={() => setShowNewTicketModal(true)}
-            className="btn primary bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs py-2.5 px-4 flex items-center gap-2 self-start md:self-center shadow-md rounded-xl transition-all"
+            className="btn primary bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs py-2.5 px-4 flex items-center gap-2 self-start md:self-center shadow-sm rounded-lg transition-all"
           >
             <Plus size={15} />
             <span>Open New Support Case</span>
