@@ -296,7 +296,7 @@ export function ProjectDetailsView({
       </div>
 
       {/* Workspace Tab Navigation */}
-      <div className="flex border-b border-slate-800 gap-1 bg-slate-900/40 p-1 rounded-lg">
+      <div className="flex items-center border border-slate-800 gap-1.5 bg-slate-900/90 p-1.5 rounded-xl overflow-x-auto shadow-sm">
         {[
           { key: 'overview', label: 'Overview & Objectives', icon: FileText, count: null },
           { key: 'milestones', label: 'Milestones & Roadmap', icon: CheckCircle2, count: projectDetail.milestones.length },
@@ -311,16 +311,16 @@ export function ProjectDetailsView({
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 ${
                 isActive
-                  ? 'bg-slate-800 text-cyan-400 shadow-sm border border-slate-700/60'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'bg-slate-800/60 text-slate-200 hover:text-white hover:bg-slate-800 border border-slate-700/60 hover:border-slate-600'
               }`}
             >
-              <Icon size={14} />
-              {tab.label}
+              <Icon size={14} className={isActive ? 'text-cyan-400' : 'text-slate-400'} />
+              <span className={isActive ? 'text-cyan-300 font-bold' : 'text-slate-200 font-semibold'}>{tab.label}</span>
               {tab.count !== null && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${isActive ? 'bg-cyan-500/25 text-cyan-200' : 'bg-slate-700 text-slate-300'}`}>
                   {tab.count}
                 </span>
               )}

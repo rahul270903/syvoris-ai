@@ -43,6 +43,9 @@ import { DuplicateManagementView } from './DuplicateManagementView';
 import { OrganizationSelectField } from './OrganizationSelectField';
 import { ProjectDetailsView } from './ProjectDetailsView';
 import { ProjectAnalyticsView } from './ProjectAnalyticsView';
+import { MilestonesView } from './MilestonesView';
+import { ProjectCostsView } from './ProjectCostsView';
+import { ResourceAllocationView } from './ResourceAllocationView';
 import { ServiceDashboardView } from './ServiceDashboardView';
 import { CasesWorkspaceView } from './CasesWorkspaceView';
 import { SupportQueueView } from './SupportQueueView';
@@ -3754,6 +3757,33 @@ export function WorkspacePage({ item }: Props) {
           initialProjectId={(location.state as any)?.projectId}
           onNavigateTo={(path, state) => navigate(path, { state })}
         />
+      </div>
+    );
+  }
+
+  // PROJECT MILESTONES DEDICATED VIEW
+  if (item.path === '/projects/milestones') {
+    return (
+      <div className="workspace-page">
+        <MilestonesView />
+      </div>
+    );
+  }
+
+  // PROJECT COSTS DEDICATED VIEW
+  if (item.path === '/projects/costs') {
+    return (
+      <div className="workspace-page">
+        <ProjectCostsView />
+      </div>
+    );
+  }
+
+  // RESOURCE ALLOCATION DEDICATED VIEW
+  if (item.path === '/projects/resources') {
+    return (
+      <div className="workspace-page">
+        <ResourceAllocationView />
       </div>
     );
   }
