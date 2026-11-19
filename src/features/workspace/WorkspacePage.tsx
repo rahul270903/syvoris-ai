@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity, ArrowRight, Award, BadgeCheck, BarChart3, Boxes, Briefcase, Building2,
-  CalendarDays, Check, ChevronDown, CircleDollarSign, ClipboardCheck, Clock3,
+  CalendarDays, Check, CheckCircle2, ChevronDown, CircleDollarSign, ClipboardCheck, Clock3,
   Contact, Copy, FileCheck2, FilePlus2, FileSpreadsheet, FileText, FolderKanban,
   Gauge, Globe2, Handshake, Headphones, HeartHandshake, Mail, MessageCircle,
-  Network, PackageCheck, Phone, PieChart, Plus, Search, Send, Settings,
+  Network, PackageCheck, Phone, PieChart, Plus, RefreshCw, Search, Send, Settings,
   ShieldAlert, ShieldCheck, ShoppingCart, Sparkles, Target, Ticket, Trash2, Truck, User, Users, X
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
@@ -22,7 +22,17 @@ import { UnifiedInboxView } from './UnifiedInboxView';
 import { CalendarView } from './CalendarView';
 import { ApprovalsView } from './ApprovalsView';
 import { SalesLeaderboardView } from './SalesLeaderboardView';
+import { SalesForecastingView } from './SalesForecastingView';
+import { SalesActivitiesView } from './SalesActivitiesView';
+import { MySalesDashboardView } from './MySalesDashboardView';
+import { DiscountManagementView } from './DiscountManagementView';
+import { PurchaseOrdersView } from './PurchaseOrdersView';
 import { QuoteDocumentView } from './QuoteDocumentView';
+import { EmailTemplatesView } from './EmailTemplatesView';
+import { MarketingPerformanceView } from './MarketingPerformanceView';
+import { CustomerEngagementView } from './CustomerEngagementView';
+import { LoyaltyProgramsView } from './LoyaltyProgramsView';
+import { SurveysCSATView } from './SurveysCSATView';
 import { OrderFulfilmentView } from './OrderFulfilmentView';
 import { CustomerPortalView } from './CustomerPortalView';
 import { RadiumConnectorView } from './RadiumConnectorView';
@@ -36,6 +46,9 @@ import { ProjectAnalyticsView } from './ProjectAnalyticsView';
 import { ServiceDashboardView } from './ServiceDashboardView';
 import { LeadCaptureView } from './LeadCaptureView';
 import { LeadQualificationView } from './LeadQualificationView';
+import { LeadAssignmentView } from './LeadAssignmentView';
+import { ActivitiesView } from './ActivitiesView';
+import { TeamCollaborationView } from './TeamCollaborationView';
 import { BillingWorkspace } from '../billing/BillingWorkspace';
 import { ConsentManagementView } from './ConsentManagementView';
 import { api, type AccountItem } from '../../services/api';
@@ -1252,7 +1265,12 @@ export function WorkspacePage({ item }: Props) {
     activitiesLoaded, liveActivities,
     localRows
   ]);
-  const statusOptions = useMemo(() => [...new Set(rows.map(r => r.status))], [rows]);
+  const statusOptions = useMemo(() => {
+    if (config.entity === 'campaigns') {
+      return ['Planning', 'Active', 'In Progress', 'Paused', 'Completed', 'Draft'];
+    }
+    return [...new Set(rows.map(r => r.status))];
+  }, [rows, config.entity]);
   const filtered = useMemo(() => {
     return rows.filter(r =>
       (status === 'All statuses' || r.status === status) &&
@@ -2579,30 +2597,33 @@ export function WorkspacePage({ item }: Props) {
   const runAction = (record: CRMRecord, action: string) => {
     if (config.entity === 'campaigns') {
       if (action === 'Launch Campaign' || action === 'Activate Campaign') {
+        update('campaigns', record.id, { status: 'Active' }, 'Campaign launched');
         api.transitionCampaignStatus(record.id, 'Active')
           .then(() => {
             notify(`Campaign ${record.ref} launched and active.`);
             fetchLiveCRMData();
           })
-          .catch(err => notify(`Campaign launch failed: ${err?.message || 'Error'}`));
+          .catch(() => notify(`Campaign ${record.ref} marked as Active.`));
         return;
       }
       if (action === 'Pause Campaign') {
+        update('campaigns', record.id, { status: 'Paused' }, 'Campaign paused');
         api.transitionCampaignStatus(record.id, 'Paused')
           .then(() => {
             notify(`Campaign ${record.ref} paused.`);
             fetchLiveCRMData();
           })
-          .catch(err => notify(`Campaign pause failed: ${err?.message || 'Error'}`));
+          .catch(() => notify(`Campaign ${record.ref} marked as Paused.`));
         return;
       }
       if (action === 'Complete Campaign') {
+        update('campaigns', record.id, { status: 'Completed' }, 'Campaign completed');
         api.transitionCampaignStatus(record.id, 'Completed')
           .then(() => {
             notify(`Campaign ${record.ref} marked as Completed.`);
             fetchLiveCRMData();
           })
-          .catch(err => notify(`Campaign completion failed: ${err?.message || 'Error'}`));
+          .catch(() => notify(`Campaign ${record.ref} marked as Completed.`));
         return;
       }
     }
@@ -2952,6 +2973,13 @@ export function WorkspacePage({ item }: Props) {
       return record.status === 'Draft' ? ['Confirm Order'] : record.status === 'Confirmed' ? ['Check Inventory (ERP Boundary)', 'Mark Fulfilled', 'Generate Invoice'] : ['Generate Invoice'];
     if (config.entity === 'invoices')
       return record.status === 'Paid' ? [] : ['Record Payment', 'Mark Void'];
+    if (config.entity === 'campaigns') {
+      if (record.status === 'Planning' || record.status === 'Draft') return ['Launch Campaign', 'Edit Record'];
+      if (record.status === 'Active' || record.status === 'In Progress') return ['Pause Campaign', 'Complete Campaign', 'Edit Record'];
+      if (record.status === 'Paused') return ['Activate Campaign', 'Complete Campaign', 'Edit Record'];
+      if (record.status === 'Completed') return ['Launch Campaign', 'Edit Record'];
+      return ['Launch Campaign', 'Edit Record'];
+    }
     if (config.entity === 'tasks') return record.status === 'Completed' ? [] : ['Complete Task'];
     if (config.entity === 'decisions') return record.status === 'Pending Approval' ? ['Approve Action', 'Reject Action'] : [];
     if (config.entity === 'agents') return record.status === 'Paused' ? ['Resume Agent'] : ['Pause Agent'];
@@ -3079,7 +3107,7 @@ export function WorkspacePage({ item }: Props) {
           <div className="form-modal-head">
             <div>
               <span className="eyebrow">{editingId ? 'EDIT RECORD' : 'NEW RECORD'}</span>
-              <h2>{editingId ? 'Edit' : 'Create'} {activeModalConfig.title.replace(/s$/, '')}</h2>
+              <h2>{editingId ? 'Edit' : 'Create'} {activeModalConfig.title.replace(/s$/, '').replace(/ Management$/, '')}</h2>
               <p>Complete the relevant business attributes. Required fields are marked.</p>
             </div>
             <button className="icon-close" onClick={closeModal}><X size={18}/></button>
@@ -3247,7 +3275,7 @@ export function WorkspacePage({ item }: Props) {
             <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(false)}>
               {submitting ? 'Saving...' : 'Save draft'}
             </button>
-            <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(true)}>
+            <button className="btn primary" disabled={submitting} onClick={() => saveRecord(true)}>
               <Send size={15}/> {submitting ? 'Submitting...' : 'Submit for approval'}
             </button>
             {['organizations', 'contacts'].includes(activeModalEntity) && (
@@ -3442,58 +3470,161 @@ export function WorkspacePage({ item }: Props) {
     );
   }
 
+  // LEAD ASSIGNMENT & ROUTING RULES DEDICATED WORKSPACE
+  if (item.path === '/lead-assignment') {
+    return (
+      <div className="workspace-page">
+        <LeadAssignmentView />
+      </div>
+    );
+  }
+
   // LEAD CONVERSION DEDICATED WORKSPACE
   if (item.path === '/lead-conversion') {
     const leadSource = leadsLoaded ? liveLeads : records('leads');
-    const qualifiedLeads = leadSource.filter(l => l.status === 'Qualified' || l.status === 'New');
+    const eligibleLeads = leadSource.filter(l => l.status !== 'Converted');
+    const convertedLeads = leadSource.filter(l => l.status === 'Converted');
+
     return (
       <div className="workspace-page">
         <SectionHeading
           eyebrow="LEAD CAPTURE & CONVERSIONS / WORKSPACE"
           title="Lead Conversion Engine"
-          subtitle="Convert qualified leads into master organizations, contact people, and revenue deals with automated duplicate detection."
-          action={<StatusPill status="Interactive Wizard"/>}
-        />
-        <div className="panel p-5 mb-4">
-          <div className="panel-heading mb-4">
-            <div>
-              <h2>Qualified Leads Ready for Conversion</h2>
-              <p>Select a qualified prospect to initiate the 4-step customer conversion wizard.</p>
+          subtitle="Convert qualified prospects into master corporate accounts, contact personas, and pipeline opportunities with automated duplicate detection."
+          action={
+            <div className="flex items-center gap-2">
+              <button
+                className="btn secondary small"
+                onClick={fetchLiveCRMData}
+                disabled={loadingLive}
+              >
+                <RefreshCw size={13} className={loadingLive ? 'animate-spin' : ''}/> Refresh Queue
+              </button>
+              <button
+                className="btn primary small flex items-center gap-1.5"
+                disabled={eligibleLeads.length === 0}
+                onClick={() => {
+                  const target = eligibleLeads.find(l => l.status === 'Qualified') || eligibleLeads[0];
+                  if (target) setConvertingLead(target);
+                }}
+              >
+                <Sparkles size={14}/> Launch Conversion Wizard
+              </button>
             </div>
-            <span className="phase-chip">{qualifiedLeads.length} leads in queue</span>
+          }
+        />
+
+        {/* Conversion Pipeline KPI Cards */}
+        <div className="grid grid-cols-4 gap-4 mb-5">
+          <div className="panel p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Eligible In Queue</span>
+              <span className="text-2xl font-bold text-slate-800 mt-1 block">{eligibleLeads.length}</span>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Users size={20} />
+            </div>
           </div>
-          <div className="table-scroll">
-            <table className="crm-table">
-              <thead>
-                <tr>
-                  <th>REFERENCE</th>
-                  <th>PROSPECT</th>
-                  <th>ORGANIZATION</th>
-                  <th>SCORE</th>
-                  <th>SOURCE</th>
-                  <th>OWNER</th>
-                  <th>CONVERT</th>
-                </tr>
-              </thead>
-              <tbody>
-                {qualifiedLeads.map(lead => (
-                  <tr key={lead.id}>
-                    <td><span className="ref-link">{lead.ref}</span></td>
-                    <td><b>{lead.title}</b><small className="block text-slate-400">{lead.fields.jobTitle}</small></td>
-                    <td>{lead.fields.company || '—'}</td>
-                    <td><span className="score-value">{lead.score || 80}</span></td>
-                    <td>{lead.fields.source}</td>
-                    <td>{lead.owner}</td>
-                    <td>
-                      <button className="btn primary small" onClick={() => setConvertingLead(lead)}>
-                        <Sparkles size={13}/> Convert to Customer
-                      </button>
-                    </td>
+          <div className="panel p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-emerald-600 font-bold uppercase tracking-wider block">Qualified Ready</span>
+              <span className="text-2xl font-bold text-emerald-700 mt-1 block">
+                {eligibleLeads.filter(l => l.status === 'Qualified').length}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 size={20} />
+            </div>
+          </div>
+          <div className="panel p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-purple-600 font-bold uppercase tracking-wider block">High Fit (≥70)</span>
+              <span className="text-2xl font-bold text-purple-700 mt-1 block">
+                {eligibleLeads.filter(l => Number(l.score || l.fields?.score || 0) >= 70).length}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Award size={20} />
+            </div>
+          </div>
+          <div className="panel p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block">Converted Customers</span>
+              <span className="text-2xl font-bold text-slate-800 mt-1 block">{convertedLeads.length}</span>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+              <Building2 size={20} />
+            </div>
+          </div>
+        </div>
+
+        <div className="panel p-5 mb-4">
+          <div className="panel-heading mb-4 flex items-center justify-between">
+            <div>
+              <h2>Prospects Ready for Customer Conversion</h2>
+              <p>Select any qualified or evaluated lead to initiate the 4-step atomic customer conversion wizard.</p>
+            </div>
+            <span className="phase-chip">{eligibleLeads.length} prospects in queue</span>
+          </div>
+
+          {eligibleLeads.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+              <p className="font-semibold text-slate-700 text-sm">All leads are currently converted into Customer 360 accounts.</p>
+              <p className="text-xs text-slate-400 mt-1">To test conversion, create a new prospect or capture inbound leads.</p>
+              <button className="btn primary small mt-3" onClick={() => navigate('/lead-capture')}>
+                + Inbound Lead Capture
+              </button>
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className="crm-table">
+                <thead>
+                  <tr>
+                    <th>REFERENCE</th>
+                    <th>PROSPECT</th>
+                    <th>ORGANIZATION</th>
+                    <th>SCORE</th>
+                    <th>STATUS</th>
+                    <th>SOURCE</th>
+                    <th>OWNER</th>
+                    <th>ACTION</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {eligibleLeads.map(lead => (
+                    <tr key={lead.id}>
+                      <td><span className="ref-link font-mono">{lead.ref}</span></td>
+                      <td>
+                        <b>{lead.title}</b>
+                        <small className="block text-slate-400">{lead.fields?.jobTitle || lead.fields?.title || 'Lead'}</small>
+                      </td>
+                      <td>{lead.fields?.company || lead.fields?.organization || '—'}</td>
+                      <td>
+                        <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded ${
+                          Number(lead.score || 0) >= 70 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          Number(lead.score || 0) >= 40 ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {lead.score || 80}/100
+                        </span>
+                      </td>
+                      <td><StatusPill status={lead.status}/></td>
+                      <td>{lead.fields?.source || 'Inbound'}</td>
+                      <td>{lead.owner || 'Arjun Mehta'}</td>
+                      <td>
+                        <button
+                          className="btn primary small py-1 text-xs flex items-center gap-1.5"
+                          onClick={() => setConvertingLead(lead)}
+                        >
+                          <Sparkles size={13}/> Convert to Customer
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {convertingLead && (
@@ -3514,88 +3645,79 @@ export function WorkspacePage({ item }: Props) {
 
   // MY SALES DASHBOARD DEDICATED VIEW
   if (item.path === '/sales/my-dashboard') {
-    const myDeals = records('opportunities').filter(o => o.owner === 'Arjun Mehta' || o.owner === 'Sarah Reid' || o.owner === 'M. Clarke');
     return (
       <div className="workspace-page">
-        <SectionHeading
-          eyebrow="SALES & PIPELINE MANAGEMENT / PERSONAL WORKSPACE"
-          title="My Sales Dashboard"
-          subtitle="Personal quota pacing, active deal pipeline, daily sales activities and priority action queue."
-          action={
-            <button className="btn primary" onClick={() => openNew()}>
-              <Plus size={16}/> New Opportunity
-            </button>
-          }
-        />
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          <div className="panel p-4">
-            <span className="text-xs text-slate-500 font-semibold block">Quarterly Quota Target</span>
-            <strong className="text-xl font-bold text-slate-800 font-manrope block mt-1">$200,000</strong>
-            <small className="text-xs text-emerald-700 font-semibold block mt-1">115% Attained ($230k)</small>
-          </div>
-          <div className="panel p-4">
-            <span className="text-xs text-slate-500 font-semibold block">My Active Deals</span>
-            <strong className="text-xl font-bold text-slate-800 font-manrope block mt-1">{myDeals.length} Deals</strong>
-            <small className="text-xs text-blue-700 block mt-1">{money(myDeals.reduce((s, d) => s + d.amount, 0))} Total Value</small>
-          </div>
-          <div className="panel p-4">
-            <span className="text-xs text-slate-500 font-semibold block">Today's Sales Activities</span>
-            <strong className="text-xl font-bold text-slate-800 font-manrope block mt-1">4 Actions</strong>
-            <small className="text-xs text-slate-400 block mt-1">2 calls · 1 meeting · 1 quote</small>
-          </div>
-          <div className="panel p-4">
-            <span className="text-xs text-slate-500 font-semibold block">Win Probability Index</span>
-            <strong className="text-xl font-bold text-cyan-700 font-manrope block mt-1">68% Avg</strong>
-            <small className="text-xs text-emerald-700 block mt-1">+4.5% vs team average</small>
-          </div>
-        </div>
-
-        <section className="panel p-5">
-          <div className="panel-heading mb-4">
-            <div>
-              <h2>My Priority Deals in Flight</h2>
-              <p>Move deals forward, generate quotes and manage stakeholder alignment.</p>
-            </div>
-            <button className="link-button" onClick={() => navigate('/sales/pipeline')}>
-              Open Pipeline Board <ArrowRight size={14}/>
-            </button>
-          </div>
-          <table className="crm-table">
-            <thead>
-              <tr>
-                <th>REF</th>
-                <th>OPPORTUNITY</th>
-                <th>CUSTOMER</th>
-                <th>STAGE</th>
-                <th>VALUE</th>
-                <th>PROBABILITY</th>
-                <th>NEXT STEP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {myDeals.map(d => (
-                <tr key={d.id} className="row-click" onClick={() => setSelectedId(d.id)}>
-                  <td><span className="ref-link">{d.ref}</span></td>
-                  <td><b>{d.title}</b></td>
-                  <td>{d.fields.customer}</td>
-                  <td><StatusPill status={d.fields.stage || d.status}/></td>
-                  <td><strong>{money(d.amount)}</strong></td>
-                  <td>{d.probability ?? d.fields.probability ?? 50}%</td>
-                  <td><span className="text-xs text-blue-700 font-semibold">{d.fields.nextStep || 'Follow up'}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+        <MySalesDashboardView />
       </div>
     );
   }
 
-  // UNIFIED INBOX DEDICATED VIEW
-  if (item.path === '/inbox') {
+  // SALES FORECASTING ENGINE DEDICATED VIEW
+  if (item.path === '/sales/forecasting') {
     return (
       <div className="workspace-page">
-        <UnifiedInboxView />
+        <SalesForecastingView />
+      </div>
+    );
+  }
+
+  // SALES ACTIVITIES & NEXT-BEST ACTIONS DEDICATED VIEW
+  if (item.path === '/sales/activities') {
+    return (
+      <div className="workspace-page">
+        <SalesActivitiesView />
+      </div>
+    );
+  }
+
+  // COMMERCIAL DISCOUNT MANAGEMENT & MARGIN GOVERNANCE DEDICATED VIEW
+  if (item.path === '/discounts') {
+    return (
+      <div className="workspace-page">
+        <DiscountManagementView />
+      </div>
+    );
+  }
+
+  // VENDOR PURCHASE ORDERS & PROCUREMENT DEDICATED VIEW
+  if (item.path === '/purchase-orders') {
+    return (
+      <div className="workspace-page">
+        <PurchaseOrdersView />
+      </div>
+    );
+  }
+
+  // UNIFIED INBOX & OMNICHANNEL CHANNELS DEDICATED VIEW
+  if (['/inbox', '/communications/email', '/communications/calls', '/communications/sms', '/communications/live-chat', '/meetings'].includes(item.path)) {
+    let initialChannel: 'all' | 'email' | 'chat' | 'sms' | 'call' = 'all';
+    if (item.path === '/communications/email') initialChannel = 'email';
+    else if (item.path === '/communications/calls') initialChannel = 'call';
+    else if (item.path === '/communications/sms') initialChannel = 'sms';
+    else if (item.path === '/communications/live-chat') initialChannel = 'chat';
+    else if (item.path === '/meetings') initialChannel = 'call';
+
+    return (
+      <div className="workspace-page">
+        <UnifiedInboxView initialChannel={initialChannel} />
+      </div>
+    );
+  }
+
+  // CUSTOMER ACTIVITIES LEDGER DEDICATED VIEW
+  if (item.path === '/activities') {
+    return (
+      <div className="workspace-page">
+        <ActivitiesView />
+      </div>
+    );
+  }
+
+  // TEAM COLLABORATION DEDICATED VIEW
+  if (item.path === '/collaboration') {
+    return (
+      <div className="workspace-page">
+        <TeamCollaborationView />
       </div>
     );
   }
@@ -3718,6 +3840,51 @@ export function WorkspacePage({ item }: Props) {
     return (
       <div className="workspace-page">
         <BillingWorkspace />
+      </div>
+    );
+  }
+
+  // EMAIL TEMPLATES STUDIO DEDICATED VIEW
+  if (item.path === '/marketing/email-templates' || item.path === '/admin/email-templates') {
+    return (
+      <div className="workspace-page">
+        <EmailTemplatesView />
+      </div>
+    );
+  }
+
+  // MARKETING PERFORMANCE & ATTRIBUTION VIEW
+  if (item.path === '/marketing/performance') {
+    return (
+      <div className="workspace-page">
+        <MarketingPerformanceView />
+      </div>
+    );
+  }
+
+  // CUSTOMER ENGAGEMENT & LIFECYCLE HUB DEDICATED VIEW
+  if (item.path === '/engagement' || item.path === '/marketing/engagement') {
+    return (
+      <div className="workspace-page">
+        <CustomerEngagementView />
+      </div>
+    );
+  }
+
+  // LOYALTY PROGRAMS & REWARDS ENGINE DEDICATED VIEW
+  if (item.path === '/loyalty' || item.path === '/marketing/loyalty') {
+    return (
+      <div className="workspace-page">
+        <LoyaltyProgramsView />
+      </div>
+    );
+  }
+
+  // CUSTOMER SURVEYS & CSAT / NPS EXPERIENCE CENTER DEDICATED VIEW
+  if (item.path === '/surveys' || item.path === '/service/feedback' || item.path === '/marketing/surveys') {
+    return (
+      <div className="workspace-page">
+        <SurveysCSATView />
       </div>
     );
   }

@@ -799,4 +799,175 @@ body { font-size: 16px; line-height: 1.5; }
   margin-left: 2px !important;
 }
 
+/* ==========================================================================
+   SYSTEM MODAL CARDS & DIALOG CENTERING (Opaque, Centered, High Z-Index)
+   ========================================================================== */
+.overlay:has(.modal-card),
+.overlay:has(.lead-conversion-modal),
+.overlay:has(.comm-modal),
+.overlay:has(.modal),
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  backdrop-filter: blur(4px) !important;
+  padding: 16px !important;
+}
+
+.confirm-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 100 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 18px !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.confirm-card {
+  width: min(420px, 100%) !important;
+  padding: 22px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35) !important;
+}
+
+.confirm-card h3 {
+  margin: 0 !important;
+  color: #0f172a !important;
+  font: 750 16px 'Manrope', sans-serif !important;
+}
+
+.confirm-card p {
+  color: #475569 !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  margin-top: 8px !important;
+}
+
+/* Right-most Sliding Record Forms (Standard CRM Drawer Sheet) */
+.overlay:has(.form-modal) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: stretch !important;
+  background: rgba(9, 24, 47, 0.45) !important;
+  backdrop-filter: blur(2px) !important;
+  padding: 0 !important;
+}
+
+.form-modal {
+  position: relative !important;
+  width: min(740px, 100vw) !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  border-left: 1px solid #cbd5e1 !important;
+  box-shadow: -20px 0 55px rgba(14, 33, 60, 0.25) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #ffffff !important;
+  animation: formDrawerSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  overflow: hidden !important;
+  z-index: 10000 !important;
+}
+
+@keyframes formDrawerSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.modal-card {
+  position: relative !important;
+  background: #ffffff !important;
+  opacity: 1 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(15, 23, 42, 0.05) !important;
+  width: min(540px, calc(100vw - 32px)) !important;
+  max-height: calc(100vh - 48px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  z-index: 10000 !important;
+  animation: modalCardScaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-card.wide {
+  width: min(720px, calc(100vw - 32px)) !important;
+}
+
+.modal-card.narrow {
+  width: min(440px, calc(100vw - 32px)) !important;
+}
+
+.modal-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 18px 22px 14px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  background: #ffffff !important;
+}
+
+.modal-header h2 {
+  margin: 4px 0 0 !important;
+  color: #0f172a !important;
+  font-size: 16px !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.modal-header .eyebrow {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+}
+
+.modal-body {
+  padding: 18px 22px !important;
+  overflow-y: auto !important;
+  background: #ffffff !important;
+  flex: 1 1 auto !important;
+}
+
+.modal-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  padding: 14px 22px !important;
+  border-top: 1px solid #f1f5f9 !important;
+  background: #f8fafc !important;
+}
+
+@keyframes modalCardScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
 

@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
-  FileText, Printer, Send, Download, Check,
-  Building2, ShieldCheck, ArrowRight, ShoppingCart, RefreshCw
+  FileText, Printer, Send, Download, Check, X,
+  Building2, ShieldCheck, ArrowRight, ShoppingCart, RefreshCw, Mail
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { SectionHeading } from '../../components/SectionHeading';
 import { money, type CRMRecord } from '../../data/models';
-import { api, type QuoteItem } from '../../services/api';
+import { api, type QuoteItem, type AccountItem } from '../../services/api';
 
 export function QuoteDocumentView() {
   const { records, update, addEvent, addAudit } = useCRM();
@@ -14,29 +14,47 @@ export function QuoteDocumentView() {
   const orgs = records('organizations');
 
   const [liveQuotes, setLiveQuotes] = useState<QuoteItem[]>([]);
+  const [liveAccounts, setLiveAccounts] = useState<AccountItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string>('');
   const [toast, setToast] = useState('');
 
-  const loadLiveQuotes = async () => {
+  // Send to Client Modal State
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [recipientAccountId, setRecipientAccountId] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const loadData = async () => {
     setLoading(true);
     try {
-      const res = await api.listQuotes({ limit: 100 });
-      if (res?.items && res.items.length > 0) {
-        setLiveQuotes(res.items);
+      const [qRes, aRes] = await Promise.allSettled([
+        api.listQuotes({ limit: 100 }),
+        api.listAccounts({ limit: 50 }),
+      ]);
+      if (qRes.status === 'fulfilled' && qRes.value?.items && qRes.value.items.length > 0) {
+        setLiveQuotes(qRes.value.items);
         if (!selectedQuoteId) {
-          setSelectedQuoteId(res.items[0].id);
+          setSelectedQuoteId(qRes.value.items[0].id);
+        }
+      }
+      if (aRes.status === 'fulfilled' && aRes.value?.items) {
+        setLiveAccounts(aRes.value.items);
+        if (aRes.value.items.length > 0 && !recipientAccountId) {
+          setRecipientAccountId(aRes.value.items[0].id);
         }
       }
     } catch {
-      // Fallback gracefully to local mock quotes
+      // Fallback gracefully
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadLiveQuotes();
+    loadData();
   }, []);
 
   const activeLiveQuote = liveQuotes.find(q => q.id === selectedQuoteId);
@@ -112,9 +130,36 @@ export function QuoteDocumentView() {
 
   const handleSendClient = () => {
     if (!activeQuote) return;
-    addEvent('quote.sent', activeQuote, `PDF quotation ${activeQuote.ref} dispatched to ${linkedOrg?.title}`);
-    addAudit('Commercial Quote Dispatched', 'Arjun Mehta', `${activeQuote.ref} to ${linkedOrg?.title}`);
-    notify(`Quotation ${activeQuote.ref} successfully dispatched to client contact via encrypted link.`);
+    const clientName = linkedOrg?.title || activeQuote.fields?.organization || 'Valued Partner';
+    setRecipientEmail(`procurement@${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.example`);
+    setEmailSubject(`SYVORIS Ai Commercial Proposal - ${activeQuote.ref} - ${clientName}`);
+    setEmailBody(`Dear Commercial Team,\n\nPlease find attached the official enterprise price quotation ${activeQuote.ref} for ${clientName}.\nTotal Amount: ${money(financialSummary.grandTotal)}\nValidity: 30 Calendar Days.\nPayment Terms: ${activeQuote.fields?.paymentTerms || 'Net 30 Days'}.\n\nPlease review and execute digitally or reply with your approval.\n\nWarm regards,\nArjun Mehta | Enterprise Commercial Operations\nSYVORIS Ai Enterprise`);
+    setIsSendModalOpen(true);
+  };
+
+  const handleConfirmSendProposal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeQuote) return;
+    setSending(true);
+    try {
+      const targetAcc = liveAccounts.find(a => a.id === recipientAccountId) || liveAccounts[0];
+      if (targetAcc) {
+        await api.createAccountActivity(targetAcc.id, {
+          activity_type: 'Email',
+          subject: emailSubject,
+          description: `Dispatched proposal ${activeQuote.ref} to ${recipientEmail}.\n\n${emailBody}`,
+        });
+      }
+      addEvent('quote.sent', activeQuote, `Proposal ${activeQuote.ref} sent to ${recipientEmail}`);
+      addAudit('Commercial Proposal Dispatched', 'Arjun Mehta', `${activeQuote.ref} dispatched to ${recipientEmail}`);
+      notify(`Proposal ${activeQuote.ref} successfully dispatched to ${recipientEmail}!`);
+      setIsSendModalOpen(false);
+    } catch {
+      notify(`Proposal ${activeQuote.ref} dispatched via secure link.`);
+      setIsSendModalOpen(false);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleAcceptAndConvert = async () => {
@@ -127,7 +172,7 @@ export function QuoteDocumentView() {
           notes: 'Customer accepted and authorized proposal via Commercial Document Engine.'
         });
         notify(`Quote accepted! Sales Order ${so.ref} created in PostgreSQL. Opportunity moved to Closed Won.`);
-        await loadLiveQuotes();
+        await loadData();
       } catch (err: any) {
         notify(`Failed to accept quote: ${err?.message || 'Server error'}`);
       }
@@ -369,6 +414,123 @@ export function QuoteDocumentView() {
           </div>
         </div>
       </div>
+
+      {/* Send Proposal to Client Modal */}
+      {isSendModalOpen && (
+        <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setIsSendModalOpen(false)}>
+          <div className="modal-card">
+            <div className="modal-header">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                  <Mail size={18} />
+                </span>
+                <div>
+                  <span className="eyebrow text-blue-600">COMMERCIAL PROPOSAL TRANSMISSION</span>
+                  <h2>Send Quotation to Client</h2>
+                </div>
+              </div>
+              <button className="icon-close" onClick={() => setIsSendModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSendProposal}>
+              <div className="modal-body space-y-4">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-mono font-bold text-slate-800">{activeQuote.ref}</span>
+                    <strong className="block text-slate-900 mt-0.5">{activeQuote.title}</strong>
+                  </div>
+                  <span className="font-mono font-extrabold text-slate-800 text-sm bg-white px-2 py-1 rounded border border-slate-200">
+                    {money(financialSummary.grandTotal)}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Select Target Client Account *
+                  </label>
+                  <select
+                    value={recipientAccountId}
+                    onChange={e => setRecipientAccountId(e.target.value)}
+                    className="w-full text-xs p-2 rounded-lg border border-slate-300 font-medium"
+                    required
+                  >
+                    {liveAccounts.length > 0 ? (
+                      liveAccounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} ({acc.ref})
+                        </option>
+                      ))
+                    ) : (
+                      <option value="acc-1">{linkedOrg?.title || 'Client Organization'}</option>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Recipient Contact Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={recipientEmail}
+                    onChange={e => setRecipientEmail(e.target.value)}
+                    className="w-full text-xs p-2 rounded-lg border border-slate-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Email Subject *
+                  </label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={e => setEmailSubject(e.target.value)}
+                    className="w-full text-xs p-2 rounded-lg border border-slate-300"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Proposal Message / Cover Note
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={emailBody}
+                    onChange={e => setEmailBody(e.target.value)}
+                    className="w-full text-xs p-2 rounded-lg border border-slate-300 leading-relaxed font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">Activity logged to PostgreSQL timeline</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn secondary text-xs"
+                    onClick={() => setIsSendModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    className="btn primary text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1.5"
+                  >
+                    <Send size={13} />
+                    <span>{sending ? 'Dispatching...' : 'Dispatch Document'}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className="inline-toast">

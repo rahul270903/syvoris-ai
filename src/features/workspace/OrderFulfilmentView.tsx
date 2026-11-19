@@ -288,15 +288,15 @@ export function OrderFulfilmentView() {
               <div className="text-xs text-slate-600 p-3 bg-white border border-slate-200 rounded-lg space-y-1">
                 <div className="flex justify-between">
                   <span>1. Enterprise Optical Transceiver Array (100G QSFP28)</span>
-                  <span className="font-mono text-slate-500">Qty: 8 · Passed QA</span>
+                  <span className="font-mono text-slate-500">Qty: 8 </span>
                 </div>
                 <div className="flex justify-between">
                   <span>2. Dual-redundant PDU Power Distribution Module</span>
-                  <span className="font-mono text-slate-500">Qty: 4 · Passed QA</span>
+                  <span className="font-mono text-slate-500">Qty: 4 </span>
                 </div>
                 <div className="flex justify-between">
                   <span>3. High-Density Cat6A Structured Trunk Bundle</span>
-                  <span className="font-mono text-slate-500">Qty: 2 · Passed QA</span>
+                  <span className="font-mono text-slate-500">Qty: 2 </span>
                 </div>
               </div>
             </div>

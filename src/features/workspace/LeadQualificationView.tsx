@@ -97,22 +97,49 @@ export function LeadQualificationView({
   }, [selectedLead]);
 
   // Current lead BANT state
-  const currentBant = selectedLead ? bantState[selectedLead.id] || {
-    budget: selectedLead.score >= 50,
-    authority: ['chief', 'c-level', 'cxo', 'ceo', 'cto', 'cio', 'cfo', 'director', 'vp'].some(t => (selectedLead.job_title || '').toLowerCase().includes(t)),
-    need: true,
-    timeline: selectedLead.priority === 'Urgent' || selectedLead.priority === 'High'
-  } : { budget: false, authority: false, need: false, timeline: false };
+  const currentBant = useMemo(() => {
+    if (!selectedLead) return { budget: false, authority: false, need: false, timeline: false };
+    if (bantState[selectedLead.id]) return bantState[selectedLead.id];
+    if (selectedLead.custom_fields?.bant) return selectedLead.custom_fields.bant;
+    return {
+      budget: selectedLead.score >= 50,
+      authority: ['chief', 'c-level', 'cxo', 'ceo', 'cto', 'cio', 'cfo', 'director', 'vp'].some(t => (selectedLead.job_title || '').toLowerCase().includes(t)),
+      need: true,
+      timeline: selectedLead.priority === 'Urgent' || selectedLead.priority === 'High'
+    };
+  }, [selectedLead, bantState]);
 
-  const toggleBant = (key: 'budget' | 'authority' | 'need' | 'timeline') => {
+  const toggleBant = async (key: 'budget' | 'authority' | 'need' | 'timeline') => {
     if (!selectedLead) return;
+    const updatedBant = {
+      ...currentBant,
+      [key]: !currentBant[key]
+    };
     setBantState(prev => ({
       ...prev,
-      [selectedLead.id]: {
-        ...currentBant,
-        [key]: !currentBant[key]
-      }
+      [selectedLead.id]: updatedBant
     }));
+
+    // Calculate updated evaluation score based on verified BANT weights
+    let bantScore = 15; // baseline intake
+    if (updatedBant.budget) bantScore += 25;
+    if (updatedBant.authority) bantScore += 25;
+    if (updatedBant.need) bantScore += 20;
+    if (updatedBant.timeline) bantScore += 15;
+
+    try {
+      await api.updateLead(selectedLead.id, {
+        score: bantScore,
+        custom_fields: {
+          ...(selectedLead.custom_fields || {}),
+          bant: updatedBant
+        }
+      });
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, score: bantScore, custom_fields: { ...(l.custom_fields || {}), bant: updatedBant } } : l));
+      setActionSuccess(`BANT criterion "${key.toUpperCase()}" updated & persisted to PostgreSQL (Score: ${bantScore}/100).`);
+    } catch (err: any) {
+      console.warn('Failed to persist BANT to backend:', err);
+    }
   };
 
   const handleUpdateStatus = async (newStatus: 'Qualified' | 'Nurture' | 'Disqualified') => {

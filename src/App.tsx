@@ -680,53 +680,15 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
             <Route path="/analytics/expenses" element={<Navigate to="/purchase-orders" replace />} />
             <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
             <Route path="/customers/preferences" element={<Navigate to="/customers/360" replace />} />
-
-            {/* Seamless Redirects for Pruned Standalone & Duplicate Routes */}
-            <Route path="/internal/tickets" element={<Navigate to="/cases" replace />} />
-            <Route path="/internal/employees" element={<Navigate to="/admin/users" replace />} />
-            <Route path="/internal/faq" element={<Navigate to="/knowledge" replace />} />
-            <Route path="/loyalty" element={<Navigate to="/customers/360" replace />} />
-            <Route path="/engagement" element={<Navigate to="/customers/timeline" replace />} />
-            <Route path="/marketing/email-templates" element={<Navigate to="/admin/email-templates" replace />} />
-            <Route path="/marketing/performance" element={<Navigate to="/marketing" replace />} />
-            <Route path="/service/trackers" element={<Navigate to="/service" replace />} />
-            <Route path="/service/webforms" element={<Navigate to="/cases" replace />} />
-            <Route path="/service/appointments" element={<Navigate to="/calendar" replace />} />
-            <Route path="/service/live-chats" element={<Navigate to="/inbox" replace />} />
-            <Route path="/service/feedback" element={<Navigate to="/surveys" replace />} />
-            <Route path="/service/analytics" element={<Navigate to="/service" replace />} />
-            <Route path="/service/business-hours" element={<Navigate to="/service/sla" replace />} />
-            <Route path="/lead-conversion" element={<Navigate to="/leads" replace />} />
-            <Route path="/lead-import" element={<Navigate to="/data/import" replace />} />
-            <Route path="/communications/email" element={<Navigate to="/inbox" replace />} />
-            <Route path="/communications/calls" element={<Navigate to="/inbox" replace />} />
-            <Route path="/communications/sms" element={<Navigate to="/inbox" replace />} />
-            <Route path="/communications/live-chat" element={<Navigate to="/inbox" replace />} />
-            <Route path="/meetings" element={<Navigate to="/calendar" replace />} />
-            <Route path="/collaboration" element={<Navigate to="/activities" replace />} />
-            <Route path="/sales/playbooks" element={<Navigate to="/sales/pipeline" replace />} />
-            <Route path="/sales/sequences" element={<Navigate to="/sales/pipeline" replace />} />
-            <Route path="/sales/activities" element={<Navigate to="/activities" replace />} />
-            <Route path="/sales/my-dashboard" element={<Navigate to="/sales/performance" replace />} />
-            <Route path="/quotes/configuration" element={<Navigate to="/catalog/products" replace />} />
-            <Route path="/discounts" element={<Navigate to="/approvals" replace />} />
-            <Route path="/quotes/approvals" element={<Navigate to="/approvals" replace />} />
-            <Route path="/quotes/documents" element={<Navigate to="/documents" replace />} />
-            <Route path="/orders/details" element={<Navigate to="/sales-orders" replace />} />
+            <Route path="/lead-import" element={<Navigate to="/leads" replace />} />
+            <Route path="/sales/performance" element={<Navigate to="/sales/leaderboard" replace />} />
+            <Route path="/quotes/builder" element={<Navigate to="/quotes" replace />} />
+            <Route path="/quotes/configuration" element={<Navigate to="/quotes" replace />} />
+            <Route path="/quotes/config" element={<Navigate to="/quotes" replace />} />
+            <Route path="/price-books" element={<Navigate to="/quotes" replace />} />
             <Route path="/orders/allocation" element={<Navigate to="/orders/fulfilment" replace />} />
-            <Route path="/orders/documents" element={<Navigate to="/documents" replace />} />
-            <Route path="/catalog/bundles" element={<Navigate to="/catalog/products" replace />} />
-            <Route path="/catalog/availability" element={<Navigate to="/catalog/products" replace />} />
-            <Route path="/projects/tasks" element={<Navigate to="/tasks" replace />} />
-            <Route path="/projects/calendar" element={<Navigate to="/calendar" replace />} />
-            <Route path="/admin/hierarchy" element={<Navigate to="/accounts/hierarchies" replace />} />
-            <Route path="/admin/permissions" element={<Navigate to="/admin/roles" replace />} />
-            <Route path="/admin/print-templates" element={<Navigate to="/documents" replace />} />
-            <Route path="/admin/integrations" element={<Navigate to="/integrations" replace />} />
-            <Route path="/admin/agent-policies" element={<Navigate to="/ai/governance" replace />} />
-            <Route path="/admin/data" element={<Navigate to="/data/import" replace />} />
-            <Route path="/admin/import-export" element={<Navigate to="/data/import" replace />} />
-            <Route path="/data/duplicates" element={<Navigate to="/admin/duplicates" replace />} />
+            <Route path="/segments" element={<Navigate to="/campaigns" replace />} />
+            <Route path="/marketing/segments" element={<Navigate to="/campaigns" replace />} />
             {allNavItems
               .filter(i => !i.path.startsWith('/ai') && !i.path.startsWith('/integrations') && i.path !== '/workflows/lifecycle')
               .map(i => (

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   ClipboardCheck, Check, X, ShieldAlert,
   ArrowRight, ShieldCheck, UserCheck,
-  TrendingDown, CheckCircle2, RefreshCw
+  TrendingDown, CheckCircle2, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { SectionHeading } from '../../components/SectionHeading';
@@ -192,12 +192,17 @@ export function ApprovalsView() {
           ? {
               ...i,
               status: 'Approved',
-              resolvedBy: 'Demo Executive User',
+              resolvedBy: 'Arjun Mehta',
               resolvedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
             }
           : i
       )
     );
+    try {
+      await api.decideApproval(item.id, { decision: 'approve', notes: 'Approved via Governance Workspace' });
+    } catch {
+      // Handled
+    }
     if (item.entity === 'Quote') {
       try {
         await api.decideQuoteApproval(item.id, { decision: 'approve', notes: 'Approved via Governance Workspace' });
@@ -225,13 +230,18 @@ export function ApprovalsView() {
           ? {
               ...i,
               status: 'Rejected',
-              resolvedBy: 'Demo Executive User',
+              resolvedBy: 'Arjun Mehta',
               resolvedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
               rejectionReason: note,
             }
           : i
       )
     );
+    try {
+      await api.decideApproval(selectedItem.id, { decision: 'reject', notes: note, comments: note });
+    } catch {
+      // Handled
+    }
     if (selectedItem.entity === 'Quote') {
       try {
         await api.decideQuoteApproval(selectedItem.id, { decision: 'reject', notes: note });
@@ -430,44 +440,71 @@ export function ApprovalsView() {
         <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setRejectionModal(false)}>
           <div className="modal-card">
             <div className="modal-header">
-              <div>
-                <span className="eyebrow text-rose-600">GOVERNANCE ENFORCEMENT</span>
-                <h2>Reject Approval Request</h2>
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
+                  <ShieldAlert size={18} />
+                </span>
+                <div>
+                  <span className="eyebrow text-rose-600">GOVERNANCE ENFORCEMENT</span>
+                  <h2>Reject Approval Request</h2>
+                </div>
               </div>
               <button className="icon-close" onClick={() => setRejectionModal(false)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className="modal-body space-y-3">
-              <p className="text-xs text-slate-600">
-                You are rejecting approval <b>{selectedItem.ref}</b> ({selectedItem.title}). Please enter an explicit reason for the sales team and audit log:
-              </p>
+            <div className="modal-body space-y-4">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-start justify-between">
+                <div>
+                  <span className="font-mono text-xs font-bold text-slate-800">{selectedItem.ref}</span>
+                  <strong className="block text-xs text-slate-900 mt-0.5">{selectedItem.title}</strong>
+                  <span className="text-[11px] text-slate-500">
+                    Requested by {selectedItem.requester} · {selectedItem.category}
+                  </span>
+                </div>
+                <span className="text-xs font-bold font-mono text-slate-700 bg-white px-2 py-1 rounded border border-slate-200">
+                  {money(selectedItem.amount)}
+                </span>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+                <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-semibold text-amber-800">Action Confirmation Required</strong>
+                  <span>
+                    Rejecting this request will mark the governance decision as declined, notify the requesting commercial team, and return the record for required remediation.
+                  </span>
+                </div>
+              </div>
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Rejection Reason & Required Remediation *
+                  Rejection Reason & Remediation Requirements *
                 </label>
                 <textarea
                   rows={3}
                   placeholder="e.g. Discount exceeds margin floor; request customer to sign 4-year commitment or reduce discount to 12%."
                   value={rejectionNote}
                   onChange={e => setRejectionNote(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
                 />
               </div>
             </div>
 
-            <div className="modal-footer flex items-center justify-end gap-2">
-              <button className="btn secondary text-xs" onClick={() => setRejectionModal(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn primary text-xs bg-rose-600 hover:bg-rose-700 text-white"
-                onClick={handleConfirmReject}
-              >
-                Confirm Rejection
-              </button>
+            <div className="modal-footer flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">Governance decision is logged to audit trail</span>
+              <div className="flex items-center gap-2">
+                <button className="btn secondary text-xs" onClick={() => setRejectionModal(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn primary text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+                  onClick={handleConfirmReject}
+                >
+                  <X size={14} /> Confirm Rejection
+                </button>
+              </div>
             </div>
           </div>
         </div>

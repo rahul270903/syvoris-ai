@@ -2778,6 +2778,16 @@ class ApiClient {
     return this.request<ApprovalRequestItem>(`/approvals/${id}`);
   }
 
+  public async decideApproval(
+    id: string,
+    payload: { decision: 'approve' | 'reject'; notes?: string; comments?: string }
+  ): Promise<ApprovalRequestItem> {
+    return this.request<ApprovalRequestItem>(`/approvals/${id}/decision`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   // --- Marketing Workstream (Workstream A) ---
   public async listCampaigns(params?: {
     q?: string;
