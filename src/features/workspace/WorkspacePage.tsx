@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { makeId, money, shortDate, type CRMRecord, type LineItem } from '../../data/models';
-import { getWorkspaceConfig } from './config';
+import { getWorkspaceConfig, prettyEntity } from './config';
 import type { FieldDef } from './types';
 import { SectionHeading } from '../../components/SectionHeading';
 import { StatusPill } from '../../components/StatusPill';
@@ -37,6 +37,7 @@ import { ServiceDashboardView } from './ServiceDashboardView';
 import { LeadCaptureView } from './LeadCaptureView';
 import { LeadQualificationView } from './LeadQualificationView';
 import { BillingWorkspace } from '../billing/BillingWorkspace';
+import { ConsentManagementView } from './ConsentManagementView';
 import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
@@ -66,16 +67,42 @@ export function WorkspacePage({ item }: Props) {
   const [status, setStatus] = useState('All statuses');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modal, setModal] = useState(false);
+  const [modalEntity, setModalEntity] = useState<string>('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [lines, setLines] = useState<LineItem[]>([initialLine()]);
   const [toast, setToast] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const activeModalEntity = modalEntity || config.entity;
+  const activeModalConfig = useMemo(() => {
+    if (!modalEntity || modalEntity === config.entity) return config;
+    return getWorkspaceConfig({
+      path: `/${modalEntity}`,
+      label: prettyEntity(modalEntity),
+      description: `Manage ${prettyEntity(modalEntity)}`,
+      entity: modalEntity,
+      category: config.group || 'Core',
+      icon: config.title,
+    } as any);
+  }, [modalEntity, config]);
+
+  const closeModal = () => {
+    setModal(false);
+    setModalEntity('');
+    setEditingId(null);
+    setFormError(null);
+  };
+
   // Advanced Modals
   const [convertingLead, setConvertingLead] = useState<CRMRecord | null>(null);
   const [activeComm, setActiveComm] = useState<CommType | null>(null);
-  const [commPrefill, setCommPrefill] = useState<{ to?: string; contact?: string }>({});
+  const [commPrefill, setCommPrefill] = useState<{
+    to?: string;
+    contact?: string;
+    accountId?: string;
+    organization?: string;
+  }>({});
 
   // Live Backend Records
   const isLiveCRMEntity =
@@ -108,7 +135,9 @@ export function WorkspacePage({ item }: Props) {
     item.path === '/service/sla' ||
     config.entity === 'knowledge' ||
     config.entity === 'surveys' ||
-    item.path === '/service/feedback';
+    item.path === '/service/feedback' ||
+    config.entity === 'interactions' ||
+    item.path === '/customers/timeline';
   const [liveAccounts, setLiveAccounts] = useState<CRMRecord[]>([]);
   const [liveContacts, setLiveContacts] = useState<CRMRecord[]>([]);
   const [liveLeads, setLiveLeads] = useState<CRMRecord[]>([]);
@@ -130,6 +159,7 @@ export function WorkspacePage({ item }: Props) {
   const [liveSLAPolicies, setLiveSLAPolicies] = useState<CRMRecord[]>([]);
   const [liveKnowledge, setLiveKnowledge] = useState<CRMRecord[]>([]);
   const [liveSurveys, setLiveSurveys] = useState<CRMRecord[]>([]);
+  const [liveActivities, setLiveActivities] = useState<CRMRecord[]>([]);
   const [availableAccounts, setAvailableAccounts] = useState<AccountItem[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [accountsFetchError, setAccountsFetchError] = useState<string | null>(null);
@@ -154,12 +184,16 @@ export function WorkspacePage({ item }: Props) {
   const [slaPoliciesLoaded, setSLAPoliciesLoaded] = useState(false);
   const [knowledgeLoaded, setKnowledgeLoaded] = useState(false);
   const [surveysLoaded, setSurveysLoaded] = useState(false);
+  const [activitiesLoaded, setActivitiesLoaded] = useState(false);
   const [loadingLive, setLoadingLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [dataVersion, setDataVersion] = useState(0);
+  const [externalSelected, setExternalSelected] = useState<{ entity: string; record: CRMRecord } | null>(null);
 
   const fetchLiveCRMData = async () => {
+    setDataVersion(v => v + 1);
     if (config.entity === 'organizations') {
       setLoadingLive(true);
       setLiveError(null);
@@ -1068,6 +1102,46 @@ export function WorkspacePage({ item }: Props) {
         setLoadingLive(false);
       }
     }
+
+    if (config.entity === 'interactions' || item.path === '/customers/timeline') {
+      setLoadingLive(true);
+      setLiveError(null);
+      try {
+        const actList = await api.listActivities(100);
+        const mapped: CRMRecord[] = actList.map(a => ({
+          id: a.id,
+          ref: `ACT-${a.id.slice(0, 8).toUpperCase()}`,
+          title: a.subject,
+          description: a.description || 'Customer interaction recorded in PostgreSQL.',
+          status: 'Completed',
+          owner: a.actor_name || 'System Operator',
+          amount: 0,
+          date: a.occurred_at ? a.occurred_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          links: {
+            organizations: a.account_id ? [a.account_id] : [],
+            contacts: a.contact_id ? [a.contact_id] : [],
+          },
+          history: [],
+          fields: {
+            subject: a.subject,
+            type: a.activity_type,
+            channel: a.activity_type === 'Call' ? 'Phone' : a.activity_type === 'Email' ? 'Email' : a.activity_type === 'Meeting' ? 'Calendar' : 'Outreach',
+            relatedTo: a.metadata?.account_name || a.metadata?.organization || (a.account_id ? `Account: ${a.account_id.slice(0, 8)}` : 'Customer Account'),
+            occurredAt: a.occurred_at,
+            actor: a.actor_name,
+            summary: a.description || 'Logged interaction with verified audit record.',
+            consent: 'Verified',
+          }
+        }));
+        setLiveActivities(mapped);
+        setActivitiesLoaded(true);
+      } catch (err: any) {
+        setLiveError(err?.message || 'Failed to fetch customer activities from backend.');
+        setActivitiesLoaded(true);
+      } finally {
+        setLoadingLive(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -1147,6 +1221,9 @@ export function WorkspacePage({ item }: Props) {
     if (config.entity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
       return surveysLoaded ? liveSurveys : [];
     }
+    if (config.entity === 'interactions' || item.path === '/customers/timeline') {
+      return activitiesLoaded ? liveActivities : [];
+    }
     return localRows;
   }, [
     config.entity,
@@ -1172,6 +1249,7 @@ export function WorkspacePage({ item }: Props) {
     slaPoliciesLoaded, liveSLAPolicies,
     knowledgeLoaded, liveKnowledge,
     surveysLoaded, liveSurveys,
+    activitiesLoaded, liveActivities,
     localRows
   ]);
   const statusOptions = useMemo(() => [...new Set(rows.map(r => r.status))], [rows]);
@@ -1197,21 +1275,28 @@ export function WorkspacePage({ item }: Props) {
     window.setTimeout(() => setToast(''), 3500);
   };
 
-  const openNew = (prefill: Record<string, string> = {}) => {
+  const openNew = (prefill: Record<string, string> = {}, targetEntity?: string) => {
+    const entity = targetEntity || config.entity;
+    setModalEntity(entity);
     setEditingId(null);
     setFormError(null);
     setForm({
       date: new Date().toISOString().slice(0, 10),
       currency: 'USD',
       owner: 'Arjun Mehta',
-      accountId: '',
-      parentId: '',
-      parent: '',
-      organization: '',
+      status: ['organizations', 'contacts'].includes(entity) ? 'Active' : 'Draft',
+      accountId: prefill.accountId || '',
+      parentId: prefill.parentId || '',
+      parent: prefill.parent || '',
+      organization: prefill.organization || prefill.customer || '',
+      customer: prefill.customer || prefill.organization || '',
       ...prefill,
     });
     setLines([initialLine()]);
-    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices' || config.entity === 'organizations') && availableAccounts.length === 0) {
+    if (
+      ['contacts', 'opportunities', 'quotes', 'salesOrders', 'invoices', 'organizations', 'cases', 'projects'].includes(entity) &&
+      availableAccounts.length === 0
+    ) {
       setLoadingAccounts(true);
       api.listAccounts({ limit: 100 })
         .then(res => {
@@ -1223,19 +1308,26 @@ export function WorkspacePage({ item }: Props) {
     setModal(true);
   };
 
-  const openEdit = (record: CRMRecord) => {
+  const openEdit = (record: CRMRecord, targetEntity?: string) => {
+    const entity = targetEntity || config.entity;
+    setModalEntity(entity);
     setEditingId(record.id);
     setFormError(null);
     const existingAccountId = record.fields.accountId || record.links.organizations?.[0] || '';
     setForm({
       ...record.fields,
+      status: record.status || record.fields.status || 'Active',
       accountId: existingAccountId,
       parentId: record.fields.parentId || '',
       parent: record.fields.parent || '',
-      organization: record.fields.organization || '',
+      organization: record.fields.organization || record.fields.customer || '',
+      customer: record.fields.customer || record.fields.organization || '',
     });
     setLines(record.lineItems?.length ? record.lineItems : [initialLine()]);
-    if ((config.entity === 'contacts' || config.entity === 'opportunities' || config.entity === 'quotes' || config.entity === 'salesOrders' || config.entity === 'invoices' || config.entity === 'organizations') && availableAccounts.length === 0) {
+    if (
+      ['contacts', 'opportunities', 'quotes', 'salesOrders', 'invoices', 'organizations', 'cases', 'projects'].includes(entity) &&
+      availableAccounts.length === 0
+    ) {
       setLoadingAccounts(true);
       api.listAccounts({ limit: 100 })
         .then(res => {
@@ -1248,11 +1340,12 @@ export function WorkspacePage({ item }: Props) {
     setModal(true);
   };
 
-  const isCommercial = ['quotes', 'salesOrders', 'purchaseOrders'].includes(config.entity);
+  const isCommercial = ['quotes', 'salesOrders', 'purchaseOrders'].includes(activeModalEntity);
   const lineTotal = lines.map(computeLine).reduce((s, l) => s + l.total, 0);
 
-  const saveRecord = async (submit: boolean) => {
-    const missing = config.fields.find(f => f.required && !String(form[f.key] || '').trim());
+  const saveRecord = async (submit: boolean | string = false) => {
+    const activeEntity = modalEntity || config.entity;
+    const missing = activeModalConfig.fields.find(f => f.required && !String(form[f.key] || '').trim());
     if (missing) {
       notify(`${missing.label} is required.`);
       return;
@@ -1277,13 +1370,24 @@ export function WorkspacePage({ item }: Props) {
 
     const amount = isCommercial ? lineTotal : Number(form.amount || form.value || form.budget || form.creditLimit || 0) || 0;
     const fields = { ...form };
-    if (config.entity === 'leads' && fields.score) fields.score = String(Math.min(100, Math.max(0, Number(fields.score))));
+    if (activeEntity === 'leads' && fields.score) fields.score = String(Math.min(100, Math.max(0, Number(fields.score))));
 
-    const statusValue = submit ? 'Pending Approval' : editingId ? rows.find(r => r.id === editingId)?.status || 'Draft' : 'Draft';
+    let statusValue: string;
+    if (typeof submit === 'string') {
+      statusValue = submit;
+    } else if (submit === true) {
+      statusValue = 'Pending Approval';
+    } else if (fields.status) {
+      statusValue = fields.status;
+    } else if (editingId) {
+      statusValue = rows.find(r => r.id === editingId)?.status || 'Draft';
+    } else {
+      statusValue = ['organizations', 'contacts'].includes(activeEntity) ? 'Active' : 'Draft';
+    }
     const options = { status: statusValue, amount, lineItems: isCommercial ? lines.map(computeLine) : undefined };
 
     // Organizations / Accounts: PostgreSQL is the single source of truth
-    if (config.entity === 'organizations') {
+    if (activeEntity === 'organizations') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1320,8 +1424,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Organization created and saved to PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save organization to backend.';
         setFormError(msg);
@@ -1333,7 +1436,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Contacts: PostgreSQL is the single source of truth
-    if (config.entity === 'contacts') {
+    if (activeEntity === 'contacts') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1368,8 +1471,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Contact created and saved to PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save contact to backend.';
         setFormError(msg);
@@ -1381,7 +1483,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Leads: PostgreSQL is the single source of truth
-    if (config.entity === 'leads') {
+    if (activeEntity === 'leads') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1424,8 +1526,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Lead created and scored in PostgreSQL database.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save lead to backend.';
         setFormError(msg);
@@ -1437,7 +1538,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Opportunities: PostgreSQL is the single source of truth
-    if (config.entity === 'opportunities') {
+    if (activeEntity === 'opportunities') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1490,7 +1591,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Price Books: PostgreSQL is the single source of truth
-    if (config.entity === 'priceBooks') {
+    if (activeEntity === 'priceBooks') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1514,8 +1615,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Price book created in PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save price book.';
         setFormError(msg);
@@ -1527,7 +1627,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Products: Product Configuration
-    if (config.entity === 'products' && (item.path === '/catalog/products' || item.path === '/quotes/configuration')) {
+    if (activeEntity === 'products' && (item.path === '/catalog/products' || item.path === '/quotes/configuration')) {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1553,8 +1653,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Product created in PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save product.';
         setFormError(msg);
@@ -1566,7 +1665,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Quotes & CPQ: PostgreSQL is the single source of truth
-    if (config.entity === 'quotes') {
+    if (activeEntity === 'quotes') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1627,8 +1726,7 @@ export function WorkspacePage({ item }: Props) {
           }
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save quote.';
         setFormError(msg);
@@ -1640,7 +1738,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Sales Orders: PostgreSQL is the single source of truth
-    if (config.entity === 'salesOrders') {
+    if (activeEntity === 'salesOrders') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1696,8 +1794,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`Sales order ${newOrder.ref} created in PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save sales order.';
         setFormError(msg);
@@ -1709,7 +1806,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Invoices: PostgreSQL is the single source of truth
-    if (config.entity === 'invoices') {
+    if (activeEntity === 'invoices') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1750,8 +1847,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`Invoice ${newInv.ref} created in PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save invoice.';
         setFormError(msg);
@@ -1763,13 +1859,21 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Projects: PostgreSQL is the single source of truth
-    if (config.entity === 'projects') {
+    if (activeEntity === 'projects') {
       setSubmitting(true);
       setFormError(null);
       try {
+        let targetAccountId = form.accountId;
+        if (!targetAccountId && (fields.customer || fields.organization)) {
+          const accs = await api.listAccounts({ q: fields.customer || fields.organization, limit: 1 });
+          if (accs?.items?.[0]) {
+            targetAccountId = accs.items[0].id;
+          }
+        }
         if (editingId) {
           await api.updateProject(editingId, {
             name: fields.name || item.label,
+            account_id: targetAccountId || undefined,
             budget: Number(fields.budget || amount || 0),
             category: fields.billingModel || 'Fixed price',
             start_date: fields.startDate || undefined,
@@ -1781,6 +1885,7 @@ export function WorkspacePage({ item }: Props) {
         } else {
           await api.createProject({
             name: fields.name || item.label,
+            account_id: targetAccountId || undefined,
             budget: Number(fields.budget || amount || 0),
             category: fields.billingModel || 'Fixed price',
             start_date: fields.startDate || new Date().toISOString().slice(0, 10),
@@ -1790,8 +1895,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Project created and saved to PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save project to backend.';
         setFormError(msg);
@@ -1803,7 +1907,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Project Tasks: PostgreSQL is the single source of truth
-    if (config.entity === 'tasks') {
+    if (activeEntity === 'tasks') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1834,8 +1938,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Task created and saved to PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save task to backend.';
         setFormError(msg);
@@ -1847,7 +1950,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Milestones: PostgreSQL is the single source of truth
-    if (config.entity === 'milestones') {
+    if (activeEntity === 'milestones') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1879,8 +1982,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Milestone created and saved to PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save milestone to backend.';
         setFormError(msg);
@@ -1892,7 +1994,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Resource Allocation: PostgreSQL is the single source of truth
-    if (config.entity === 'resources') {
+    if (activeEntity === 'resources') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1927,8 +2029,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Resource allocation created and saved to PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save resource allocation to backend.';
         setFormError(msg);
@@ -1940,7 +2041,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Project Costs: PostgreSQL is the single source of truth
-    if (config.entity === 'costs') {
+    if (activeEntity === 'costs') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -1973,8 +2074,7 @@ export function WorkspacePage({ item }: Props) {
           notify('Cost record created and saved to PostgreSQL.');
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save cost record to backend.';
         setFormError(msg);
@@ -1986,7 +2086,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Campaigns: PostgreSQL is the single source of truth
-    if (config.entity === 'campaigns') {
+    if (activeEntity === 'campaigns') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -2017,8 +2117,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`Campaign ${newC.ref} created and saved to PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save campaign to backend.';
         setFormError(msg);
@@ -2030,7 +2129,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Audience Segments: PostgreSQL is the single source of truth
-    if (config.entity === 'segments') {
+    if (activeEntity === 'segments') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -2054,8 +2153,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`Audience segment ${newS.ref} created in PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save audience segment.';
         setFormError(msg);
@@ -2091,8 +2189,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`Email template ${newT.ref} created in PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save email template.';
         setFormError(msg);
@@ -2104,7 +2201,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Customer Service Cases: PostgreSQL is the single source of truth
-    if (config.entity === 'cases') {
+    if (activeEntity === 'cases') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -2146,8 +2243,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`Service case ${newC.ref} logged and saved to PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save service case.';
         setFormError(msg);
@@ -2159,7 +2255,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // SLA Policies: PostgreSQL is the single source of truth
-    if (config.entity === 'slaPolicies' || item.path === '/service/sla') {
+    if (activeEntity === 'slaPolicies' || item.path === '/service/sla') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -2187,8 +2283,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`SLA policy ${newSla.ref} created in PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save SLA policy.';
         setFormError(msg);
@@ -2200,7 +2295,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Knowledge Base Articles: PostgreSQL is the single source of truth
-    if (config.entity === 'knowledge') {
+    if (activeEntity === 'knowledge') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -2224,8 +2319,7 @@ export function WorkspacePage({ item }: Props) {
           notify(`Knowledge article ${newK.ref} published in PostgreSQL.`);
         }
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save knowledge article.';
         setFormError(msg);
@@ -2237,7 +2331,7 @@ export function WorkspacePage({ item }: Props) {
     }
 
     // Customer Surveys: PostgreSQL is the single source of truth
-    if (config.entity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
+    if (activeEntity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
       setSubmitting(true);
       setFormError(null);
       try {
@@ -2254,10 +2348,37 @@ export function WorkspacePage({ item }: Props) {
         });
         notify(`Customer survey ${newS.ref} created in PostgreSQL.`);
         await fetchLiveCRMData();
-        setModal(false);
-        setEditingId(null);
+        closeModal();
       } catch (err: any) {
         const msg = err?.message || 'Failed to save customer survey.';
+        setFormError(msg);
+        notify(`Error: ${msg}`);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Customer Activities / Interactions: PostgreSQL
+    if (activeEntity === 'interactions' || item.path === '/customers/timeline') {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        const targetAccId = form.accountId || (availableAccounts.length > 0 ? availableAccounts[0].id : undefined);
+        if (!targetAccId) {
+          throw new Error('Please select an organization for this activity.');
+        }
+        await api.createAccountActivity(targetAccId, {
+          activity_type: fields.type || 'Outreach',
+          subject: fields.subject || fields.name || 'Customer interaction',
+          description: fields.summary || fields.description || 'Logged customer interaction in PostgreSQL.',
+          contact_id: form.contactId || undefined,
+        });
+        notify('Customer activity logged and committed to PostgreSQL.');
+        await fetchLiveCRMData();
+        closeModal();
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to save customer activity.';
         setFormError(msg);
         notify(`Error: ${msg}`);
       } finally {
@@ -2269,7 +2390,7 @@ export function WorkspacePage({ item }: Props) {
     // Default prototype entities (opportunities, quotes, etc.)
     if (editingId) {
       update(
-        config.entity,
+        activeEntity,
         editingId,
         {
           title: fields.name || fields.account || fields.subject || fields.company || item.label,
@@ -2282,10 +2403,10 @@ export function WorkspacePage({ item }: Props) {
       );
       notify(submit ? 'Record submitted for approval.' : 'Record updated.');
     } else {
-      const record = create(config.entity, fields, options);
+      const record = create(activeEntity, fields, options);
       if (submit) {
-        update(config.entity, record.id, { status: 'Pending Approval' }, 'Submitted for approval');
-        if (config.entity === 'quotes') {
+        update(activeEntity, record.id, { status: 'Pending Approval' }, 'Submitted for approval');
+        if (activeEntity === 'quotes') {
           // Add approval decision record
           create('decisions', {
             name: `Quote Approval: ${record.title}`,
@@ -2301,8 +2422,7 @@ export function WorkspacePage({ item }: Props) {
       }
       notify(submit ? 'Record submitted for approval.' : 'Record saved as draft.');
     }
-    setModal(false);
-    setEditingId(null);
+    closeModal();
   };
 
   const transition = async (record: CRMRecord, newStatus: string, action?: string) => {
@@ -2745,6 +2865,59 @@ export function WorkspacePage({ item }: Props) {
       transition(record, action === 'Pause Agent' ? 'Paused' : 'Active', action);
       return;
     }
+    if (action === 'Approve Record' || action === 'Approve & Set Active' || action === 'Set Active') {
+      if (config.entity === 'organizations') {
+        setSubmitting(true);
+        api.updateAccount(record.id, { status: 'Active' })
+          .then(async () => {
+            notify(`Organization "${record.title}" approved and status set to Active in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Approval failed: ${err?.message || 'Unknown error'}`))
+          .finally(() => setSubmitting(false));
+        return;
+      }
+      if (config.entity === 'contacts') {
+        setSubmitting(true);
+        api.updateContact(record.id, { status: 'Active' })
+          .then(async () => {
+            notify(`Contact "${record.title}" approved and status set to Active in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Approval failed: ${err?.message || 'Unknown error'}`))
+          .finally(() => setSubmitting(false));
+        return;
+      }
+      transition(record, 'Active', 'Approved by administrator');
+      return;
+    }
+    if (action === 'Reject Record' || action.startsWith('Set ')) {
+      const targetStatus = action === 'Reject Record' ? 'Inactive' : action.replace('Set ', '');
+      if (config.entity === 'organizations') {
+        setSubmitting(true);
+        api.updateAccount(record.id, { status: targetStatus })
+          .then(async () => {
+            notify(`Organization "${record.title}" status updated to ${targetStatus} in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Status update failed: ${err?.message || 'Unknown error'}`))
+          .finally(() => setSubmitting(false));
+        return;
+      }
+      if (config.entity === 'contacts') {
+        setSubmitting(true);
+        api.updateContact(record.id, { status: targetStatus })
+          .then(async () => {
+            notify(`Contact "${record.title}" status updated to ${targetStatus} in PostgreSQL.`);
+            await fetchLiveCRMData();
+          })
+          .catch(err => notify(`Status update failed: ${err?.message || 'Unknown error'}`))
+          .finally(() => setSubmitting(false));
+        return;
+      }
+      transition(record, targetStatus, `Status updated to ${targetStatus}`);
+      return;
+    }
     if (action === 'Duplicate Record') {
       const copy = create(config.entity, { ...record.fields, name: `${record.title} (Copy)` }, { status: 'Draft', amount: record.amount, lineItems: record.lineItems, links: record.links });
       notify(`Duplicate ${copy.ref} created.`);
@@ -2754,6 +2927,20 @@ export function WorkspacePage({ item }: Props) {
   };
 
   const availableActions = (record: CRMRecord) => {
+    if (['organizations', 'contacts'].includes(config.entity)) {
+      const acts: string[] = ['Edit Record'];
+      if (record.status !== 'Active') {
+        acts.push('Approve & Set Active');
+      } else {
+        acts.push('Set Inactive');
+      }
+      if (record.status === 'Pending Approval') {
+        acts.push('Reject Record');
+      }
+      acts.push('Duplicate Record');
+      return acts;
+    }
+    if (record.status === 'Pending Approval') return ['Approve Record', 'Reject Record'];
     if (config.entity === 'leads') return record.status === 'Qualified' ? ['Convert Lead', 'Mark Nurture'] : ['Qualify Lead', 'Convert Lead', 'Mark Nurture'];
     if (config.entity === 'opportunities')
       return record.status === 'Closed Won' ? ['Create Project', 'Create Quote'] : record.status === 'Closed Lost' ? ['Create Quote'] : ['Advance Stage', 'Create Quote', 'Close Won', 'Close Lost'];
@@ -2847,13 +3034,269 @@ export function WorkspacePage({ item }: Props) {
           {record.fields.progress || 0}%
         </span>
       );
-    if (key === 'status') return <StatusPill status={record.status}/>;
+    if (key === 'status') {
+      if (['organizations', 'contacts'].includes(config.entity) && record.status !== 'Active') {
+        return (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={e => e.stopPropagation()}>
+            <StatusPill status={record.status}/>
+            <button
+              className="btn primary small"
+              style={{ padding: '2px 8px', fontSize: 11, background: '#16a34a', borderColor: '#15803d', color: '#fff' }}
+              onClick={() => runAction(record, 'Approve & Set Active')}
+              title="Manually approve and activate this record in PostgreSQL"
+            >
+              Approve
+            </button>
+          </div>
+        );
+      }
+      if (record.status === 'Pending Approval') {
+        return (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={e => e.stopPropagation()}>
+            <StatusPill status={record.status}/>
+            <button
+              className="btn primary small"
+              style={{ padding: '2px 8px', fontSize: 11, background: '#16a34a', borderColor: '#15803d', color: '#fff' }}
+              onClick={() => runAction(record, 'Approve Record')}
+              title="Approve this record immediately in PostgreSQL"
+            >
+              Approve
+            </button>
+          </div>
+        );
+      }
+      return <StatusPill status={record.status}/>;
+    }
     if (key === 'organization') return record.fields.organization || '—';
     return record.fields[key] || (key === 'owner' ? record.owner : undefined) || '—';
   };
 
+  const renderFormModal = () => {
+    if (!modal) return null;
+    return (
+      <div className="overlay" onMouseDown={e => e.target === e.currentTarget && closeModal()}>
+        <div className="form-modal">
+          <div className="form-modal-head">
+            <div>
+              <span className="eyebrow">{editingId ? 'EDIT RECORD' : 'NEW RECORD'}</span>
+              <h2>{editingId ? 'Edit' : 'Create'} {activeModalConfig.title.replace(/s$/, '')}</h2>
+              <p>Complete the relevant business attributes. Required fields are marked.</p>
+            </div>
+            <button className="icon-close" onClick={closeModal}><X size={18}/></button>
+          </div>
+          <div className="form-modal-body">
+            <div className="form-grid">
+              {activeModalConfig.fields.map(field => {
+                if (
+                  (activeModalEntity === 'contacts' && field.key === 'organization') ||
+                  (activeModalEntity === 'opportunities' && field.key === 'customer') ||
+                  (activeModalEntity === 'quotes' && field.key === 'customer') ||
+                  (activeModalEntity === 'salesOrders' && field.key === 'customer') ||
+                  (activeModalEntity === 'invoices' && field.key === 'customer') ||
+                  (activeModalEntity === 'cases' && field.key === 'customer') ||
+                  (activeModalEntity === 'projects' && field.key === 'customer')
+                ) {
+                  return (
+                    <OrganizationSelectField
+                      key={`${activeModalEntity}-organization-select`}
+                      label={field.label}
+                      required={field.required}
+                      value={form.accountId || ''}
+                      organizationName={form.customer || form.organization || ''}
+                      accounts={availableAccounts}
+                      loading={loadingAccounts}
+                      error={accountsFetchError}
+                      disabled={submitting}
+                      onChange={(accId, accName) => {
+                        setForm(old => ({
+                          ...old,
+                          accountId: accId,
+                          customer: accName,
+                          organization: accName,
+                        }));
+                      }}
+                      onRefresh={() => fetchLiveCRMData()}
+                    />
+                  );
+                }
+                if (activeModalEntity === 'organizations' && field.key === 'parent') {
+                  return (
+                    <OrganizationSelectField
+                      key="organizations-parent-select"
+                      label="Parent organization"
+                      required={field.required}
+                      value={form.parentId || ''}
+                      organizationName={form.parent || ''}
+                      accounts={editingId ? availableAccounts.filter(a => a.id !== editingId) : availableAccounts}
+                      loading={loadingAccounts}
+                      error={accountsFetchError}
+                      disabled={submitting}
+                      onChange={(accId, accName) => {
+                        setForm(old => ({
+                          ...old,
+                          parentId: accId,
+                          parent: accName,
+                        }));
+                      }}
+                      onRefresh={() => fetchLiveCRMData()}
+                    />
+                  );
+                }
+                return (
+                  <FormField
+                    key={field.key}
+                    field={field}
+                    value={form[field.key] || ''}
+                    onChange={v => setForm(old => ({ ...old, [field.key]: v }))}
+                  />
+                );
+              })}
+            </div>
+
+            {isCommercial && (
+              <div className="line-builder">
+                <div className="line-builder-head">
+                  <div>
+                    <strong>Commercial line items</strong>
+                    <small>Multiple lines · discounts and tax calculated per item</small>
+                  </div>
+                  <button className="btn secondary" onClick={() => setLines(old => [...old, initialLine()])}>
+                    <Plus size={14}/> Add line
+                  </button>
+                </div>
+                {lines.map(line => (
+                  <div className="line-editor" key={line.id}>
+                    <label>
+                      Product / service
+                      <input
+                        value={line.name}
+                        onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, name: e.target.value }) : x)))}
+                      />
+                    </label>
+                    <label>
+                      SKU
+                      <input
+                        value={line.sku || ''}
+                        onChange={e => setLines(old => old.map(x => (x.id === line.id ? { ...x, sku: e.target.value } : x)))}
+                      />
+                    </label>
+                    <label>
+                      Qty
+                      <input
+                        type="number"
+                        min="0.01"
+                        value={line.quantity}
+                        onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, quantity: Number(e.target.value) }) : x)))}
+                      />
+                    </label>
+                    <label>
+                      Unit price
+                      <input
+                        type="number"
+                        min="0"
+                        value={line.unitPrice}
+                        onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, unitPrice: Number(e.target.value) }) : x)))}
+                      />
+                    </label>
+                    <label>
+                      Discount %
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={line.discount}
+                        onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, discount: Number(e.target.value) }) : x)))}
+                      />
+                    </label>
+                    <label>
+                      Tax %
+                      <input
+                        type="number"
+                        min="0"
+                        value={line.taxRate}
+                        onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, taxRate: Number(e.target.value) }) : x)))}
+                      />
+                    </label>
+                    <div className="line-editor-total">
+                      <small>Line total</small>
+                      <strong>{money(computeLine(line).total)}</strong>
+                    </div>
+                    <button
+                      className="line-remove"
+                      onClick={() => setLines(old => (old.length > 1 ? old.filter(x => x.id !== line.id) : old))}
+                      title="Remove line"
+                    >
+                      <X size={14}/>
+                    </button>
+                  </div>
+                ))}
+                <div className="line-grand-total">
+                  <span>Calculated document total</span>
+                  <strong>{money(lineTotal)}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+          {formError && (
+            <div className="p-3 bg-red-50 text-red-700 text-xs rounded border border-red-200 mx-5 mb-3">
+              {formError}
+            </div>
+          )}
+          <div className="form-modal-footer">
+            <button className="btn secondary" disabled={submitting} onClick={closeModal}>Cancel</button>
+            <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(false)}>
+              {submitting ? 'Saving...' : 'Save draft'}
+            </button>
+            <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(true)}>
+              <Send size={15}/> {submitting ? 'Submitting...' : 'Submit for approval'}
+            </button>
+            {['organizations', 'contacts'].includes(activeModalEntity) && (
+              <button
+                className="btn primary"
+                style={{ background: '#16a34a', borderColor: '#15803d', color: '#fff' }}
+                disabled={submitting}
+                onClick={() => saveRecord('Active')}
+              >
+                <BadgeCheck size={15}/> {submitting ? 'Approving...' : 'Approve & Activate'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCommModal = () => {
+    if (!activeComm) return null;
+    return (
+      <CommunicationModal
+        type={activeComm}
+        prefillTo={commPrefill.to}
+        prefillContact={commPrefill.contact}
+        prefillAccountId={commPrefill.accountId}
+        prefillOrganization={commPrefill.organization}
+        onClose={() => setActiveComm(null)}
+        onLogged={msg => {
+          notify(msg);
+          fetchLiveCRMData();
+        }}
+      />
+    );
+  };
+
+  const renderToast = () => {
+    if (!toast) return null;
+    return (
+      <div className="inline-toast">
+        <Check size={15}/>{toast}
+        <button onClick={() => setToast('')}><X size={13}/></button>
+      </div>
+    );
+  };
+
   // CUSTOMER 360 WORKSPACE RENDER
   if (item.path === '/customers/360') {
+    const detailRecord = externalSelected ? externalSelected.record : (selected || null);
     return (
       <div className="workspace-page">
         <SectionHeading
@@ -2861,7 +3304,7 @@ export function WorkspacePage({ item }: Props) {
           title="Customer 360"
           subtitle="Unified customer memory, relationship hierarchy, active commercial records, service cases, implementation projects and AI sentiment."
           action={
-            <button className="btn primary" onClick={() => openNew()}>
+            <button className="btn primary" onClick={() => openNew({}, 'organizations')}>
               <Plus size={16}/> New Organization
             </button>
           }
@@ -2869,47 +3312,73 @@ export function WorkspacePage({ item }: Props) {
         <Customer360View
           selectedOrgId={selectedId || undefined}
           onSelectOrg={id => setSelectedId(id)}
-          onOpenRecord={(entity, recId) => {
-            const found = findByRef(recId) || records(entity).find(r => r.id === recId);
+          onOpenRecord={(entity, recId, recordObj) => {
+            const found = recordObj || findByRef(recId) || records(entity).find(r => r.id === recId || r.ref === recId);
             if (found) {
-              const rId = 'record' in found ? found.record.id : found.id;
-              setSelectedId(rId);
+              const rObj = 'record' in found ? found.record : found;
+              setExternalSelected({ entity, record: rObj });
+              setSelectedId(rObj.id);
             }
           }}
-          onNewAction={(entity, prefill) => openNew(prefill)}
+          onNewAction={(entity, prefill) => openNew(prefill, entity)}
+          refreshTrigger={dataVersion}
         />
-        {selected && (
-          <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setSelectedId(null)}>
+        {detailRecord && (
+          <div className="overlay" onMouseDown={e => {
+            if (e.target === e.currentTarget) {
+              setSelectedId(null);
+              setExternalSelected(null);
+            }
+          }}>
             <aside className="detail-panel">
               <div className="detail-head">
                 <div>
-                  <span className="eyebrow">{selected.ref}</span>
-                  <h2>{selected.title}</h2>
-                  <p>{selected.description}</p>
+                  <span className="eyebrow">{detailRecord.ref}</span>
+                  <h2>{detailRecord.title}</h2>
+                  <p>{detailRecord.description}</p>
                 </div>
-                <button className="icon-close" onClick={() => setSelectedId(null)}><X size={18}/></button>
+                <button className="icon-close" onClick={() => {
+                  setSelectedId(null);
+                  setExternalSelected(null);
+                }}><X size={18}/></button>
               </div>
               <div className="detail-scroll">
                 <div className="detail-summary">
-                  <div><span>Status</span><StatusPill status={selected.status}/></div>
-                  <div><span>Value</span><strong>{money(selected.amount)}</strong></div>
-                  <div><span>Owner</span><strong>{selected.owner}</strong></div>
-                  <div><span>Date</span><strong>{shortDate(selected.date)}</strong></div>
+                  <div><span>Status</span><StatusPill status={detailRecord.status}/></div>
+                  <div><span>Value</span><strong>{money(detailRecord.amount)}</strong></div>
+                  <div><span>Owner</span><strong>{detailRecord.owner}</strong></div>
+                  <div><span>Date</span><strong>{shortDate(detailRecord.date)}</strong></div>
                 </div>
                 <div className="detail-section">
                   <div className="detail-fields">
-                    {fieldsForRecord(selected).map(f => (
+                    {fieldsForRecord(detailRecord).map(f => (
                       <div key={f.label}><span>{f.label}</span><strong>{f.value}</strong></div>
                     ))}
                   </div>
                 </div>
               </div>
               <div className="detail-actions">
-                <button className="btn secondary" onClick={() => openEdit(selected)}>Edit Record</button>
+                <button
+                  className="btn secondary"
+                  onClick={() => openEdit(detailRecord, externalSelected?.entity || modalEntity || config.entity)}
+                >
+                  Edit Record
+                </button>
+                {availableActions(detailRecord).map(a => (
+                  <button className="btn primary" key={a} onClick={() => runAction(detailRecord, a)}>
+                    {a === 'Approve Action' || a === 'Approve Quote' ? <BadgeCheck size={15}/> :
+                     a === 'Submit for Approval' ? <Send size={15}/> :
+                     a === 'Complete Task' ? <Check size={15}/> : null}
+                    {a}
+                  </button>
+                ))}
               </div>
             </aside>
           </div>
         )}
+        {renderFormModal()}
+        {renderCommModal()}
+        {renderToast()}
       </div>
     );
   }
@@ -2937,6 +3406,15 @@ export function WorkspacePage({ item }: Props) {
             navigate(targetPath, { state: { selectedId: recordId } });
           }}
         />
+      </div>
+    );
+  }
+
+  // CONSENT MANAGEMENT DEDICATED WORKSPACE
+  if (item.path === '/customers/consent') {
+    return (
+      <div className="workspace-page">
+        <ConsentManagementView />
       </div>
     );
   }
@@ -3375,8 +3853,115 @@ export function WorkspacePage({ item }: Props) {
           <button className="icon-close" onClick={() => setSelectedId(null)}><X size={18}/></button>
         </div>
         <div className="detail-scroll">
+          {['organizations', 'contacts'].includes(config.entity) && selected.status !== 'Active' ? (
+            <div style={{
+              background: selected.status === 'Pending Approval' ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+              border: `1px solid ${selected.status === 'Pending Approval' ? '#fcd34d' : '#86efac'}`,
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginBottom: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {selected.status === 'Pending Approval' ? (
+                  <Clock3 size={18} style={{ color: '#d97706', flexShrink: 0 }} />
+                ) : (
+                  <ShieldCheck size={18} style={{ color: '#15803d', flexShrink: 0 }} />
+                )}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: selected.status === 'Pending Approval' ? '#92400e' : '#14532d' }}>
+                    {selected.status === 'Pending Approval' ? 'Awaiting Operational Approval' : `Current Status: ${selected.status}`}
+                  </div>
+                  <div style={{ fontSize: 11, color: selected.status === 'Pending Approval' ? '#b45309' : '#166534' }}>
+                    Manually approve to change status to Active and enable full CRM operations.
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button
+                  className="btn primary"
+                  style={{ background: '#16a34a', borderColor: '#15803d', color: '#fff', fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => runAction(selected, 'Approve & Set Active')}
+                >
+                  <BadgeCheck size={14} /> Approve & Set Active
+                </button>
+                {selected.status === 'Pending Approval' && (
+                  <button
+                    className="btn secondary"
+                    style={{ borderColor: '#f87171', color: '#dc2626', fontSize: 12, padding: '6px 12px' }}
+                    onClick={() => runAction(selected, 'Reject Record')}
+                  >
+                    Reject
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : selected.status === 'Pending Approval' ? (
+            <div style={{
+              background: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
+              border: '1px solid #fcd34d',
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginBottom: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Clock3 size={18} style={{ color: '#d97706', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#92400e' }}>Awaiting Operational Approval</div>
+                  <div style={{ fontSize: 11, color: '#b45309' }}>Review and approve to activate this record in PostgreSQL.</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button
+                  className="btn primary"
+                  style={{ background: '#16a34a', borderColor: '#15803d', color: '#fff', fontSize: 12, padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => runAction(selected, 'Approve Record')}
+                >
+                  <BadgeCheck size={14} /> Approve Record
+                </button>
+                <button
+                  className="btn secondary"
+                  style={{ borderColor: '#f87171', color: '#dc2626', fontSize: 12, padding: '6px 12px' }}
+                  onClick={() => runAction(selected, 'Reject Record')}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="detail-summary">
-            <div><span>Current status</span><StatusPill status={selected.status}/></div>
+            <div>
+              <span>Current status</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <StatusPill status={selected.status}/>
+                {['organizations', 'contacts'].includes(config.entity) && (
+                  <select
+                    value={selected.status}
+                    style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', color: '#1e293b', fontWeight: 600 }}
+                    onChange={e => {
+                      const newStatus = e.target.value;
+                      if (newStatus !== selected.status) {
+                        runAction(selected, newStatus === 'Active' ? 'Approve & Set Active' : `Set ${newStatus}`);
+                      }
+                    }}
+                    title="Manually change record status in PostgreSQL"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Pending Approval">Pending Approval</option>
+                    <option value="Draft">Draft</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                )}
+              </div>
+            </div>
             <div><span>Indicative value</span><strong>{money(selected.amount)}</strong></div>
             <div><span>Record owner</span><strong>{selected.owner}</strong></div>
             <div><span>Record date</span><strong>{shortDate(selected.date)}</strong></div>
@@ -3395,43 +3980,70 @@ export function WorkspacePage({ item }: Props) {
 
           {/* Quick Communication Actions for Contacts, Organizations, Leads */}
           {['contacts', 'organizations', 'leads'].includes(config.entity) && (
-            <div className="p-3 bg-slate-50 rounded border border-slate-200 mt-3 flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-600 mr-1">Simulate Channel:</span>
+            <div className="p-3 bg-slate-50 rounded border border-slate-200 mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-slate-700 mr-1 flex items-center gap-1.5">
+                <Activity size={14} className="text-blue-600" />
+                Log Customer Outreach:
+              </span>
               <button
-                className="btn secondary small"
+                className="btn secondary small flex items-center gap-1"
                 onClick={() => {
-                  setCommPrefill({ to: selected.fields.email, contact: selected.title });
+                  const targetAccountId = config.entity === 'organizations' ? selected.id : (selected.fields.accountId || selected.links.organizations?.[0] || '');
+                  setCommPrefill({
+                    to: selected.fields.email,
+                    contact: config.entity === 'contacts' ? selected.title : undefined,
+                    accountId: targetAccountId,
+                    organization: config.entity === 'organizations' ? selected.title : selected.fields.organization,
+                  });
                   setActiveComm('email');
                 }}
               >
-                <Mail size={13}/> Email
+                <Mail size={13} className="text-blue-600" /> Email
               </button>
               <button
-                className="btn secondary small"
+                className="btn secondary small flex items-center gap-1"
                 onClick={() => {
-                  setCommPrefill({ to: selected.fields.email, contact: selected.title });
+                  const targetAccountId = config.entity === 'organizations' ? selected.id : (selected.fields.accountId || selected.links.organizations?.[0] || '');
+                  setCommPrefill({
+                    to: selected.fields.email,
+                    contact: config.entity === 'contacts' ? selected.title : undefined,
+                    accountId: targetAccountId,
+                    organization: config.entity === 'organizations' ? selected.title : selected.fields.organization,
+                  });
                   setActiveComm('call');
                 }}
               >
-                <Phone size={13}/> Call
+                <Phone size={13} className="text-emerald-600" /> Call
               </button>
               <button
-                className="btn secondary small"
+                className="btn secondary small flex items-center gap-1"
                 onClick={() => {
-                  setCommPrefill({ to: selected.fields.email, contact: selected.title });
+                  const targetAccountId = config.entity === 'organizations' ? selected.id : (selected.fields.accountId || selected.links.organizations?.[0] || '');
+                  setCommPrefill({
+                    to: selected.fields.email,
+                    contact: config.entity === 'contacts' ? selected.title : undefined,
+                    accountId: targetAccountId,
+                    organization: config.entity === 'organizations' ? selected.title : selected.fields.organization,
+                  });
                   setActiveComm('sms');
                 }}
               >
-                <MessageCircle size={13}/> SMS
+                <MessageCircle size={13} className="text-indigo-600" /> SMS
               </button>
               <button
-                className="btn secondary small"
+                className="btn secondary small flex items-center gap-1"
                 onClick={() => {
-                  setCommPrefill({ to: selected.fields.email, contact: selected.title });
+                  const targetAccountId = config.entity === 'organizations' ? selected.id : (selected.fields.accountId || selected.links.organizations?.[0] || '');
+                  setCommPrefill({
+                    to: selected.fields.email,
+                    contact: config.entity === 'contacts' ? selected.title : undefined,
+                    accountId: targetAccountId,
+                    organization: config.entity === 'organizations' ? selected.title : selected.fields.organization,
+                  });
                   setActiveComm('meeting');
                 }}
               >
-                <CalendarDays size={13}/> Meeting
+                <CalendarDays size={13} className="text-purple-600" /> Meeting
               </button>
             </div>
           )}
@@ -3522,8 +4134,19 @@ export function WorkspacePage({ item }: Props) {
         <div className="detail-actions">
           <button className="btn secondary" onClick={() => openEdit(selected)}>Edit record</button>
           {availableActions(selected).map(a => (
-            <button className="btn primary" key={a} onClick={() => runAction(selected, a)}>
-              {a === 'Approve Action' || a === 'Approve Quote' ? <BadgeCheck size={15}/> :
+            <button
+              className={a === 'Reject Record' || a === 'Reject Action' ? 'btn secondary' : 'btn primary'}
+              style={
+                a === 'Approve Record' || a === 'Approve Action' || a === 'Approve Quote'
+                  ? { background: '#16a34a', borderColor: '#15803d', color: '#fff' }
+                  : a === 'Reject Record' || a === 'Reject Action'
+                  ? { borderColor: '#f87171', color: '#dc2626' }
+                  : undefined
+              }
+              key={a}
+              onClick={() => runAction(selected, a)}
+            >
+              {a === 'Approve Action' || a === 'Approve Quote' || a === 'Approve Record' ? <BadgeCheck size={15}/> :
                a === 'Submit for Approval' ? <Send size={15}/> :
                a === 'Complete Task' ? <Check size={15}/> : null}
               {a}
@@ -4068,186 +4691,7 @@ export function WorkspacePage({ item }: Props) {
 
       {selected && detailPanel}
 
-      {/* CREATE / EDIT FORM MODAL */}
-      {modal && (
-        <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setModal(false)}>
-          <div className="form-modal">
-            <div className="form-modal-head">
-              <div>
-                <span className="eyebrow">{editingId ? 'EDIT RECORD' : 'NEW RECORD'}</span>
-                <h2>{editingId ? 'Edit' : 'Create'} {config.title.replace(/s$/, '')}</h2>
-                <p>Complete the relevant business attributes. Required fields are marked.</p>
-              </div>
-              <button className="icon-close" onClick={() => setModal(false)}><X size={18}/></button>
-            </div>
-            <div className="form-modal-body">
-              <div className="form-grid">
-                {config.fields.map(field => {
-                  if (
-                    (config.entity === 'contacts' && field.key === 'organization') ||
-                    (config.entity === 'opportunities' && field.key === 'customer') ||
-                    (config.entity === 'quotes' && field.key === 'customer') ||
-                    (config.entity === 'salesOrders' && field.key === 'customer') ||
-                    (config.entity === 'invoices' && field.key === 'customer')
-                  ) {
-                    return (
-                      <OrganizationSelectField
-                        key={`${config.entity}-organization-select`}
-                        label={field.label}
-                        required={field.required}
-                        value={form.accountId || ''}
-                        organizationName={form.customer || form.organization || ''}
-                        accounts={availableAccounts}
-                        loading={loadingAccounts}
-                        error={accountsFetchError}
-                        disabled={submitting}
-                        onChange={(accId, accName) => {
-                          setForm(old => ({
-                            ...old,
-                            accountId: accId,
-                            customer: accName,
-                            organization: accName,
-                          }));
-                        }}
-                        onRefresh={() => fetchLiveCRMData()}
-                      />
-                    );
-                  }
-                  if (config.entity === 'organizations' && field.key === 'parent') {
-                    return (
-                      <OrganizationSelectField
-                        key="organizations-parent-select"
-                        label="Parent organization"
-                        required={field.required}
-                        value={form.parentId || ''}
-                        organizationName={form.parent || ''}
-                        accounts={editingId ? availableAccounts.filter(a => a.id !== editingId) : availableAccounts}
-                        loading={loadingAccounts}
-                        error={accountsFetchError}
-                        disabled={submitting}
-                        onChange={(accId, accName) => {
-                          setForm(old => ({
-                            ...old,
-                            parentId: accId,
-                            parent: accName,
-                          }));
-                        }}
-                        onRefresh={() => fetchLiveCRMData()}
-                      />
-                    );
-                  }
-                  return (
-                    <FormField
-                      key={field.key}
-                      field={field}
-                      value={form[field.key] || ''}
-                      onChange={v => setForm(old => ({ ...old, [field.key]: v }))}
-                    />
-                  );
-                })}
-              </div>
-
-              {isCommercial && (
-                <div className="line-builder">
-                  <div className="line-builder-head">
-                    <div>
-                      <strong>Commercial line items</strong>
-                      <small>Multiple lines · discounts and tax calculated per item</small>
-                    </div>
-                    <button className="btn secondary" onClick={() => setLines(old => [...old, initialLine()])}>
-                      <Plus size={14}/> Add line
-                    </button>
-                  </div>
-                  {lines.map(line => (
-                    <div className="line-editor" key={line.id}>
-                      <label>
-                        Product / service
-                        <input
-                          value={line.name}
-                          onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, name: e.target.value }) : x)))}
-                        />
-                      </label>
-                      <label>
-                        SKU
-                        <input
-                          value={line.sku || ''}
-                          onChange={e => setLines(old => old.map(x => (x.id === line.id ? { ...x, sku: e.target.value } : x)))}
-                        />
-                      </label>
-                      <label>
-                        Qty
-                        <input
-                          type="number"
-                          min="0.01"
-                          value={line.quantity}
-                          onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, quantity: Number(e.target.value) }) : x)))}
-                        />
-                      </label>
-                      <label>
-                        Unit price
-                        <input
-                          type="number"
-                          min="0"
-                          value={line.unitPrice}
-                          onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, unitPrice: Number(e.target.value) }) : x)))}
-                        />
-                      </label>
-                      <label>
-                        Discount %
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={line.discount}
-                          onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, discount: Number(e.target.value) }) : x)))}
-                        />
-                      </label>
-                      <label>
-                        Tax %
-                        <input
-                          type="number"
-                          min="0"
-                          value={line.taxRate}
-                          onChange={e => setLines(old => old.map(x => (x.id === line.id ? computeLine({ ...x, taxRate: Number(e.target.value) }) : x)))}
-                        />
-                      </label>
-                      <div className="line-editor-total">
-                        <small>Line total</small>
-                        <strong>{money(computeLine(line).total)}</strong>
-                      </div>
-                      <button
-                        className="line-remove"
-                        onClick={() => setLines(old => (old.length > 1 ? old.filter(x => x.id !== line.id) : old))}
-                        title="Remove line"
-                      >
-                        <X size={14}/>
-                      </button>
-                    </div>
-                  ))}
-                  <div className="line-grand-total">
-                    <span>Calculated document total</span>
-                    <strong>{money(lineTotal)}</strong>
-                  </div>
-                </div>
-              )}
-            </div>
-            {formError && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs rounded border border-red-200 mx-5 mb-3">
-                {formError}
-              </div>
-            )}
-            <div className="form-modal-footer">
-              <button className="btn secondary" disabled={submitting} onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn secondary" disabled={submitting} onClick={() => saveRecord(false)}>
-                {submitting ? 'Saving...' : 'Save draft'}
-              </button>
-              <button className="btn primary" disabled={submitting} onClick={() => saveRecord(true)}>
-                <Send size={15}/> {submitting ? 'Submitting...' : 'Submit for approval'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderFormModal()}
 
       {/* LEAD CONVERSION MODAL */}
       {convertingLead && (
@@ -4263,23 +4707,9 @@ export function WorkspacePage({ item }: Props) {
         />
       )}
 
-      {/* COMMUNICATION MODAL */}
-      {activeComm && (
-        <CommunicationModal
-          type={activeComm}
-          prefillTo={commPrefill.to}
-          prefillContact={commPrefill.contact}
-          onClose={() => setActiveComm(null)}
-          onLogged={msg => notify(msg)}
-        />
-      )}
+      {renderCommModal()}
 
-      {toast && (
-        <div className="inline-toast">
-          <Check size={15}/>{toast}
-          <button onClick={() => setToast('')}><X size={13}/></button>
-        </div>
-      )}
+      {renderToast()}
     </div>
   );
 }
@@ -4287,8 +4717,10 @@ export function WorkspacePage({ item }: Props) {
 function FormField({ field, value, onChange }: { field: FieldDef; value: string; onChange: (value: string) => void }) {
   return (
     <label className={field.wide ? 'wide' : ''}>
-      {field.label}
-      {field.required && <em> *</em>}
+      <span className="field-label-text">
+        {field.label}
+        {field.required && <em className="required-asterisk"> *</em>}
+      </span>
       {field.type === 'textarea' ? (
         <textarea rows={3} value={value} placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`} onChange={e => onChange(e.target.value)}/>
       ) : field.type === 'select' ? (

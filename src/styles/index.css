@@ -776,3 +776,27 @@ body { font-size: 16px; line-height: 1.5; }
 .deal-move-btn:hover:not(:disabled) { background: #edf4ff; color: #1769d2; border-color: #93c5fd; }
 .deal-move-btn:disabled { opacity: .4; cursor: not-allowed; }
 
+/* Form field label text & required asterisk alignment */
+.form-grid label .field-label-text,
+.line-editor label .field-label-text,
+.field-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #596e87;
+  font-size: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.form-grid label .field-label-text em.required-asterisk,
+.line-editor label .field-label-text em.required-asterisk,
+.field-label-text em.required-asterisk,
+.required-asterisk {
+  display: inline !important;
+  color: #cf6b5f !important;
+  font-style: normal !important;
+  font-weight: 700 !important;
+  margin-left: 2px !important;
+}
+
+

@@ -77,9 +77,9 @@ export function OrganizationSelectField({
   return (
     <div className="org-select-container" ref={containerRef} style={{ position: 'relative', minWidth: 0 }}>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, color: '#596e87', fontSize: 11, fontWeight: 700 }}>
-        <span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
           {label}
-          {required && <em style={{ color: '#cf6b5f', fontStyle: 'normal' }}> *</em>}
+          {required && <em className="required-asterisk" style={{ color: '#cf6b5f', fontStyle: 'normal', marginLeft: 2 }}> *</em>}
         </span>
 
         {/* Trigger Button */}

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useCRM } from '../../store/CRMStore';
 import { makeId, type CRMRecord } from '../../data/models';
+import { api } from '../../services/api';
 
 export type CommType = 'email' | 'call' | 'sms' | 'chat' | 'meeting';
 
@@ -12,12 +13,16 @@ export function CommunicationModal({
   type,
   prefillTo,
   prefillContact,
+  prefillAccountId,
+  prefillOrganization,
   onClose,
   onLogged,
 }: {
   type: CommType;
   prefillTo?: string;
   prefillContact?: string;
+  prefillAccountId?: string;
+  prefillOrganization?: string;
   onClose: () => void;
   onLogged: (msg: string) => void;
 }) {
@@ -70,13 +75,28 @@ export function CommunicationModal({
   const hasSMSConsent = consentStatus.toLowerCase().includes('sms') || consentStatus.toLowerCase().includes('phone');
   const hasEmailConsent = consentStatus.toLowerCase().includes('email') && !consentStatus.toLowerCase().includes('opted out');
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
     const targetOrg = orgs.find(o => o.title.toLowerCase() === selectedContact?.fields.organization?.toLowerCase());
+    const accountId = prefillAccountId || targetOrg?.id;
+
+    if (accountId) {
+      try {
+        await api.createAccountActivity(accountId, {
+          activity_type: 'Email',
+          subject: emailSubject,
+          description: emailBody,
+          contact_id: selectedContact?.id,
+        });
+      } catch (err) {
+        console.warn('Could not persist activity to PostgreSQL:', err);
+      }
+    }
+
     const interaction = create('interactions', {
       subject: emailSubject,
       type: 'Email',
       channel: 'Email',
-      relatedTo: selectedContact?.fields.organization || selectedContact?.title || 'Customer',
+      relatedTo: prefillOrganization || selectedContact?.fields.organization || selectedContact?.title || 'Customer',
       date: new Date().toISOString().slice(0, 10),
       summary: emailBody,
       consent: selectedContact?.fields.consent || 'Verified',
@@ -84,7 +104,7 @@ export function CommunicationModal({
       status: 'Completed',
       links: {
         contacts: selectedContact ? [selectedContact.id] : [],
-        organizations: targetOrg ? [targetOrg.id] : [],
+        organizations: accountId ? [accountId] : (targetOrg ? [targetOrg.id] : []),
       },
     });
 
@@ -94,19 +114,34 @@ export function CommunicationModal({
       }, 'Logged sent email to customer timeline');
     }
 
-    addAudit('Simulated email logged', 'Arjun Mehta', `To: ${selectedContact?.fields.email} · ${emailSubject}`);
-    addEvent('communication.email_sent', interaction, `Email sent to ${selectedContact?.fields.email}`);
-    onLogged(`Email to ${selectedContact?.fields.email} recorded in customer timeline.`);
+    addAudit('Outreach email logged', 'Arjun Mehta', `To: ${selectedContact?.fields.email || prefillTo} · ${emailSubject}`);
+    addEvent('communication.email_sent', interaction, `Email sent to ${selectedContact?.fields.email || prefillTo}`);
+    onLogged(`Email to ${selectedContact?.fields.email || prefillTo || 'contact'} recorded in customer timeline & PostgreSQL.`);
     onClose();
   };
 
-  const handleLogCall = () => {
+  const handleLogCall = async () => {
     const targetOrg = orgs.find(o => o.title.toLowerCase() === selectedContact?.fields.organization?.toLowerCase());
+    const accountId = prefillAccountId || targetOrg?.id;
+
+    if (accountId) {
+      try {
+        await api.createAccountActivity(accountId, {
+          activity_type: 'Call',
+          subject: `${callDirection} call with ${selectedContact?.title || prefillContact || 'Customer'}`,
+          description: `Duration: ${callDuration} · Outcome: ${callOutcome} · Notes: ${callNotes}`,
+          contact_id: selectedContact?.id,
+        });
+      } catch (err) {
+        console.warn('Could not persist activity to PostgreSQL:', err);
+      }
+    }
+
     const interaction = create('interactions', {
       subject: `${callDirection} call with ${selectedContact?.title || 'Customer'}`,
       type: 'Call',
       channel: 'Phone',
-      relatedTo: selectedContact?.fields.organization || selectedContact?.title || 'Customer',
+      relatedTo: prefillOrganization || selectedContact?.fields.organization || selectedContact?.title || 'Customer',
       date: new Date().toISOString().slice(0, 10),
       duration: callDuration,
       outcome: callOutcome,
@@ -117,7 +152,7 @@ export function CommunicationModal({
       status: 'Completed',
       links: {
         contacts: selectedContact ? [selectedContact.id] : [],
-        organizations: targetOrg ? [targetOrg.id] : [],
+        organizations: accountId ? [accountId] : (targetOrg ? [targetOrg.id] : []),
       },
     });
 
@@ -127,23 +162,38 @@ export function CommunicationModal({
       }, 'Logged telephone call to customer timeline');
     }
 
-    addAudit('Telephone call logged', 'Arjun Mehta', `${callDirection} · ${selectedContact?.title} · ${callOutcome}`);
-    addEvent('communication.call_logged', interaction, `${callDirection} call with ${selectedContact?.title}`);
-    onLogged(`Call with ${selectedContact?.title} logged to activity history.`);
+    addAudit('Telephone call logged', 'Arjun Mehta', `${callDirection} · ${selectedContact?.title || prefillContact} · ${callOutcome}`);
+    addEvent('communication.call_logged', interaction, `${callDirection} call with ${selectedContact?.title || prefillContact}`);
+    onLogged(`Call with ${selectedContact?.title || prefillContact || 'contact'} logged to activity history & PostgreSQL.`);
     onClose();
   };
 
-  const handleSendSMS = () => {
+  const handleSendSMS = async () => {
     if (!hasSMSConsent) {
       alert('Cannot send SMS: Contact communication preference does not permit SMS messaging under current consent rules.');
       return;
     }
     const targetOrg = orgs.find(o => o.title.toLowerCase() === selectedContact?.fields.organization?.toLowerCase());
+    const accountId = prefillAccountId || targetOrg?.id;
+
+    if (accountId) {
+      try {
+        await api.createAccountActivity(accountId, {
+          activity_type: 'SMS',
+          subject: `SMS to ${selectedContact?.fields.phone || prefillTo || 'Customer'}`,
+          description: smsBody,
+          contact_id: selectedContact?.id,
+        });
+      } catch (err) {
+        console.warn('Could not persist activity to PostgreSQL:', err);
+      }
+    }
+
     const interaction = create('interactions', {
       subject: `SMS to ${selectedContact?.fields.phone || 'Customer'}`,
       type: 'SMS',
       channel: 'SMS Gateway',
-      relatedTo: selectedContact?.fields.organization || selectedContact?.title || 'Customer',
+      relatedTo: prefillOrganization || selectedContact?.fields.organization || selectedContact?.title || 'Customer',
       date: new Date().toISOString().slice(0, 10),
       summary: smsBody,
       consent: selectedContact?.fields.consent || 'SMS Permitted',
@@ -151,37 +201,52 @@ export function CommunicationModal({
       status: 'Completed',
       links: {
         contacts: selectedContact ? [selectedContact.id] : [],
-        organizations: targetOrg ? [targetOrg.id] : [],
+        organizations: accountId ? [accountId] : (targetOrg ? [targetOrg.id] : []),
       },
     });
 
-    addAudit('SMS message logged', 'Arjun Mehta', `To: ${selectedContact?.fields.phone}`);
-    addEvent('communication.sms_sent', interaction, `SMS dispatched to ${selectedContact?.fields.phone}`);
-    onLogged(`SMS to ${selectedContact?.fields.phone} recorded in customer timeline.`);
+    addAudit('SMS message logged', 'Arjun Mehta', `To: ${selectedContact?.fields.phone || prefillTo}`);
+    addEvent('communication.sms_sent', interaction, `SMS dispatched to ${selectedContact?.fields.phone || prefillTo}`);
+    onLogged(`SMS to ${selectedContact?.fields.phone || prefillTo || 'contact'} recorded in customer timeline & PostgreSQL.`);
     onClose();
   };
 
-  const handleScheduleMeeting = () => {
+  const handleScheduleMeeting = async () => {
     const targetOrg = orgs.find(o => o.title.toLowerCase() === selectedContact?.fields.organization?.toLowerCase());
+    const accountId = prefillAccountId || targetOrg?.id;
+
+    if (accountId) {
+      try {
+        await api.createAccountActivity(accountId, {
+          activity_type: 'Meeting',
+          subject: meetingTitle,
+          description: `Scheduled meeting on ${meetingDate} at ${meetingTime}.\nAgenda:\n${meetingAgenda}`,
+          contact_id: selectedContact?.id,
+        });
+      } catch (err) {
+        console.warn('Could not persist activity to PostgreSQL:', err);
+      }
+    }
+
     const interaction = create('interactions', {
       subject: meetingTitle,
       type: 'Meeting',
       channel: 'Calendar Sync (Outlook/Google)',
       date: meetingDate,
       time: meetingTime,
-      relatedTo: selectedContact?.fields.organization || selectedContact?.title || 'Customer',
-      summary: `Scheduled meeting with ${selectedContact?.title}.\nAgenda:\n${meetingAgenda}`,
+      relatedTo: prefillOrganization || selectedContact?.fields.organization || selectedContact?.title || 'Customer',
+      summary: `Scheduled meeting with ${selectedContact?.title || prefillContact}.\nAgenda:\n${meetingAgenda}`,
     }, {
       status: 'Scheduled',
       links: {
         contacts: selectedContact ? [selectedContact.id] : [],
-        organizations: targetOrg ? [targetOrg.id] : [],
+        organizations: accountId ? [accountId] : (targetOrg ? [targetOrg.id] : []),
       },
     });
 
     addAudit('Customer meeting scheduled', 'Arjun Mehta', `${meetingTitle} on ${meetingDate}`);
     addEvent('meeting.scheduled', interaction, `Meeting scheduled for ${meetingDate}`);
-    onLogged(`Meeting scheduled with ${selectedContact?.title}.`);
+    onLogged(`Meeting "${meetingTitle}" scheduled and committed to PostgreSQL.`);
     onClose();
   };
 

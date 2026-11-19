@@ -2280,6 +2280,10 @@ class ApiClient {
     });
   }
 
+  public async listActivities(limit = 100): Promise<CRMActivityItem[]> {
+    return this.request<CRMActivityItem[]>(`/accounts/activities?limit=${limit}`);
+  }
+
   // --- CRM Contacts ---
   public async listContacts(params?: {
     q?: string;

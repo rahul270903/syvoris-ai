@@ -567,3 +567,34 @@ class AccountService:
             actor_name=activity.actor_name,
             metadata=activity.metadata_json or {}
         )
+
+    @staticmethod
+    async def list_tenant_activities(
+        db: AsyncSession,
+        tenant_id: uuid.UUID,
+        limit: int = 100
+    ) -> List[CRMActivityResponse]:
+        query = (
+            select(CRMActivity)
+            .where(CRMActivity.tenant_id == tenant_id)
+            .order_by(CRMActivity.occurred_at.desc())
+            .limit(limit)
+        )
+        res = await db.execute(query)
+        activities = res.scalars().all()
+        return [
+            CRMActivityResponse(
+                id=a.id,
+                tenant_id=a.tenant_id,
+                account_id=a.account_id,
+                contact_id=a.contact_id,
+                activity_type=a.activity_type,
+                subject=a.subject,
+                description=a.description,
+                occurred_at=a.occurred_at,
+                actor_id=a.actor_id,
+                actor_name=a.actor_name,
+                metadata=a.metadata_json or {}
+            )
+            for a in activities
+        ]

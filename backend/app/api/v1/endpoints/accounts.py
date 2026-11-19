@@ -78,6 +78,19 @@ async def create_account(
         actor_name=current_user.full_name
     )
 
+@router.get("/activities", response_model=List[CRMActivityResponse])
+async def list_all_activities(
+    limit: int = Query(100, ge=1, le=200),
+    tenant_id: Optional[uuid.UUID] = Depends(get_current_active_tenant_id),
+    _: None = Depends(require_permission("accounts:read")),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve chronological CRM activities across the active tenant."""
+    if not tenant_id:
+        raise ValidationException("No active organization context.")
+
+    return await AccountService.list_tenant_activities(db, tenant_id=tenant_id, limit=limit)
+
 @router.get("/{id}", response_model=AccountResponse)
 async def get_account(
     id: uuid.UUID,
