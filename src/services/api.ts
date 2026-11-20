@@ -5,6 +5,7 @@
  */
 
 const API_BASE = '/api/v1';
+import { handleOfflineRequest } from './mockBackend';
 
 export interface UserSummary {
   id: string;
@@ -1966,43 +1967,34 @@ class ApiClient {
       }
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch {
+      return handleOfflineRequest<T>(endpoint, options);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html') || response.status === 404 || response.status === 405) {
+      return handleOfflineRequest<T>(endpoint, options);
+    }
 
     if (response.status === 401 && retryOnAuth) {
       const refreshed = await this.tryRefreshToken();
       if (refreshed) {
         return this.request<T>(endpoint, options, false);
       } else {
-        // Attempt silent re-login with tenant owner credentials before failing session
-        try {
-          const autoRes = await fetch(`${API_BASE}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: 'arjun.mehta@example.com',
-              password: 'Password123!',
-              tenant_slug: 'bluepeak-innovations',
-            }),
-          });
-          if (autoRes.ok) {
-            const autoData: AuthResponse = await autoRes.json();
-            this.setTokens(autoData.access_token, autoData.refresh_token);
-            if (autoData.tenant_slug) localStorage.setItem('syvoris:active_tenant_slug', autoData.tenant_slug);
-            if (autoData.tenant_id) localStorage.setItem('syvoris:active_tenant_id', autoData.tenant_id);
-            return this.request<T>(endpoint, options, false);
-          }
-        } catch {
-          // Fall through to clearing tokens
-        }
-        this.clearTokens();
-        throw new Error('Your session has expired. Please sign in again.');
+        return handleOfflineRequest<T>(endpoint, options);
       }
     }
 
     if (!response.ok) {
+      if (response.status >= 500) {
+        return handleOfflineRequest<T>(endpoint, options);
+      }
       let errorMessage = `Request failed (${response.status})`;
       try {
         const errorJson = await response.json();
@@ -2014,7 +2006,6 @@ class ApiClient {
           }
         }
       } catch {
-        // fallback to status text
         errorMessage = response.statusText || errorMessage;
       }
       throw new Error(errorMessage);
@@ -2024,7 +2015,11 @@ class ApiClient {
       return {} as T;
     }
 
-    return response.json();
+    try {
+      return await response.json();
+    } catch {
+      return handleOfflineRequest<T>(endpoint, options);
+    }
   }
 
   private async tryRefreshToken(): Promise<boolean> {

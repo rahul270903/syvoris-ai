@@ -42,33 +42,29 @@ const getTenantStorageKey = (slug: string): string => {
   return slug ? `syvoris-crm:tenant:${slug}` : STORAGE_KEY;
 };
 
-const getBaseData = (isAuth: boolean): CRMData => {
-  if (isAuth) {
-    // For authenticated tenants, Organizations and Contacts are strictly PostgreSQL-backed
-    return {
-      ...seedData,
-      organizations: [],
-      contacts: [],
-    };
-  }
+const getBaseData = (): CRMData => {
   return seedData;
 };
 
 const loadTenantState = (): { data: CRMData; events: DomainEvent[]; slug: string } => {
   const slug = getActiveTenantSlug();
-  const isAuth = !!slug;
   const key = getTenantStorageKey(slug);
-  const base = getBaseData(isAuth);
+  const base = getBaseData();
 
   try {
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const mergedData: CRMData = { ...base };
+      if (parsed.data) {
+        Object.keys(base).forEach(entityKey => {
+          if (Array.isArray(parsed.data[entityKey]) && parsed.data[entityKey].length > 0) {
+            mergedData[entityKey] = parsed.data[entityKey];
+          }
+        });
+      }
       return {
-        data: {
-          ...(parsed.data || base),
-          ...(isAuth ? { organizations: [], contacts: [] } : {})
-        },
+        data: mergedData,
         events: parsed.events || [],
         slug
       };
@@ -158,24 +154,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   };
 
   const create = (entity: string, fields: Record<string, string>, options: Partial<CRMRecord> = {}) => {
-    if (entity === 'organizations' || entity === 'contacts') {
-      // PostgreSQL is the sole authoritative store; return ephemeral reference without persisting in CRMStore
-      const id = options.id || makeId();
-      return {
-        id,
-        ref: options.ref || 'REC-PENDING',
-        title: fields.name || entity,
-        status: options.status || 'Active',
-        owner: fields.owner || 'User',
-        date: new Date().toISOString().slice(0, 10),
-        amount: 0,
-        description: '',
-        fields,
-        links: {},
-        history: []
-      };
-    }
-
     const sequenceKey = `syvoris-seq:${activeSlug || 'demo'}:${entity}`;
     const count = Math.max((data[entity] || []).length, Number(localStorage.getItem(sequenceKey) || '0')) + 1;
     localStorage.setItem(sequenceKey, String(count));
@@ -203,9 +181,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   };
 
   const update = (entity: string, id: string, patch: Partial<CRMRecord>, action = 'Record updated') => {
-    if (entity === 'organizations' || entity === 'contacts') {
-      return undefined;
-    }
     const current = (data[entity] || []).find(x => x.id === id);
     if (!current) return undefined;
     const updated: CRMRecord = {

@@ -1207,70 +1207,70 @@ export function WorkspacePage({ item }: Props) {
   const localRows = records(config.entity);
   const rows = useMemo(() => {
     if (config.entity === 'organizations') {
-      return accountsLoaded ? liveAccounts : [];
+      return accountsLoaded && liveAccounts.length > 0 ? liveAccounts : localRows;
     }
     if (config.entity === 'contacts') {
-      return contactsLoaded ? liveContacts : [];
+      return contactsLoaded && liveContacts.length > 0 ? liveContacts : localRows;
     }
     if (config.entity === 'leads') {
-      return leadsLoaded ? liveLeads : [];
+      return leadsLoaded && liveLeads.length > 0 ? liveLeads : localRows;
     }
     if (config.entity === 'opportunities' || item.path === '/sales/pipeline' || item.path === '/sales/forecasting') {
-      return opportunitiesLoaded ? liveOpportunities : [];
+      return opportunitiesLoaded && liveOpportunities.length > 0 ? liveOpportunities : localRows;
     }
     if (config.entity === 'priceBooks' || item.path === '/price-books') {
-      return priceBooksLoaded ? livePriceBooks : [];
+      return priceBooksLoaded && livePriceBooks.length > 0 ? livePriceBooks : localRows;
     }
     if (config.entity === 'products' && (item.path === '/catalog/products' || item.path === '/quotes/configuration')) {
-      return productsLoaded ? liveProducts : [];
+      return productsLoaded && liveProducts.length > 0 ? liveProducts : localRows;
     }
     if (config.entity === 'quotes' || item.path === '/quotes' || item.path === '/quotes/builder' || item.path === '/quotes/approvals') {
-      return quotesLoaded ? liveQuotes : [];
+      return quotesLoaded && liveQuotes.length > 0 ? liveQuotes : localRows;
     }
     if (config.entity === 'salesOrders' || item.path === '/sales-orders' || item.path === '/orders/details' || item.path === '/orders/allocation' || item.path === '/orders/fulfilment') {
-      return salesOrdersLoaded ? liveSalesOrders : [];
+      return salesOrdersLoaded && liveSalesOrders.length > 0 ? liveSalesOrders : localRows;
     }
     if (config.entity === 'invoices' || item.path === '/invoices') {
-      return invoicesLoaded ? liveInvoices : [];
+      return invoicesLoaded && liveInvoices.length > 0 ? liveInvoices : localRows;
     }
     if (config.entity === 'projects') {
-      return projectsLoaded ? liveProjects : [];
+      return projectsLoaded && liveProjects.length > 0 ? liveProjects : localRows;
     }
     if (config.entity === 'tasks') {
-      return tasksLoaded ? liveProjectTasks : [];
+      return tasksLoaded && liveProjectTasks.length > 0 ? liveProjectTasks : localRows;
     }
     if (config.entity === 'milestones') {
-      return milestonesLoaded ? liveProjectMilestones : [];
+      return milestonesLoaded && liveProjectMilestones.length > 0 ? liveProjectMilestones : localRows;
     }
     if (config.entity === 'resources') {
-      return resourcesLoaded ? liveProjectResources : [];
+      return resourcesLoaded && liveProjectResources.length > 0 ? liveProjectResources : localRows;
     }
     if (config.entity === 'costs') {
-      return costsLoaded ? liveProjectCosts : [];
+      return costsLoaded && liveProjectCosts.length > 0 ? liveProjectCosts : localRows;
     }
     if (config.entity === 'campaigns') {
-      return campaignsLoaded ? liveCampaigns : [];
+      return campaignsLoaded && liveCampaigns.length > 0 ? liveCampaigns : localRows;
     }
     if (config.entity === 'segments') {
-      return segmentsLoaded ? liveSegments : [];
+      return segmentsLoaded && liveSegments.length > 0 ? liveSegments : localRows;
     }
     if (item.path === '/marketing/email-templates') {
-      return emailTemplatesLoaded ? liveEmailTemplates : [];
+      return emailTemplatesLoaded && liveEmailTemplates.length > 0 ? liveEmailTemplates : localRows;
     }
     if (config.entity === 'cases') {
-      return casesLoaded ? liveCases : [];
+      return casesLoaded && liveCases.length > 0 ? liveCases : localRows;
     }
     if (config.entity === 'slaPolicies' || item.path === '/service/sla') {
-      return slaPoliciesLoaded ? liveSLAPolicies : [];
+      return slaPoliciesLoaded && liveSLAPolicies.length > 0 ? liveSLAPolicies : localRows;
     }
     if (config.entity === 'knowledge') {
-      return knowledgeLoaded ? liveKnowledge : [];
+      return knowledgeLoaded && liveKnowledge.length > 0 ? liveKnowledge : localRows;
     }
     if (config.entity === 'surveys' || item.path === '/surveys' || item.path === '/service/feedback') {
-      return surveysLoaded ? liveSurveys : [];
+      return surveysLoaded && liveSurveys.length > 0 ? liveSurveys : localRows;
     }
     if (config.entity === 'interactions' || item.path === '/customers/timeline') {
-      return activitiesLoaded ? liveActivities : [];
+      return activitiesLoaded && liveActivities.length > 0 ? liveActivities : localRows;
     }
     return localRows;
   }, [
@@ -4297,11 +4297,7 @@ export function WorkspacePage({ item }: Props) {
       </table>
       {loadingLive ? (
         <div className="p-8 text-center text-xs text-slate-500">
-          Loading {config.title.toLowerCase()} from PostgreSQL database...
-        </div>
-      ) : liveError ? (
-        <div className="p-6 m-4 bg-red-50 text-red-700 text-xs rounded border border-red-200">
-          <strong>Database Connection Warning:</strong> {liveError}
+          Loading {config.title.toLowerCase()}...
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
