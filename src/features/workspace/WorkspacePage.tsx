@@ -71,6 +71,18 @@ import { TermsManagementView } from './TermsManagementView';
 import { StockManagementView } from './StockManagementView';
 import { VendorsCatalogView } from './VendorsCatalogView';
 import { RecycleBinView } from './RecycleBinView';
+import { UsersManagementView } from './UsersManagementView';
+import { RolesManagementView } from './RolesManagementView';
+import { TeamsManagementView } from './TeamsManagementView';
+import { PermissionsView } from './PermissionsView';
+import { PipelinesStagesView } from './PipelinesStagesView';
+import { AssignmentRulesView } from './AssignmentRulesView';
+import { PicklistConfigurationView } from './PicklistConfigurationView';
+import { PrintTemplatesView } from './PrintTemplatesView';
+import { AIModelConfigView } from './AIModelConfigView';
+import { AgentPoliciesView } from './AgentPoliciesView';
+import { DataManagementAdminView } from './DataManagementAdminView';
+import { ImportExportView } from './ImportExportView';
 import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
@@ -4093,6 +4105,114 @@ export function WorkspacePage({ item }: Props) {
     return (
       <div className="workspace-page">
         <RecycleBinView />
+      </div>
+    );
+  }
+
+  // USERS MANAGEMENT VIEW
+  if (item.path === '/admin/users' || item.entity === 'users') {
+    return (
+      <div className="workspace-page">
+        <UsersManagementView />
+      </div>
+    );
+  }
+
+  // ROLES & PROFILES MANAGEMENT VIEW
+  if (item.path === '/admin/roles' || item.entity === 'roles') {
+    return (
+      <div className="workspace-page">
+        <RolesManagementView />
+      </div>
+    );
+  }
+
+  // TEAMS & QUEUES MANAGEMENT VIEW
+  if (item.path === '/admin/teams' || item.entity === 'teams') {
+    return (
+      <div className="workspace-page">
+        <TeamsManagementView />
+      </div>
+    );
+  }
+
+  // PERMISSIONS & ACCESS GOVERNANCE VIEW
+  if (item.path === '/admin/permissions') {
+    return (
+      <div className="workspace-page">
+        <PermissionsView />
+      </div>
+    );
+  }
+
+  // PIPELINES & STAGES STUDIO VIEW
+  if (item.path === '/admin/pipelines') {
+    return (
+      <div className="workspace-page">
+        <PipelinesStagesView />
+      </div>
+    );
+  }
+
+  // ASSIGNMENT & TERRITORY ROUTING RULES VIEW
+  if (item.path === '/admin/assignment') {
+    return (
+      <div className="workspace-page">
+        <AssignmentRulesView />
+      </div>
+    );
+  }
+
+  // PICKLIST FIELD VALUES & CONDITIONAL DEPENDENCIES VIEW
+  if (item.path === '/admin/picklists') {
+    return (
+      <div className="workspace-page">
+        <PicklistConfigurationView />
+      </div>
+    );
+  }
+
+  // PRINT & PDF DOCUMENT LAYOUT STUDIO VIEW
+  if (item.path === '/admin/print-templates') {
+    return (
+      <div className="workspace-page">
+        <PrintTemplatesView />
+      </div>
+    );
+  }
+
+  // AI MODEL GATEWAY CONFIGURATION VIEW
+  if (item.path === '/admin/ai-models') {
+    return (
+      <div className="workspace-page">
+        <AIModelConfigView />
+      </div>
+    );
+  }
+
+  // AGENT POLICIES & AUTONOMY CEILINGS VIEW
+  if (item.path === '/admin/agent-policies') {
+    return (
+      <div className="workspace-page">
+        <AgentPoliciesView />
+      </div>
+    );
+  }
+
+  // DATA MANAGEMENT & RETENTION VIEW
+  if (item.path === '/admin/data') {
+    return (
+      <div className="workspace-page">
+        <DataManagementAdminView />
+      </div>
+    );
+  }
+
+  // IMPORT / EXPORT CONTROL CENTER VIEW
+  if (item.path === '/admin/import-export') {
+    return (
+      <div className="workspace-page">
+        <ImportExportView />
       </div>
     );
   }
