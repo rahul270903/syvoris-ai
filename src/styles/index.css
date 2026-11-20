@@ -95,10 +95,6 @@ body { font-size: 16px; line-height: 1.5; }
 .brand-link img { width: 40px; height: 40px; }
 .brand-name { font-size: 16px; }
 .brand-name small { font-size: 12px; color: #c1d1e5; letter-spacing: 1.1px; }
-.tenant-switcher { min-height: 62px; padding: 11px 12px; }
-.tenant-switcher b { font-size: 14px; color: #f8fbff; }
-.tenant-switcher small { font-size: 12px; color: #d1deee; }
-.tenant-avatar { width: 34px; height: 34px; font-size: 13px; }
 .nav-section-label {
   padding: 16px 10px 9px;
   color: #c0d5ef;
@@ -159,39 +155,188 @@ body { font-size: 16px; line-height: 1.5; }
 .sidebar-status { padding: 8px 9px 0; color: #c1d0e2; font-size: 11.5px; }
 
 /* Dedicated High-Contrast Tenant Switcher Dropdown (fixes Image 2 washed out popover) */
-.tenant-dropdown {
-  position: absolute !important;
-  left: 8px !important;
-  right: 8px !important;
-  top: calc(100% + 4px) !important;
-  z-index: 60 !important;
-  min-width: 0 !important;
-  width: auto !important;
-  background: #0d1e38 !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 20px 48px rgba(3, 10, 24, 0.65) !important;
-  padding: 8px !important;
-  color: #f8fafc !important;
-  overflow: visible !important;
+.tenant-card-container {
+  position: relative !important;
+  padding: 8px 12px 4px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  flex: none !important;
 }
-.tenant-dropdown label {
+
+.tenant-switcher {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 6px 8px 6px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  min-height: 52px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  gap: 10px !important;
+}
+
+.tenant-switcher:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.tenant-switcher.active {
+  background: rgba(30, 58, 138, 0.35) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3), 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+.tenant-avatar {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #0284c7 100%) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  flex: none !important;
+}
+
+.tenant-info {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.tenant-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  letter-spacing: -0.1px !important;
+}
+
+.tenant-badge-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+.tenant-pulse-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 6px #10b981 !important;
+  flex: none !important;
+}
+
+.tenant-badge-text {
+  font-size: 10.5px !important;
+  font-weight: 500 !important;
+  color: #94a3b8 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.tenant-caret {
+  color: #94a3b8 !important;
+  flex: none !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s !important;
+}
+
+.tenant-switcher:hover .tenant-caret {
+  color: #ffffff !important;
+}
+
+.tenant-switcher.active .tenant-caret {
+  transform: rotate(180deg) !important;
+  color: #38bdf8 !important;
+}
+
+/* Dropdown popover */
+.tenant-dropdown {
+  position: absolute !important;
+  left: 12px !important;
+  right: 12px !important;
+  top: calc(100% + 4px) !important;
+  z-index: 70 !important;
+  min-width: 0 !important;
+  background: #0a1329 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 48px rgba(3, 10, 24, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+  padding: 8px !important;
+  color: #f8fafc !important;
+  overflow: visible !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.tenant-dropdown-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 6px 8px 8px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  margin-bottom: 6px !important;
+}
+
+.tenant-dropdown-title {
   color: #94a3b8 !important;
   font-size: 10px !important;
   font-weight: 800 !important;
   letter-spacing: 0.8px !important;
   text-transform: uppercase !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  margin-bottom: 6px !important;
 }
-.tenant-dropdown button {
+
+.tenant-dropdown-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+}
+
+.tenant-live-dot-sm {
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 4px #10b981 !important;
+}
+
+.tenant-workspace-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.tenant-workspace-item {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  gap: 10px !important;
   width: 100% !important;
   padding: 8px 10px !important;
   border: 1px solid transparent !important;
@@ -202,26 +347,147 @@ body { font-size: 16px; line-height: 1.5; }
   cursor: pointer !important;
   transition: all 0.15s ease !important;
 }
-.tenant-dropdown button:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+
+.tenant-workspace-item:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
   color: #ffffff !important;
 }
-.tenant-dropdown button.role-selected {
-  background: rgba(37, 99, 235, 0.25) !important;
+
+.tenant-workspace-item.active-workspace {
+  background: rgba(37, 99, 235, 0.22) !important;
   border-color: rgba(59, 130, 246, 0.45) !important;
   color: #ffffff !important;
 }
-.tenant-dropdown button b {
-  display: block !important;
-  font-size: 13px !important;
+
+.tenant-item-avatar {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 6px !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  display: grid !important;
+  place-items: center !important;
+  flex: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.tenant-item-details {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.tenant-item-name-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+}
+
+.tenant-item-name-row b {
+  font-size: 12.5px !important;
   font-weight: 700 !important;
   color: #ffffff !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
-.tenant-dropdown button small {
-  display: block !important;
-  font-size: 11px !important;
+
+.tenant-item-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-size: 10.5px !important;
   color: #94a3b8 !important;
-  margin-top: 2px !important;
+}
+
+.tenant-item-dot {
+  color: #64748b !important;
+}
+
+.tenant-governance-card {
+  margin-top: 8px !important;
+  padding: 8px 10px !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.tenant-gov-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 10px !important;
+}
+
+.tenant-gov-row .gov-label {
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+.tenant-gov-row .gov-val {
+  color: #cbd5e1 !important;
+  font-weight: 650 !important;
+  font-family: ui-monospace, monospace !important;
+}
+
+.tenant-dropdown-footer {
+  margin-top: 6px !important;
+  padding-top: 6px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.tenant-footer-action {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  padding: 6px 8px !important;
+  border-radius: 6px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.tenant-footer-action:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar collapsed responsive adaptations */
+.sidebar-collapsed .tenant-card-container {
+  padding: 10px 8px 6px !important;
+}
+
+.sidebar-collapsed .tenant-switcher {
+  justify-content: center !important;
+  padding: 8px !important;
+  min-height: 48px !important;
+}
+
+.sidebar-collapsed .tenant-info,
+.sidebar-collapsed .tenant-caret {
+  display: none !important;
+}
+
+.sidebar-collapsed .tenant-dropdown {
+  position: fixed !important;
+  left: 76px !important;
+  top: 80px !important;
+  width: 290px !important;
+  right: auto !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85) !important;
 }
 
 /* Top header: breadcrumbs, global search and profile metadata */
@@ -1079,78 +1345,6 @@ body { font-size: 16px; line-height: 1.5; }
   border-top: 1px solid #e2e8f0 !important;
   background: #ffffff !important;
   flex-shrink: 0 !important;
-}
-
-/* ==========================================================================
-   NAVIGATION SIDEBAR REFINEMENTS (REMOVE COLLAPSE BUTTON, SLEEK SCROLLBAR)
-   ========================================================================== */
-.collapse-button {
-  display: none !important;
-}
-
-.sidebar {
-  width: 296px !important;
-  transition: transform 0.2s ease !important;
-}
-
-.main-shell {
-  margin-left: 296px !important;
-}
-
-.sidebar-brand {
-  height: 72px !important;
-  min-height: 72px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  padding: 0 18px !important;
-  gap: 12px !important;
-}
-
-.tenant-switcher {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  margin: 12px 14px 10px !important;
-  padding: 10px 12px !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 10px !important;
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  transition: all 0.15s ease !important;
-}
-
-.tenant-switcher:hover {
-  background: rgba(255, 255, 255, 0.09) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-}
-
-.side-nav-scroll {
-  flex: 1 1 auto !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  padding: 4px 10px 16px !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent !important;
-}
-
-.side-nav-scroll::-webkit-scrollbar {
-  width: 5px !important;
-}
-
-.side-nav-scroll::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
-.side-nav-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-radius: 9999px !important;
-  transition: background 0.15s ease !important;
-}
-
-.sidebar:hover .side-nav-scroll::-webkit-scrollbar-thumb,
-.side-nav-scroll:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22) !important;
 }
 
 

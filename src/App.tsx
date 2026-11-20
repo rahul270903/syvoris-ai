@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell, ChevronDown, ChevronRight, Command, HelpCircle,
+  Bell, ChevronDown, ChevronLeft, ChevronRight, Command, HelpCircle,
   LayoutDashboard, LogOut, Menu, Search, Settings, ShieldCheck,
   Sparkles, Workflow, X, Plus, Target, Briefcase, FileCheck2,
-  LifeBuoy, CheckSquare, Building2, Check, ArrowUpRight, Zap
+  LifeBuoy, CheckSquare, Building2, Check, ArrowUpRight, Zap, ChevronsUpDown
 } from 'lucide-react';
 import { navGroups, allNavItems, getNavItem } from './app/navigation';
 import { CRMProvider, useCRM } from './store/CRMStore';
@@ -28,6 +28,7 @@ interface AppShellProps {
 }
 
 function AppShell({ initialProfile, onLogout }: AppShellProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expanded, setExpanded] = useState<string[]>(['Command Centre', 'Essentials & Customer 360', 'Sales & Revenue']);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -42,6 +43,17 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const tenantDropdownRef = useRef<HTMLDivElement>(null);
+
+  const tenantName = userProfile?.active_tenant?.tenant_name || 'BluePeak Innovations';
+  const tenantInitials = useMemo(() => {
+    if (!tenantName) return 'BP';
+    if (tenantName.toLowerCase().includes('bluepeak')) return 'BP';
+    const parts = tenantName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return tenantName.slice(0, 2).toUpperCase();
+  }, [tenantName]);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -100,16 +112,16 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   }, []);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent) => {
       if (tenantDropdownRef.current && !tenantDropdownRef.current.contains(e.target as Node)) {
         setTenantDropdownOpen(false);
       }
     };
     if (tenantDropdownOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
+      document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [tenantDropdownOpen]);
 
@@ -204,13 +216,27 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   };
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${collapsed ? 'sidebar-collapsed' : ''}`}>
       {mobileOpen && <button className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-label="Close navigation" />}
 
       {/* Enterprise Sidebar */}
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
-        <div className="sidebar-brand">
-          <Link to="/dashboard" className="brand-link">
+        <div
+          className="sidebar-brand"
+          onClick={collapsed ? () => setCollapsed(false) : undefined}
+          title={collapsed ? 'Click to expand sidebar' : undefined}
+          style={collapsed ? { cursor: 'pointer' } : undefined}
+        >
+          <Link
+            to="/dashboard"
+            className="brand-link"
+            onClick={e => {
+              if (collapsed) {
+                e.preventDefault();
+                setCollapsed(false);
+              }
+            }}
+          >
             <div className="brand-icon-box">
               <img src="/assets/syvoris-mark-transparent.svg" alt="SYVORIS Ai" />
             </div>
@@ -219,52 +245,136 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               <small>ENTERPRISE PLATFORM</small>
             </span>
           </Link>
+          <button
+            className="collapse-button"
+            onClick={e => {
+              e.stopPropagation();
+              setCollapsed(!collapsed);
+            }}
+            title={collapsed ? 'Maximize sidebar' : 'Minimize sidebar'}
+            aria-label={collapsed ? 'Maximize sidebar' : 'Minimize sidebar'}
+          >
+            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
         </div>
 
-        <div className="relative" ref={tenantDropdownRef}>
+        <div className="tenant-card-container" ref={tenantDropdownRef}>
           <button
-            className="tenant-switcher w-full text-left"
-            onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
+            type="button"
+            className={`tenant-switcher ${tenantDropdownOpen ? 'active' : ''}`}
+            onClick={() => {
+              if (collapsed) {
+                setCollapsed(false);
+                setTenantDropdownOpen(true);
+              } else {
+                setTenantDropdownOpen(!tenantDropdownOpen);
+              }
+            }}
+            title={`${tenantName} · Organization Workspace`}
+            aria-label={`${tenantName} workspace options`}
+            aria-expanded={tenantDropdownOpen}
           >
-            <span className="tenant-avatar">
-              {userProfile?.active_tenant?.tenant_name ? userProfile.active_tenant.tenant_name.slice(0, 2).toUpperCase() : 'BP'}
-            </span>
-            <span>
-              <b>{userProfile?.active_tenant?.tenant_name || 'BluePeak Innovations'}</b>
-              <small>{userProfile?.active_tenant?.tenant_slug ? `${userProfile.active_tenant.tenant_slug}` : 'bluepeak-innovations'}</small>
-            </span>
-            <ChevronDown size={14} />
+            <div className="tenant-avatar">
+              <span>{tenantInitials}</span>
+            </div>
+            <div className="tenant-info">
+              <span className="tenant-title" title={tenantName}>{tenantName}</span>
+              <span className="tenant-badge-row">
+                <span className="tenant-pulse-dot" />
+                <span className="tenant-badge-text">Tenant Owner · Active</span>
+              </span>
+            </div>
+            <ChevronsUpDown size={15} className="tenant-caret" />
           </button>
 
           {tenantDropdownOpen && (
-            <div className="tenant-dropdown">
-              <label>
-                <span>ORGANIZATION WORKSPACES</span>
-                <span className="text-emerald-400 font-bold lowercase">active</span>
-              </label>
-              {(userProfile?.memberships && userProfile.memberships.length > 0) ? (
-                userProfile.memberships.map(m => (
-                  <button
-                    key={m.tenant_id}
-                    className={userProfile.active_tenant?.tenant_id === m.tenant_id ? 'role-selected' : ''}
-                    onClick={() => switchOrg(m.tenant_id)}
-                  >
-                    <span>
-                      <b>{m.tenant_name}</b>
-                      <small>{m.role} · {m.status}</small>
-                    </span>
-                    {userProfile.active_tenant?.tenant_id === m.tenant_id && <ShieldCheck size={14} className="text-emerald-400" />}
+            <div className="tenant-dropdown animate-in fade-in zoom-in-95 duration-150" role="menu">
+              <div className="tenant-dropdown-header">
+                <span className="tenant-dropdown-title">ORGANIZATION WORKSPACES</span>
+                <span className="tenant-dropdown-badge">
+                  <span className="tenant-live-dot-sm" />
+                  ACTIVE
+                </span>
+              </div>
+
+              <div className="tenant-workspace-list">
+                {(userProfile?.memberships && userProfile.memberships.length > 0) ? (
+                  userProfile.memberships.map(m => {
+                    const isSelected = userProfile.active_tenant?.tenant_id === m.tenant_id;
+                    const itemInitials = m.tenant_name.toLowerCase().includes('bluepeak')
+                      ? 'BP'
+                      : m.tenant_name.slice(0, 2).toUpperCase();
+                    return (
+                      <button
+                        key={m.tenant_id}
+                        type="button"
+                        className={`tenant-workspace-item ${isSelected ? 'active-workspace' : ''}`}
+                        onClick={() => switchOrg(m.tenant_id)}
+                        role="menuitem"
+                      >
+                        <div className="tenant-item-avatar">
+                          {itemInitials}
+                        </div>
+                        <div className="tenant-item-details">
+                          <div className="tenant-item-name-row">
+                            <b>{m.tenant_name}</b>
+                            {isSelected && <ShieldCheck size={14} className="text-emerald-400" />}
+                          </div>
+                          <div className="tenant-item-meta">
+                            <span>{m.role || 'Tenant Member'}</span>
+                            <span className="tenant-item-dot">·</span>
+                            <span className="text-emerald-400">{m.status || 'Active'}</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <button type="button" className="tenant-workspace-item active-workspace" role="menuitem">
+                    <div className="tenant-item-avatar">BP</div>
+                    <div className="tenant-item-details">
+                      <div className="tenant-item-name-row">
+                        <b>{tenantName}</b>
+                        <ShieldCheck size={14} className="text-emerald-400" />
+                      </div>
+                      <div className="tenant-item-meta">
+                        <span>Tenant Owner</span>
+                        <span className="tenant-item-dot">·</span>
+                        <span className="text-emerald-400">Active</span>
+                      </div>
+                    </div>
                   </button>
-                ))
-              ) : (
-                <button className="role-selected">
-                  <span>
-                    <b>{userProfile?.active_tenant?.tenant_name || 'BluePeak Innovations'}</b>
-                    <small>Tenant Owner · Active</small>
-                  </span>
-                  <ShieldCheck size={14} className="text-emerald-400" />
+                )}
+              </div>
+
+              <div className="tenant-governance-card">
+                <div className="tenant-gov-row">
+                  <span className="gov-label">Tenancy Architecture:</span>
+                  <span className="gov-val">PostgreSQL 16 RLS</span>
+                </div>
+                <div className="tenant-gov-row">
+                  <span className="gov-label">ERP System of Record:</span>
+                  <span className="gov-val text-emerald-400">Radium mTLS 1.3 Active</span>
+                </div>
+                <div className="tenant-gov-row">
+                  <span className="gov-label">Zone Cluster:</span>
+                  <span className="gov-val">Cloud Multi-Tenant Zone 1</span>
+                </div>
+              </div>
+
+              <div className="tenant-dropdown-footer">
+                <button
+                  type="button"
+                  className="tenant-footer-action"
+                  onClick={() => {
+                    setTenantDropdownOpen(false);
+                    navigate('/admin/users');
+                  }}
+                >
+                  <Settings size={13} />
+                  <span>Workspace Security & Roles</span>
                 </button>
-              )}
+              </div>
             </div>
           )}
         </div>
@@ -294,7 +404,14 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                 <div className={`nav-group ${current ? 'current-group' : ''}`} key={group.label}>
                   <button
                     className={`nav-group-button ${open ? 'open' : ''}`}
-                    onClick={() => toggleGroup(group.label)}
+                    onClick={() => {
+                      if (collapsed) {
+                        setCollapsed(false);
+                        setExpanded([group.label]);
+                      } else {
+                        toggleGroup(group.label);
+                      }
+                    }}
                   >
                     <GIcon size={17} />
                     <span>{group.label}</span>
