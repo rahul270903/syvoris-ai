@@ -368,52 +368,76 @@ export function VendorsCatalogView() {
       />
 
       {/* Telemetry KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Approved Suppliers</span>
-            <Building2 size={14} className="text-cyan-400" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Approved Suppliers</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <Building2 size={14} className="text-cyan-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white mt-1">{kpis.total}</div>
-          <div className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1">
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-white tracking-tight truncate">{kpis.total}</div>
+          </div>
+          <div className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1 truncate">
             <CheckCircle2 size={12} /> Master SLA Enforced
           </div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Preferred Tier-1</span>
-            <Award size={14} className="text-amber-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Preferred Tier-1</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <Award size={14} className="text-amber-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">{kpis.preferred}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Direct OEM Strategic Contracts</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-amber-400 tracking-tight truncate">{kpis.preferred}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Direct OEM Contracts</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Supplier Quality</span>
-            <Star size={14} className="text-yellow-400 fill-yellow-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Supplier Quality</span>
+            <div className="w-7 h-7 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0">
+              <Star size={14} className="text-yellow-400 fill-yellow-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white mt-1">{kpis.avgRating} <span className="text-xs font-normal text-slate-500">/ 5.0</span></div>
-          <div className="text-[11px] text-emerald-400 mt-0.5">99.2% On-Time Delivery SLA</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-white tracking-tight truncate">
+              {kpis.avgRating} <span className="text-xs font-normal text-slate-500">/ 5.0</span>
+            </div>
+          </div>
+          <div className="text-[11px] text-emerald-400 truncate">99.2% On-Time Delivery SLA</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Sourced Hardware SKUs</span>
-            <Layers size={14} className="text-indigo-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Sourced SKUs</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <Layers size={14} className="text-indigo-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-indigo-400 mt-1">{kpis.totalSourcedSKUs}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Products in Catalog Master</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-indigo-400 tracking-tight truncate">{kpis.totalSourcedSKUs}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Products in Catalog Master</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Active PO Spend</span>
-            <DollarSign size={14} className="text-emerald-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Active PO Spend</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <DollarSign size={14} className="text-emerald-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">${(kpis.totalPOValue / 1000).toFixed(1)}k</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Open Inbound Orders</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-emerald-400 tracking-tight truncate">
+              ${(kpis.totalPOValue / 1000).toFixed(1)}k
+            </div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Open Inbound Orders</div>
         </div>
       </div>
 

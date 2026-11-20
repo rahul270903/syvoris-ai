@@ -186,12 +186,34 @@ export function StockManagementView() {
         liveList.forEach(s => {
           const sku = s.product_sku || s.id;
           const existing = map.get(sku) || ({} as StockRow);
+          const onHand = typeof s.quantity_on_hand === 'number' && !isNaN(s.quantity_on_hand)
+            ? s.quantity_on_hand
+            : parseFloat(String(s.quantity_on_hand || 0)) || 0;
+          const reserved = typeof s.quantity_reserved === 'number' && !isNaN(s.quantity_reserved)
+            ? s.quantity_reserved
+            : parseFloat(String(s.quantity_reserved || 0)) || 0;
+          const available = typeof s.quantity_available === 'number' && !isNaN(s.quantity_available)
+            ? s.quantity_available
+            : parseFloat(String(s.quantity_available || 0)) || Math.max(0, onHand - reserved);
+          const threshold = typeof s.reorder_threshold === 'number' && !isNaN(s.reorder_threshold)
+            ? s.reorder_threshold
+            : parseFloat(String(s.reorder_threshold || 20)) || 20;
+          const reorderQty = typeof s.reorder_quantity === 'number' && !isNaN(s.reorder_quantity)
+            ? s.reorder_quantity
+            : parseFloat(String(s.reorder_quantity || 50)) || 50;
+          const unitCost = Number(existing.unit_cost || (s as any).unit_cost || 500);
+
           map.set(sku, {
             ...existing,
             ...s,
-            unit_cost: existing.unit_cost || 500,
-            total_value: (s.quantity_on_hand || 0) * (existing.unit_cost || 500),
-            bin_location: existing.bin_location || 'Standard Storage'
+            quantity_on_hand: Math.round(onHand),
+            quantity_reserved: Math.round(reserved),
+            quantity_available: Math.round(available),
+            reorder_threshold: Math.round(threshold),
+            reorder_quantity: Math.round(reorderQty),
+            unit_cost: unitCost,
+            total_value: Math.round(onHand) * unitCost,
+            bin_location: existing.bin_location || (s as any).bin_location || 'Standard Storage'
           });
         });
         setStockItems(Array.from(map.values()));
@@ -282,11 +304,11 @@ export function StockManagementView() {
   // Telemetry KPIs
   const kpis = useMemo(() => {
     const totalSKUs = stockItems.length;
-    const totalOnHand = stockItems.reduce((acc, s) => acc + (s.quantity_on_hand || 0), 0);
-    const totalReserved = stockItems.reduce((acc, s) => acc + (s.quantity_reserved || 0), 0);
-    const totalATP = stockItems.reduce((acc, s) => acc + (s.quantity_available || 0), 0);
-    const totalValuation = stockItems.reduce((acc, s) => acc + (s.total_value || (s.quantity_on_hand * s.unit_cost)), 0);
-    const reorderAlerts = stockItems.filter(s => s.quantity_available <= s.reorder_threshold).length;
+    const totalOnHand = Math.round(stockItems.reduce((acc, s) => acc + (Number(s.quantity_on_hand) || 0), 0));
+    const totalReserved = Math.round(stockItems.reduce((acc, s) => acc + (Number(s.quantity_reserved) || 0), 0));
+    const totalATP = Math.round(stockItems.reduce((acc, s) => acc + (Number(s.quantity_available) || 0), 0));
+    const totalValuation = Math.round(stockItems.reduce((acc, s) => acc + (Number(s.total_value) || ((Number(s.quantity_on_hand) || 0) * (Number(s.unit_cost) || 0))), 0));
+    const reorderAlerts = stockItems.filter(s => (Number(s.quantity_available) || 0) <= (Number(s.reorder_threshold) || 0)).length;
 
     return { totalSKUs, totalOnHand, totalReserved, totalATP, totalValuation, reorderAlerts };
   }, [stockItems]);
@@ -469,50 +491,74 @@ export function StockManagementView() {
       />
 
       {/* Telemetry KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Tracked SKUs</span>
-            <Layers size={14} className="text-cyan-400" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Tracked SKUs</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <Layers size={14} className="text-cyan-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-white mt-1">{kpis.totalSKUs}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Physical Hardware Master</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-white tracking-tight truncate">{kpis.totalSKUs}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Physical Hardware Master</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Units On Hand</span>
-            <Boxes size={14} className="text-emerald-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Units On Hand</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Boxes size={14} className="text-emerald-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">{kpis.totalOnHand.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Physical Stock in Depots</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-emerald-400 tracking-tight truncate">{kpis.totalOnHand.toLocaleString()}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Physical Stock in Depots</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Reserved Orders</span>
-            <PackageCheck size={14} className="text-amber-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Reserved Orders</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <PackageCheck size={14} className="text-amber-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">{kpis.totalReserved.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Allocated to Sales Orders</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-amber-400 tracking-tight truncate">{kpis.totalReserved.toLocaleString()}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Allocated to Sales Orders</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Net ATP Available</span>
-            <CheckCircle2 size={14} className="text-cyan-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Net ATP Available</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 size={14} className="text-cyan-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-cyan-400 mt-1">{kpis.totalATP.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Ready for New Orders</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-cyan-400 tracking-tight truncate">{kpis.totalATP.toLocaleString()}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Ready for New Orders</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Total Valuation</span>
-            <DollarSign size={14} className="text-indigo-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Total Valuation</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <DollarSign size={14} className="text-indigo-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-indigo-400 mt-1">${(kpis.totalValuation / 1000).toFixed(0)}k</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Standard Cost Basis</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-indigo-400 tracking-tight truncate">
+              {kpis.totalValuation >= 1_000_000
+                ? `$${(kpis.totalValuation / 1_000_000).toFixed(2)}M`
+                : `$${(kpis.totalValuation / 1_000).toFixed(0)}k`}
+            </div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Standard Cost Basis</div>
         </div>
       </div>
 
@@ -637,16 +683,16 @@ export function StockManagementView() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-semibold text-slate-100">
-                        {item.quantity_on_hand.toLocaleString()}
+                        {Math.round(Number(item.quantity_on_hand) || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-amber-400">
-                        {item.quantity_reserved.toLocaleString()}
+                        {Math.round(Number(item.quantity_reserved) || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-bold text-sm text-cyan-400">
-                        {item.quantity_available.toLocaleString()}
+                        {Math.round(Number(item.quantity_available) || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-slate-400">
-                        {item.reorder_threshold} <span className="text-[10px] text-slate-500">(+{item.reorder_quantity})</span>
+                        {Math.round(Number(item.reorder_threshold) || 0)} <span className="text-[10px] text-slate-500">(+{Math.round(Number(item.reorder_quantity) || 50)})</span>
                       </td>
                       <td className="py-3 px-4 text-center">
                         {isCritical ? (

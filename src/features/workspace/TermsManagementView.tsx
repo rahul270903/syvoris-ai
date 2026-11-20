@@ -341,50 +341,72 @@ export function TermsManagementView() {
       />
 
       {/* KPI Cards Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Registered Agreements</span>
-            <BookOpen size={14} className="text-cyan-400" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Registered Agreements</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <BookOpen size={14} className="text-cyan-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-slate-100 mt-1">{kpis.total}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{kpis.active} active schedules</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-slate-100 tracking-tight truncate">{kpis.total}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">{kpis.active} Active Schedules</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Master Agreements</span>
-            <Scale size={14} className="text-amber-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Master Agreements</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <Scale size={14} className="text-amber-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">{kpis.msaCount}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Commercial MSA schedules</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-amber-400 tracking-tight truncate">{kpis.msaCount}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Commercial MSA Schedules</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Default Boilerplate</span>
-            <Star size={14} className="text-indigo-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Default Boilerplate</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <Star size={14} className="text-indigo-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-indigo-400 mt-1">{kpis.defaultRef}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Auto-attached to quotes</div>
+          <div className="my-1.5">
+            <div className="text-xl font-bold font-mono text-indigo-400 tracking-tight truncate" title={kpis.defaultRef}>
+              {kpis.defaultRef}
+            </div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Auto-Attached to Quotes</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Public Sector Tender</span>
-            <Award size={14} className="text-emerald-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Public Sector</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Award size={14} className="text-emerald-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">{kpis.publicSector}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Sovereign compliance clauses</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-emerald-400 tracking-tight truncate">{kpis.publicSector}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Sovereign Tender Clauses</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Legal Governance</span>
-            <ShieldCheck size={14} className="text-sky-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Legal Governance</span>
+            <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck size={14} className="text-sky-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-sky-400 mt-1">100%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Enforced on commercial quotes</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-sky-400 tracking-tight truncate">100%</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">CPQ Enforcement Active</div>
         </div>
       </div>
 

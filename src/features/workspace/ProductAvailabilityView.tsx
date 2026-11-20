@@ -315,51 +315,71 @@ export function ProductAvailabilityView() {
         }
       />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Tracked SKUs</span>
-            <Boxes size={14} className="text-cyan-400" />
+      {/* KPI Cards Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Tracked SKUs</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <Boxes size={14} className="text-cyan-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-slate-100 mt-1">{kpis.total}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Availability matrix</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-slate-100 tracking-tight truncate">{kpis.total}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Availability Matrix Master</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Immediate Stock</span>
-            <CheckCircle2 size={14} className="text-emerald-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Immediate Stock</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 size={14} className="text-emerald-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">{kpis.inStock}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Ready for same-day dispatch</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-emerald-400 tracking-tight truncate">{kpis.inStock}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Ready for Same-Day Dispatch</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Build-to-Order</span>
-            <Clock size={14} className="text-amber-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Build-to-Order</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <Clock size={14} className="text-amber-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">{kpis.bto}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Carrier line-card burn-in</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-amber-400 tracking-tight truncate">{kpis.bto}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Carrier Line-Card Burn-In</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Avg Lead Time</span>
-            <Truck size={14} className="text-indigo-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Avg Lead Time</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <Truck size={14} className="text-indigo-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-indigo-400 mt-1">{kpis.avgLead} Days</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Standard fulfillment</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-indigo-400 tracking-tight truncate">{kpis.avgLead} Days</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Standard Fulfillment Target</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Channel Readiness</span>
-            <Globe size={14} className="text-sky-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Channel Readiness</span>
+            <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center flex-shrink-0">
+              <Globe size={14} className="text-sky-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-sky-400 mt-1">100%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Multi-region verified</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-sky-400 tracking-tight truncate">100%</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Multi-Region Verified</div>
         </div>
       </div>
 

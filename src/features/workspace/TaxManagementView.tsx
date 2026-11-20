@@ -345,50 +345,70 @@ export function TaxManagementView() {
       />
 
       {/* KPI Cards Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Active Tax Rules</span>
-            <ShieldCheck size={14} className="text-cyan-400" />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Active Tax Rules</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck size={14} className="text-cyan-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-slate-100 mt-1">{kpis.active}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">{kpis.total} Total in CPQ Engine</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-slate-100 tracking-tight truncate">{kpis.active}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">{kpis.total} Total in CPQ Engine</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Core Domestic VAT</span>
-            <Percent size={14} className="text-amber-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Core Domestic VAT</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <Percent size={14} className="text-amber-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">15.00%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">CARICOM GCT / VAT Baseline</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-amber-400 tracking-tight truncate">15.00%</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">CARICOM GCT / VAT Baseline</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>US Sales Tax Nexus</span>
-            <Building2 size={14} className="text-indigo-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">US Sales Tax Nexus</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+              <Building2 size={14} className="text-indigo-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-indigo-400 mt-1">7.00%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Florida & Miami-Dade Hardware</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-indigo-400 tracking-tight truncate">7.00%</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Florida & Miami-Dade Hardware</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Export Zero-Rated</span>
-            <Globe size={14} className="text-emerald-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Export Zero-Rated</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Globe size={14} className="text-emerald-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">{kpis.zeroRated} Schedules</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">0% Cross-Border Export</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-emerald-400 tracking-tight truncate">{kpis.zeroRated}</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">0% Cross-Border Schedules</div>
         </div>
 
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Average Rate</span>
-            <Sliders size={14} className="text-sky-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm min-w-0 flex flex-col justify-between hover:border-slate-700/80 transition-all col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs gap-2">
+            <span className="font-medium truncate uppercase tracking-wider text-[11px]">Average Rate</span>
+            <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center flex-shrink-0">
+              <Sliders size={14} className="text-sky-400" />
+            </div>
           </div>
-          <div className="text-2xl font-bold text-sky-400 mt-1">{kpis.averageRate}%</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Weighted Jurisdiction Blended</div>
+          <div className="my-1.5">
+            <div className="text-2xl font-bold text-sky-400 tracking-tight truncate">{kpis.averageRate}%</div>
+          </div>
+          <div className="text-[11px] text-slate-500 truncate">Weighted Blended Benchmark</div>
         </div>
       </div>
 
