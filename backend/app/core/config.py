@@ -1,5 +1,6 @@
 import os
 import json
+import urllib.parse
 from typing import List, Any
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,19 +12,44 @@ def normalize_database_url(url: str) -> str:
     """
     Normalizes database connection URLs for SQLAlchemy async engines.
     Converts legacy/cloud provider 'postgres://' or 'postgresql://' to 'postgresql+asyncpg://'.
-    Preserves credentials, host, port, path, and query parameters.
+    Automatically translates libpq query parameters (e.g. 'sslmode=require') to asyncpg ('ssl=require')
+    and strips incompatible flags like 'channel_binding'.
     """
     if not url:
         return url
     trimmed = url.strip()
     if trimmed.startswith("postgres://"):
-        return "postgresql+asyncpg://" + trimmed[len("postgres://"):]
+        trimmed = "postgresql+asyncpg://" + trimmed[len("postgres://"):]
     elif trimmed.startswith("postgresql://"):
-        return "postgresql+asyncpg://" + trimmed[len("postgresql://"):]
+        trimmed = "postgresql+asyncpg://" + trimmed[len("postgresql://"):]
     elif trimmed.startswith("postgresql+psycopg2://"):
-        return "postgresql+asyncpg://" + trimmed[len("postgresql+psycopg2://"):]
+        trimmed = "postgresql+asyncpg://" + trimmed[len("postgresql+psycopg2://"):]
     elif trimmed.startswith("sqlite:///") and not trimmed.startswith("sqlite+aiosqlite:///"):
         return "sqlite+aiosqlite:///" + trimmed[len("sqlite:///"): ]
+
+    parsed = urllib.parse.urlsplit(trimmed)
+    if parsed.query:
+        qs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        new_qs = []
+        has_ssl = False
+        for k, v in qs:
+            if k == "sslmode":
+                has_ssl = True
+                new_qs.append(("ssl", "require" if v in ("require", "verify-ca", "verify-full") else v))
+            elif k == "ssl":
+                has_ssl = True
+                new_qs.append(("ssl", v))
+            elif k in ("channel_binding", "gssencmode"):
+                # asyncpg does not support libpq channel_binding or gssencmode query params
+                continue
+            else:
+                new_qs.append((k, v))
+        if not has_ssl and "neon.tech" in parsed.netloc:
+            new_qs.append(("ssl", "require"))
+        new_query = urllib.parse.urlencode(new_qs)
+        trimmed = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, new_query, parsed.fragment))
+    elif "neon.tech" in parsed.netloc:
+        trimmed = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "ssl=require", parsed.fragment))
     return trimmed
 
 class Settings(BaseSettings):
