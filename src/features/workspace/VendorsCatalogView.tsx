@@ -152,12 +152,16 @@ export function VendorsCatalogView() {
         liveList.forEach(v => {
           const key = v.vendor_code || v.ref || v.id;
           const existing = map.get(key) || ({} as VendorExtended);
+          const parsedRating = typeof v.rating === 'number' && !isNaN(v.rating)
+            ? v.rating
+            : parseFloat(String(v.rating || '4.8')) || 4.8;
           map.set(key, {
             ...existing,
             ...v,
-            contact_person: existing.contact_person || 'Assigned Vendor Rep',
+            rating: parsedRating,
+            contact_person: existing.contact_person || v.account_email || 'Assigned Vendor Rep',
             sourced_skus: existing.sourced_skus || [],
-            active_po_value: existing.active_po_value || 0
+            active_po_value: Number(existing.active_po_value || (v as any).active_po_value || 0)
           });
         });
         setVendors(Array.from(map.values()));
@@ -201,7 +205,7 @@ export function VendorsCatalogView() {
         const mCode = (v.vendor_code || '').toLowerCase().includes(q);
         const mCat = (v.vendor_category || '').toLowerCase().includes(q);
         const mContact = (v.contact_person || '').toLowerCase().includes(q);
-        const mSkus = v.sourced_skus.some(s => s.sku.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+        const mSkus = (v.sourced_skus || []).some(s => s.sku.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
         if (!mName && !mCode && !mCat && !mContact && !mSkus) return false;
       }
       return true;
@@ -212,9 +216,9 @@ export function VendorsCatalogView() {
   const kpis = useMemo(() => {
     const total = vendors.length;
     const preferred = vendors.filter(v => v.status.includes('Preferred')).length;
-    const avgRating = (vendors.reduce((acc, v) => acc + (v.rating || 4.5), 0) / (vendors.length || 1)).toFixed(1);
-    const totalPOValue = vendors.reduce((acc, v) => acc + (v.active_po_value || 0), 0);
-    const totalSourcedSKUs = vendors.reduce((acc, v) => acc + v.sourced_skus.length, 0);
+    const avgRating = (vendors.reduce((acc, v) => acc + (Number(v.rating) || 4.5), 0) / (vendors.length || 1)).toFixed(1);
+    const totalPOValue = vendors.reduce((acc, v) => acc + (Number(v.active_po_value) || 0), 0);
+    const totalSourcedSKUs = vendors.reduce((acc, v) => acc + (v.sourced_skus || []).length, 0);
 
     return { total, preferred, avgRating, totalPOValue, totalSourcedSKUs };
   }, [vendors]);
@@ -520,12 +524,12 @@ export function VendorsCatalogView() {
                       <td className="py-3.5 px-4 text-center">
                         <span className="inline-flex items-center gap-1 font-semibold text-amber-400">
                           <Star className="w-3.5 h-3.5 fill-amber-400" />
-                          {vendor.rating.toFixed(1)}
+                          {(Number(vendor.rating) || 4.5).toFixed(1)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-semibold text-emerald-400">
-                        {vendor.active_po_value > 0 ? (
-                          `$${vendor.active_po_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                        {(Number(vendor.active_po_value) || 0) > 0 ? (
+                          `$${(Number(vendor.active_po_value) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                         ) : (
                           <span className="text-slate-500">$0.00</span>
                         )}
@@ -604,7 +608,7 @@ export function VendorsCatalogView() {
                   <span className="text-slate-400">Quality Performance Rating:</span>
                   <span className="font-semibold text-amber-400 flex items-center gap-1">
                     <Star className="w-3.5 h-3.5 fill-amber-400" />
-                    {selectedVendor.rating.toFixed(1)} / 5.0
+                    {(Number(selectedVendor.rating) || 4.5).toFixed(1)} / 5.0
                   </span>
                 </div>
               </div>
@@ -626,15 +630,15 @@ export function VendorsCatalogView() {
               {/* Sourced Hardware SKUs */}
               <div>
                 <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Sourced Catalog SKUs ({selectedVendor.sourced_skus.length})
+                  Sourced Catalog SKUs ({(selectedVendor.sourced_skus || []).length})
                 </h4>
-                {selectedVendor.sourced_skus.length === 0 ? (
+                {(selectedVendor.sourced_skus || []).length === 0 ? (
                   <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800 text-slate-500 text-center">
                     No individual hardware SKUs currently assigned to this supplier.
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-800 border border-slate-800 rounded-xl overflow-hidden bg-slate-950/50">
-                    {selectedVendor.sourced_skus.map((sku, idx) => (
+                    {(selectedVendor.sourced_skus || []).map((sku, idx) => (
                       <div key={idx} className="p-3 flex items-center justify-between">
                         <div>
                           <div className="font-mono font-medium text-sky-400">{sku.sku}</div>
