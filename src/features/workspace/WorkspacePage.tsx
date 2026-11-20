@@ -61,6 +61,15 @@ import { ActivitiesView } from './ActivitiesView';
 import { TeamCollaborationView } from './TeamCollaborationView';
 import { BillingWorkspace } from '../billing/BillingWorkspace';
 import { ConsentManagementView } from './ConsentManagementView';
+import { ProductsCatalogView } from './ProductsCatalogView';
+import { ServicesCatalogView } from './ServicesCatalogView';
+import { CategoriesCatalogView } from './CategoriesCatalogView';
+import { BundlesCatalogView } from './BundlesCatalogView';
+import { ProductAvailabilityView } from './ProductAvailabilityView';
+import { TaxManagementView } from './TaxManagementView';
+import { TermsManagementView } from './TermsManagementView';
+import { StockManagementView } from './StockManagementView';
+import { VendorsCatalogView } from './VendorsCatalogView';
 import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
@@ -3993,6 +4002,87 @@ export function WorkspacePage({ item }: Props) {
     return (
       <div className="workspace-page">
         <SurveysCSATView />
+      </div>
+    );
+  }
+
+  // PRODUCT CATALOG DEDICATED VIEW
+  if (item.path === '/catalog/products' || item.path === '/products') {
+    return (
+      <div className="workspace-page">
+        <ProductsCatalogView />
+      </div>
+    );
+  }
+
+  // SERVICES CATALOG DEDICATED VIEW
+  if (item.path === '/catalog/services' || item.path === '/services') {
+    return (
+      <div className="workspace-page">
+        <ServicesCatalogView />
+      </div>
+    );
+  }
+
+  // CATEGORIES TAXONOMY DEDICATED VIEW
+  if (item.path === '/catalog/categories' || item.path === '/categories') {
+    return (
+      <div className="workspace-page">
+        <CategoriesCatalogView />
+      </div>
+    );
+  }
+
+  // BUNDLES COMMERCIAL DEDICATED VIEW
+  if (item.path === '/catalog/bundles' || item.path === '/bundles') {
+    return (
+      <div className="workspace-page">
+        <BundlesCatalogView />
+      </div>
+    );
+  }
+
+  // PRODUCT AVAILABILITY & LEAD TIMES DEDICATED VIEW
+  if (item.path === '/catalog/availability' || item.path === '/availability') {
+    return (
+      <div className="workspace-page">
+        <ProductAvailabilityView />
+      </div>
+    );
+  }
+
+  // MULTI-JURISDICTION TAX ENGINE DEDICATED VIEW
+  if (item.path === '/inventory/taxes' || item.path === '/catalog/tax-management' || item.path === '/catalog/taxes' || item.path === '/taxes') {
+    return (
+      <div className="workspace-page">
+        <TaxManagementView />
+      </div>
+    );
+  }
+
+  // COMMERCIAL TERMS & LEGAL BOILERPLATES DEDICATED VIEW
+  if (item.path === '/inventory/terms' || item.path === '/catalog/terms-and-conditions' || item.path === '/catalog/terms' || item.path === '/terms') {
+    return (
+      <div className="workspace-page">
+        <TermsManagementView />
+      </div>
+    );
+  }
+
+  // MULTI-WAREHOUSE STOCK & ATP INVENTORY DEDICATED VIEW
+  if (item.path === '/inventory/stock' || item.path === '/catalog/stock-management' || item.path === '/catalog/stock' || item.path === '/stock') {
+    return (
+      <div className="workspace-page">
+        <StockManagementView />
+      </div>
+    );
+  }
+
+  // CERTIFIED VENDORS & SUPPLIERS DIRECTORY DEDICATED VIEW
+  if (item.path === '/catalog/vendors' || item.path === '/vendors') {
+    return (
+      <div className="workspace-page">
+        <VendorsCatalogView />
       </div>
     );
   }
