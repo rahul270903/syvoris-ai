@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: syvoris-api-staging
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --proxy-headers
+    preDeployCommand: python -m alembic -c alembic.ini upgrade head
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "120"
+      - key: CORS_ORIGINS
+        value: "https://syvoris-ai.pages.dev,http://localhost:5173"
+      - key: POSTGRES_RLS_ENABLED
+        value: "true"
+      - key: ENVIRONMENT
+        value: staging
+      - key: PYTHONPATH
+        value: .

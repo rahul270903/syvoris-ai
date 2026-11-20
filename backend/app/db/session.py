@@ -1,17 +1,18 @@
 from typing import AsyncGenerator
 from sqlalchemy import text, event
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from app.core.config import settings
+from app.core.config import settings, normalize_database_url
 from app.core.tenancy import get_current_tenant_id
 from app.db.base import Base
 
 # Engine configuration
 connect_args = {}
-if "sqlite" in settings.DATABASE_URL:
+db_url = normalize_database_url(settings.DATABASE_URL)
+if "sqlite" in db_url:
     connect_args["check_same_thread"] = False
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=False,
     future=True,
     connect_args=connect_args

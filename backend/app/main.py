@@ -1,6 +1,7 @@
 import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -45,6 +46,22 @@ app = FastAPI(
 
 # Exception handlers
 app.add_exception_handler(AppException, app_exception_handler)
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "type": "https://errors.syvoris.com/v1/err_internal_server",
+            "title": "Internal Server Error",
+            "status": 500,
+            "detail": "An internal error occurred. Please contact support with the correlation ID.",
+            "instance": str(request.url.path),
+            "code": "ERR_INTERNAL_SERVER",
+            "correlation_id": correlation_id
+        }
+    )
 
 # Middlewares
 app.add_middleware(
