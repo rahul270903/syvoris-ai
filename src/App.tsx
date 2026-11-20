@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Bell, ChevronDown, ChevronLeft, ChevronRight, Command, HelpCircle,
+  Bell, ChevronDown, ChevronRight, Command, HelpCircle,
   LayoutDashboard, LogOut, Menu, Search, Settings, ShieldCheck,
   Sparkles, Workflow, X, Plus, Target, Briefcase, FileCheck2,
   LifeBuoy, CheckSquare, Building2, Check, ArrowUpRight, Zap
@@ -28,7 +28,6 @@ interface AppShellProps {
 }
 
 function AppShell({ initialProfile, onLogout }: AppShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expanded, setExpanded] = useState<string[]>(['Command Centre', 'Essentials & Customer 360', 'Sales & Revenue']);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -42,6 +41,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   const [userProfile, setUserProfile] = useState<CurrentUserProfile>(initialProfile);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  const tenantDropdownRef = useRef<HTMLDivElement>(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -98,6 +98,20 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (tenantDropdownRef.current && !tenantDropdownRef.current.contains(e.target as Node)) {
+        setTenantDropdownOpen(false);
+      }
+    };
+    if (tenantDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [tenantDropdownOpen]);
 
   const searchResults = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -190,27 +204,13 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   };
 
   return (
-    <div className={`app-frame ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className="app-frame">
       {mobileOpen && <button className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-label="Close navigation" />}
 
       {/* Enterprise Sidebar */}
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
-        <div
-          className="sidebar-brand"
-          onClick={collapsed ? () => setCollapsed(false) : undefined}
-          title={collapsed ? 'Click to expand sidebar' : undefined}
-          style={collapsed ? { cursor: 'pointer' } : undefined}
-        >
-          <Link
-            to="/dashboard"
-            className="brand-link"
-            onClick={e => {
-              if (collapsed) {
-                e.preventDefault();
-                setCollapsed(false);
-              }
-            }}
-          >
+        <div className="sidebar-brand">
+          <Link to="/dashboard" className="brand-link">
             <div className="brand-icon-box">
               <img src="/assets/syvoris-mark-transparent.svg" alt="SYVORIS Ai" />
             </div>
@@ -219,20 +219,9 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               <small>ENTERPRISE PLATFORM</small>
             </span>
           </Link>
-          <button
-            className="collapse-button"
-            onClick={e => {
-              e.stopPropagation();
-              setCollapsed(!collapsed);
-            }}
-            title={collapsed ? 'Maximize sidebar' : 'Minimize sidebar'}
-            aria-label={collapsed ? 'Maximize sidebar' : 'Minimize sidebar'}
-          >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
         </div>
 
-        <div className="relative">
+        <div className="relative" ref={tenantDropdownRef}>
           <button
             className="tenant-switcher w-full text-left"
             onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
@@ -305,14 +294,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                 <div className={`nav-group ${current ? 'current-group' : ''}`} key={group.label}>
                   <button
                     className={`nav-group-button ${open ? 'open' : ''}`}
-                    onClick={() => {
-                      if (collapsed) {
-                        setCollapsed(false);
-                        setExpanded([group.label]);
-                      } else {
-                        toggleGroup(group.label);
-                      }
-                    }}
+                    onClick={() => toggleGroup(group.label)}
                   >
                     <GIcon size={17} />
                     <span>{group.label}</span>

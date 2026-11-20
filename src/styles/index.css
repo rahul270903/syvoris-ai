@@ -1081,6 +1081,78 @@ body { font-size: 16px; line-height: 1.5; }
   flex-shrink: 0 !important;
 }
 
+/* ==========================================================================
+   NAVIGATION SIDEBAR REFINEMENTS (REMOVE COLLAPSE BUTTON, SLEEK SCROLLBAR)
+   ========================================================================== */
+.collapse-button {
+  display: none !important;
+}
+
+.sidebar {
+  width: 296px !important;
+  transition: transform 0.2s ease !important;
+}
+
+.main-shell {
+  margin-left: 296px !important;
+}
+
+.sidebar-brand {
+  height: 72px !important;
+  min-height: 72px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 0 18px !important;
+  gap: 12px !important;
+}
+
+.tenant-switcher {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin: 12px 14px 10px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+
+.tenant-switcher:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.side-nav-scroll {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 4px 10px 16px !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent !important;
+}
+
+.side-nav-scroll::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.side-nav-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.side-nav-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 9999px !important;
+  transition: background 0.15s ease !important;
+}
+
+.sidebar:hover .side-nav-scroll::-webkit-scrollbar-thumb,
+.side-nav-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
 
 
 
