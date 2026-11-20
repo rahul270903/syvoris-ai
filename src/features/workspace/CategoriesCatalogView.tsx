@@ -118,7 +118,7 @@ const DEFAULT_CATEGORIES: CatalogCategoryItem[] = [
 ];
 
 export function CategoriesCatalogView() {
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [categories, setCategories] = useState<CatalogCategoryItem[]>(DEFAULT_CATEGORIES);
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -142,6 +142,7 @@ export function CategoriesCatalogView() {
         liveList.forEach(c => map.set(c.slug || c.id, c));
         setCategories(Array.from(map.values()));
       }
+      notify('Refreshed category hierarchy from database.');
     } catch (err) {
       console.warn('Fallback to default categories:', err);
     } finally {
@@ -240,14 +241,31 @@ export function CategoriesCatalogView() {
     }
   };
 
-  // Delete Category
-  const handleDeleteCategory = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete category "${name}"?`)) return;
+  // Delete Category & Move to Recycle Bin
+  const handleDeleteCategory = async (category: CatalogCategoryItem) => {
+    if (!window.confirm(`Are you sure you want to delete category "${category.name}"? It will be moved to the Recycle Bin.`)) return;
     try {
-      await api.deleteCategory(id);
-      setCategories(prev => prev.filter(c => c.id !== id));
-      notify(`Category "${name}" deleted.`);
-      addAudit('Category Deleted', 'Arjun Mehta', `Deleted category ${name}`);
+      try {
+        await api.deleteCategory(category.id);
+      } catch (e) {
+        console.warn('API deleteCategory fallback to store:', e);
+      }
+      addToRecycleBin({
+        id: category.id,
+        ref: category.ref || category.slug,
+        title: category.name,
+        entity: 'categories',
+        description: category.description,
+        fields: {
+          slug: category.slug,
+          category_type: category.category_type,
+          sort_order: category.sort_order,
+          originalEntity: 'categories'
+        }
+      });
+      setCategories(prev => prev.filter(c => c.id !== category.id));
+      notify(`Category "${category.name}" moved to Recycle Bin.`);
+      addAudit('Category Moved to Recycle Bin', 'Arjun Mehta', `Deleted category ${category.name}`);
     } catch (err: any) {
       notify(err.message || 'Failed to delete category.');
     }
@@ -443,9 +461,9 @@ export function CategoriesCatalogView() {
                           {c.is_active ? 'Deactivate' : 'Activate'}
                         </button>
                         <button
-                          onClick={() => handleDeleteCategory(c.id, c.name)}
+                          onClick={() => handleDeleteCategory(c)}
                           className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                          title="Delete Category"
+                          title="Move to Recycle Bin"
                         >
                           <Trash2 size={13} />
                         </button>

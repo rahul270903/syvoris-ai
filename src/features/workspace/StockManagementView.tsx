@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Boxes, ShieldCheck, MapPin, AlertTriangle, Search, Plus, RefreshCw,
   CheckCircle2, ArrowUpDown, ArrowUpRight, ArrowDownLeft, X, Layers,
-  DollarSign, PackageCheck, Truck, Warehouse, Eye, History, FileText
+  DollarSign, PackageCheck, Truck, Warehouse, Eye, History, FileText, Trash2
 } from 'lucide-react';
 import { api, InventoryStockItem, StockMovementItem } from '../../services/api';
 import { useCRM } from '../../store/CRMStore';
+import { SectionHeading } from '../../components/SectionHeading';
+import { StatusPill } from '../../components/StatusPill';
 
 interface StockRow {
   id: string;
@@ -156,7 +158,7 @@ const DEFAULT_STOCK_ITEMS: StockRow[] = [
 ];
 
 export function StockManagementView() {
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [stockItems, setStockItems] = useState<StockRow[]>(DEFAULT_STOCK_ITEMS);
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
@@ -194,10 +196,33 @@ export function StockManagementView() {
         });
         setStockItems(Array.from(map.values()));
       }
+      notify('Refreshed stock inventory records from database.');
     } catch (err) {
       console.warn('Load stock fallback to default inventory:', err);
+      notify('Refreshed stock records from local cache.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteStockItem = async (item: StockRow) => {
+    if (!window.confirm(`Move inventory item ${item.product_sku} (${item.product_name}) to recycle bin?`)) return;
+    try {
+      setStockItems(prev => prev.filter(s => s.id !== item.id));
+      if (detailItem && detailItem.id === item.id) setDetailItem(null);
+
+      addToRecycleBin({
+        id: item.id,
+        ref: item.product_sku || item.ref || 'STK',
+        title: item.product_name || 'Stock Item',
+        entity: 'stockPolicies',
+        description: `Warehouse: ${item.location_name} (Bin: ${item.bin_location}). Qty on hand: ${item.quantity_on_hand} ${item.unit_of_measure}`
+      });
+
+      notify(`Stock item ${item.product_sku} moved to recycle bin.`);
+      addAudit('Stock Item Deleted', 'Arjun Mehta', `Deleted ${item.product_sku}`);
+    } catch (err: any) {
+      notify(err.message || 'Failed to delete stock item.');
     }
   };
 
@@ -408,185 +433,170 @@ export function StockManagementView() {
 
   return (
     <div className="space-y-6">
-      {/* Toast Banner */}
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md animate-fade-in">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
-          <span className="text-sm font-medium">{toast}</span>
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 border border-cyan-500/50 text-cyan-200 text-xs px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 size={16} className="text-cyan-400 flex-shrink-0" />
+          <span>{toast}</span>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl backdrop-blur-xl">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-              <Boxes className="w-3.5 h-3.5" /> Warehouse Operations & ATP Engine
-            </span>
-            <span className="text-xs text-slate-500">•</span>
-            <span className="text-xs text-slate-400">Multi-Facility Stock Valuation</span>
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Stock Management</h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-            Live physical warehouse inventory, Available-to-Promise (ATP) line reservations against open customer orders, replenishment safety points, and bin locations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadStock}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/70 text-slate-300 text-xs font-medium border border-slate-700/60 transition-all hover:border-slate-600 disabled:opacity-50"
-            title="Reload live inventory"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            Sync Stock
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs font-semibold shadow-lg shadow-sky-600/25 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            Add Stock Item
-          </button>
-        </div>
-      </div>
-
-      {/* Telemetry KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3.5">
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Tracked SKUs</span>
-            <Layers className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="text-2xl font-bold text-white tracking-tight">{kpis.totalSKUs}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Physical Hardware Master</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Units On Hand</span>
-            <Boxes className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-400 tracking-tight">{kpis.totalOnHand.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Physical Stock in Depots</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Reserved Orders</span>
-            <PackageCheck className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-2xl font-bold text-amber-400 tracking-tight">{kpis.totalReserved.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Allocated to Sales Orders</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Net ATP Available</span>
-            <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="text-2xl font-bold text-cyan-400 tracking-tight">{kpis.totalATP.toLocaleString()}</div>
-          <div className="text-[11px] text-cyan-400 mt-1">Ready for New Orders</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Reorder Alerts</span>
-            <AlertTriangle className="w-4 h-4 text-rose-400" />
-          </div>
-          <div className="text-2xl font-bold text-rose-400 tracking-tight">{kpis.reorderAlerts}</div>
-          <div className="text-[11px] text-rose-400 mt-1">Below Safety Stock Point</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Total Valuation</span>
-            <DollarSign className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-xl font-bold text-white tracking-tight">${(kpis.totalValuation / 1000).toFixed(0)}k</div>
-          <div className="text-[11px] text-indigo-400 mt-1">Standard Cost Basis</div>
-        </div>
-      </div>
-
-      {/* Controls: Location Selector, Health Filter, Search */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/60">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { id: 'all', label: 'All Warehouses' },
-            { id: 'Kingston', label: 'Main DC (Kingston)' },
-            { id: 'Miami', label: 'Miami Free Zone Depot' },
-            { id: 'Montego', label: 'Montego Bay Terminal' },
-          ].map(tab => (
+      {/* Standard Section Heading */}
+      <SectionHeading
+        eyebrow="PRODUCT & SERVICE CATALOGUE / STOCK MANAGEMENT"
+        title="Stock Management & ATP Inventory"
+        subtitle="Live physical warehouse inventory, Available-to-Promise (ATP) line reservations, replenishment safety points, and multi-depot stock ledger."
+        action={
+          <div className="flex items-center gap-2">
             <button
-              key={tab.id}
-              onClick={() => setSelectedLocation(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                selectedLocation === tab.id
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200'
-              }`}
+              onClick={loadStock}
+              disabled={isLoading}
+              className="btn secondary flex items-center gap-1.5"
+              title="Refresh stock ledger from database"
             >
-              {tab.label}
+              <RefreshCw size={14} className={isLoading ? 'animate-spin text-cyan-400' : ''} />
+              <span>Refresh Stock</span>
             </button>
-          ))}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn primary flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              <span>+ Add Stock Item</span>
+            </button>
+          </div>
+        }
+      />
+
+      {/* Telemetry KPI Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Tracked SKUs</span>
+            <Layers size={14} className="text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold text-white mt-1">{kpis.totalSKUs}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Physical Hardware Master</div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Health Filter */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Units On Hand</span>
+            <Boxes size={14} className="text-emerald-400" />
+          </div>
+          <div className="text-2xl font-bold text-emerald-400 mt-1">{kpis.totalOnHand.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Physical Stock in Depots</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Reserved Orders</span>
+            <PackageCheck size={14} className="text-amber-400" />
+          </div>
+          <div className="text-2xl font-bold text-amber-400 mt-1">{kpis.totalReserved.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Allocated to Sales Orders</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Net ATP Available</span>
+            <CheckCircle2 size={14} className="text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold text-cyan-400 mt-1">{kpis.totalATP.toLocaleString()}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Ready for New Orders</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Total Valuation</span>
+            <DollarSign size={14} className="text-indigo-400" />
+          </div>
+          <div className="text-2xl font-bold text-indigo-400 mt-1">${(kpis.totalValuation / 1000).toFixed(0)}k</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Standard Cost Basis</div>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Warehouse Location Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1 bg-slate-950/70 border border-slate-800/80 p-1 rounded-lg text-xs">
+            {[
+              { id: 'all', label: 'All Warehouses' },
+              { id: 'Kingston', label: 'Kingston Core Hub' },
+              { id: 'Miami', label: 'Miami Free Zone Depot' },
+              { id: 'Montego', label: 'Montego Bay Terminal' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedLocation(tab.id)}
+                className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                  selectedLocation === tab.id
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Health Filter Dropdown */}
           <select
             value={healthFilter}
             onChange={(e) => setHealthFilter(e.target.value)}
-            className="bg-slate-800/80 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500"
+            className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500"
           >
             <option value="all">All Health States</option>
             <option value="healthy">Healthy Stock</option>
             <option value="low">Low Stock Warning</option>
             <option value="critical">Critical Reorder</option>
           </select>
+        </div>
 
-          {/* Search Box */}
-          <div className="relative flex-1 lg:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search SKU, item, bin code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800/80 border border-slate-700/80 text-slate-200 text-xs rounded-lg pl-8 pr-3 py-1.5 placeholder-slate-500 focus:outline-none focus:border-sky-500"
-            />
-          </div>
+        {/* Search Box */}
+        <div className="relative min-w-[220px]">
+          <Search size={14} className="absolute left-3 top-2.5 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search SKU, product, bin code..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-cyan-500"
+          />
         </div>
       </div>
 
       {/* Stock Items Table */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden backdrop-blur-md">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Warehouse Inventory & ATP Availability Ledger</h2>
-            <p className="text-xs text-slate-400">
-              Showing {filteredStock.length} inventory records with live ATP calculation and bin locations.
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+            <Boxes size={16} className="text-cyan-400" />
+            <span>Warehouse Inventory & ATP Availability Ledger</span>
+            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-normal">
+              {filteredStock.length} inventory records
+            </span>
+          </h3>
+          <span className="text-xs text-slate-500">Live multi-facility stock reservations & bin allocation</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/70 uppercase text-[10px] tracking-wider text-slate-400 font-semibold border-b border-slate-800/80">
+          <table className="w-full text-left text-xs min-w-[1050px]">
+            <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="py-3.5 px-4">SKU Code</th>
-                <th className="py-3.5 px-4">Product Name</th>
-                <th className="py-3.5 px-4">Warehouse & Bin</th>
-                <th className="py-3.5 px-4 text-right">On Hand</th>
-                <th className="py-3.5 px-4 text-right">Reserved</th>
-                <th className="py-3.5 px-4 text-right font-bold text-sky-400">Available (ATP)</th>
-                <th className="py-3.5 px-4 text-right">Reorder Point</th>
-                <th className="py-3.5 px-4">Stock Health</th>
-                <th className="py-3.5 px-4 text-right">Unit Cost</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 font-semibold min-w-[130px]">SKU Code & Ref</th>
+                <th className="py-3 px-4 font-semibold min-w-[260px]">Product Master</th>
+                <th className="py-3 px-4 font-semibold min-w-[200px]">Warehouse & Bin</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[90px]">On Hand</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[90px]">Reserved</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[110px] text-cyan-400">Available (ATP)</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[110px]">Reorder Point</th>
+                <th className="py-3 px-4 font-semibold text-center min-w-[120px]">Stock Health</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[100px]">Unit Cost</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[150px]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-800/60 text-slate-200">
               {filteredStock.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-slate-500">
@@ -605,43 +615,43 @@ export function StockManagementView() {
                       className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
                       onClick={() => setDetailItem(item)}
                     >
-                      <td className="py-3.5 px-4 font-mono font-medium text-sky-400">
-                        <div>{item.product_sku}</div>
-                        <div className="text-[10px] text-slate-500 font-sans">{item.ref}</div>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-mono font-bold text-cyan-400 text-xs">{item.product_sku}</div>
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">{item.ref}</div>
                       </td>
-                      <td className="py-3.5 px-4 max-w-xs">
-                        <div className="font-semibold text-white group-hover:text-sky-300 transition-colors">
+                      <td className="py-3 px-4 min-w-[260px] whitespace-normal">
+                        <div className="font-bold text-slate-100 text-xs leading-snug group-hover:text-cyan-300 transition-colors">
                           {item.product_name}
                         </div>
                         <div className="text-[11px] text-slate-400 mt-0.5">
                           UOM: {item.unit_of_measure}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5 text-white">
+                      <td className="py-3 px-4 whitespace-normal">
+                        <div className="flex items-center gap-1.5 text-slate-200">
                           <Warehouse className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                          <span className="font-medium truncate max-w-[170px]">{item.location_name}</span>
+                          <span className="font-medium">{item.location_name}</span>
                         </div>
                         <div className="text-[10px] text-slate-500 font-mono mt-0.5 pl-5">
                           {item.bin_location}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-semibold text-white">
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-slate-100">
                         {item.quantity_on_hand.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-amber-400">
+                      <td className="py-3 px-4 text-right font-mono text-amber-400">
                         {item.quantity_reserved.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-sm text-cyan-400">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-sm text-cyan-400">
                         {item.quantity_available.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-slate-400">
+                      <td className="py-3 px-4 text-right font-mono text-slate-400">
                         {item.reorder_threshold} <span className="text-[10px] text-slate-500">(+{item.reorder_quantity})</span>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 text-center">
                         {isCritical ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                            <AlertTriangle className="w-3 h-3" /> Critical Reorder
+                            <AlertTriangle className="w-3 h-3" /> Critical
                           </span>
                         ) : isLow ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
@@ -649,23 +659,30 @@ export function StockManagementView() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            <CheckCircle2 className="w-3 h-3" /> Healthy Stock
+                            <CheckCircle2 className="w-3 h-3" /> Healthy
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-slate-300">
+                      <td className="py-3 px-4 text-right font-mono text-slate-300">
                         ${item.unit_cost.toFixed(2)}
                       </td>
-                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => {
                               setSelectedItemForMovement(item);
                               setShowMovementModal(true);
                             }}
-                            className="px-2.5 py-1 rounded bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-[11px] font-medium transition-colors"
+                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 hover:border-cyan-500/50 text-[11px] font-medium transition-colors"
                           >
                             Adjust Stock
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStockItem(item)}
+                            title="Move to Recycle Bin"
+                            className="p-1 rounded bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 transition-colors"
+                          >
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>

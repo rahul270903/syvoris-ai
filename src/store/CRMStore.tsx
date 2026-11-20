@@ -9,6 +9,19 @@ type Store = {
   create: (entity: string, fields: Record<string, string>, options?: Partial<CRMRecord>) => CRMRecord;
   update: (entity: string, id: string, patch: Partial<CRMRecord>, action?: string) => CRMRecord | undefined;
   remove: (entity: string, id: string) => void;
+  addToRecycleBin: (item: {
+    id: string;
+    ref?: string;
+    title?: string;
+    name?: string;
+    entity: string;
+    description?: string;
+    fields?: Record<string, any>;
+    record?: Record<string, any>;
+  }) => void;
+  restoreFromRecycleBin: (id: string) => void;
+  purgeFromRecycleBin: (id: string) => void;
+  emptyRecycleBin: () => void;
   addEvent: (type: string, record: CRMRecord | { ref: string }, summary: string, status?: DomainEvent['status']) => void;
   findByRef: (ref: string) => { entity: string; record: CRMRecord } | undefined;
   addAudit: (name: string, actor?: string, details?: string) => void;
@@ -209,17 +222,88 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   };
 
   const remove = (entity: string, id: string) => {
-    if (entity === 'organizations' || entity === 'contacts') {
-      return;
-    }
     const record = (data[entity] || []).find(x => x.id === id);
     if (!record) return;
+    const deletedRecord: CRMRecord = {
+      ...record,
+      status: 'Deleted',
+      fields: { ...record.fields, originalEntity: entity },
+      history: [...record.history, makeActivity('Moved to recycle bin')]
+    };
     setData(old => ({
       ...old,
       [entity]: (old[entity] || []).filter(x => x.id !== id),
-      recycleBin: [{ ...record, status: 'Deleted', history: [...record.history, makeActivity('Moved to recycle bin')] }, ...(old.recycleBin || [])]
+      recycleBin: [deletedRecord, ...(old.recycleBin || [])]
     }));
     addAudit(`${entity} moved to recycle bin`, 'User', record.ref);
+    addEvent(`${entity}.deleted`, record, `Moved to recycle bin`);
+  };
+
+  const addToRecycleBin = (item: {
+    id: string;
+    ref?: string;
+    title?: string;
+    name?: string;
+    entity: string;
+    description?: string;
+    fields?: Record<string, any>;
+    record?: Record<string, any>;
+  }) => {
+    const itemRef = item.ref || item.id || `REC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const itemTitle = item.title || item.name || itemRef;
+    const deletedRecord: CRMRecord = {
+      id: item.id,
+      ref: itemRef,
+      title: itemTitle,
+      status: 'Deleted',
+      owner: 'Arjun Mehta',
+      date: new Date().toISOString().slice(0, 10),
+      description: item.description || `Deleted ${item.entity} record`,
+      fields: { ...(item.fields || item.record || {}), originalEntity: item.entity },
+      links: {},
+      history: [makeActivity('Moved to recycle bin')],
+      amount: 0
+    };
+    setData(old => ({
+      ...old,
+      recycleBin: [deletedRecord, ...(old.recycleBin || [])]
+    }));
+    addAudit(`${item.entity} moved to recycle bin`, 'User', itemRef);
+    addEvent(`${item.entity}.deleted`, { ref: itemRef }, `Moved to recycle bin`);
+  };
+
+  const restoreFromRecycleBin = (id: string) => {
+    const record = (data.recycleBin || []).find(x => x.id === id);
+    if (!record) return;
+    const origEntity = record.fields?.originalEntity || '';
+    const restoredRecord: CRMRecord = {
+      ...record,
+      status: 'Active',
+      history: [...record.history, makeActivity('Restored from recycle bin')]
+    };
+    setData(old => ({
+      ...old,
+      recycleBin: (old.recycleBin || []).filter(x => x.id !== id),
+      ...(origEntity && old[origEntity] ? { [origEntity]: [restoredRecord, ...(old[origEntity] || [])] } : {})
+    }));
+    addAudit(`Record restored from recycle bin`, 'User', record.ref);
+    addEvent(`recycleBin.restored`, record, `Restored to ${origEntity || 'workspace'}`);
+  };
+
+  const purgeFromRecycleBin = (id: string) => {
+    setData(old => ({
+      ...old,
+      recycleBin: (old.recycleBin || []).filter(x => x.id !== id)
+    }));
+    addAudit(`Record permanently purged from recycle bin`, 'User', id);
+  };
+
+  const emptyRecycleBin = () => {
+    setData(old => ({
+      ...old,
+      recycleBin: []
+    }));
+    addAudit(`Recycle bin emptied`, 'User', 'ALL');
   };
 
   const findByRef = (ref: string) => {
@@ -238,7 +322,22 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(key);
   };
 
-  const value: Store = { data, events, records, create, update, remove, addEvent, findByRef, addAudit, reset };
+  const value: Store = {
+    data,
+    events,
+    records,
+    create,
+    update,
+    remove,
+    addToRecycleBin,
+    restoreFromRecycleBin,
+    purgeFromRecycleBin,
+    emptyRecycleBin,
+    addEvent,
+    findByRef,
+    addAudit,
+    reset
+  };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

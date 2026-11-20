@@ -4,10 +4,11 @@ import {
   Building2, ShieldCheck, Award, Star, Search, Plus, RefreshCw,
   CheckCircle2, AlertTriangle, X, Phone, Mail, FileText,
   DollarSign, PackageCheck, Truck, ExternalLink, ArrowUpRight,
-  Layers, ShoppingCart
+  Layers, ShoppingCart, Trash2
 } from 'lucide-react';
 import { api, VendorProfileItem } from '../../services/api';
 import { useCRM } from '../../store/CRMStore';
+import { SectionHeading } from '../../components/SectionHeading';
 
 interface VendorExtended {
   id: string;
@@ -126,7 +127,7 @@ const DEFAULT_VENDORS: VendorExtended[] = [
 
 export function VendorsCatalogView() {
   const navigate = useNavigate();
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [vendors, setVendors] = useState<VendorExtended[]>(DEFAULT_VENDORS);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -166,11 +167,34 @@ export function VendorsCatalogView() {
         });
         setVendors(Array.from(map.values()));
       }
+      notify('Refreshed vendor directory from database.');
     } catch (err) {
       console.warn('Load vendors fallback to default catalog:', err);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDeleteVendor = (vendor: VendorExtended) => {
+    addToRecycleBin({
+      id: vendor.id,
+      name: vendor.account_name || vendor.vendor_code,
+      entity: 'vendors',
+      record: {
+        id: vendor.id,
+        ref: vendor.ref || vendor.vendor_code,
+        name: vendor.account_name,
+        code: vendor.vendor_code,
+        category: vendor.vendor_category,
+        rating: vendor.rating,
+        contact: vendor.contact_person,
+        terms: vendor.payment_terms,
+      }
+    });
+    setVendors(prev => prev.filter(v => v.id !== vendor.id));
+    addEvent('vendor.deleted', { ref: vendor.vendor_code }, `Moved vendor ${vendor.account_name} to Recycle Bin.`);
+    addAudit(`Deleted vendor ${vendor.vendor_code}`, 'Procurement', vendor.id);
+    notify(`Vendor "${vendor.account_name}" moved to Recycle Bin.`);
   };
 
   useEffect(() => {
@@ -301,184 +325,178 @@ export function VendorsCatalogView() {
 
   return (
     <div className="space-y-6">
-      {/* Toast Banner */}
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md animate-fade-in">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
-          <span className="text-sm font-medium">{toast}</span>
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 border border-cyan-500/50 text-cyan-200 text-xs px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 size={16} className="text-cyan-400 flex-shrink-0" />
+          <span>{toast}</span>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl backdrop-blur-xl">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5" /> Procurement & Supplier Governance
-            </span>
-            <span className="text-xs text-slate-500">•</span>
-            <span className="text-xs text-slate-400">Approved Hardware OEMs & Fiber Suppliers</span>
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Vendors & Suppliers</h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-            Directory of certified OEM manufacturers, optical cable distributors, commercial payment terms, and open purchase order commitments.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/purchase-orders')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/70 text-slate-300 text-xs font-medium border border-slate-700/60 transition-all hover:border-slate-600"
-          >
-            <ShoppingCart className="w-3.5 h-3.5 text-sky-400" />
-            Purchase Orders
-          </button>
-          <button
-            onClick={loadVendors}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/70 text-slate-300 text-xs font-medium border border-slate-700/60 transition-all hover:border-slate-600 disabled:opacity-50"
-            title="Reload vendors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            Sync Suppliers
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs font-semibold shadow-lg shadow-sky-600/25 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            Add Vendor
-          </button>
-        </div>
-      </div>
-
-      {/* Telemetry KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Active Suppliers</span>
-            <Building2 className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="text-2xl font-bold text-white tracking-tight">{kpis.total} <span className="text-xs font-normal text-slate-500">Qualified</span></div>
-          <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Master Agreements Enforced
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Preferred Tier-1</span>
-            <Award className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-2xl font-bold text-amber-400 tracking-tight">{kpis.preferred} <span className="text-xs font-normal text-slate-500">Suppliers</span></div>
-          <div className="text-[11px] text-slate-400 mt-1">Direct OEM Strategic Contracts</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Supplier Quality</span>
-            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-          </div>
-          <div className="text-2xl font-bold text-white tracking-tight">{kpis.avgRating} <span className="text-xs font-normal text-slate-500">/ 5.0</span></div>
-          <div className="text-[11px] text-emerald-400 mt-1">99.2% On-Time Delivery SLA</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Sourced Hardware SKUs</span>
-            <Layers className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-2xl font-bold text-indigo-400 tracking-tight">{kpis.totalSourcedSKUs}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Products in Catalog Master</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md col-span-2 md:col-span-1">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Active PO Commitments</span>
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-400 tracking-tight">${(kpis.totalPOValue / 1000).toFixed(1)}k</div>
-          <div className="text-[11px] text-slate-400 mt-1">Open Inbound Orders</div>
-        </div>
-      </div>
-
-      {/* Controls: Category Tabs, Search */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/60">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { id: 'all', label: 'All Categories' },
-            { id: 'Hardware OEM', label: 'Hardware OEM' },
-            { id: 'Carrier Routing Core', label: 'Carrier Routing' },
-            { id: 'Optical Fiber Infrastructure', label: 'Fiber Infrastructure' },
-            { id: 'Test & Measurement Equipment', label: 'Test Equipment' },
-          ].map(tab => (
+      {/* Standard Section Heading */}
+      <SectionHeading
+        eyebrow="PRODUCT & SERVICE CATALOGUE / VENDORS & SUPPLIERS"
+        title="Vendors & Suppliers Directory"
+        subtitle="Directory of certified OEM manufacturers, optical hardware distributors, commercial payment terms, and open purchase order commitments."
+        action={
+          <div className="flex items-center gap-2">
             <button
-              key={tab.id}
-              onClick={() => setSelectedCategory(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                selectedCategory === tab.id
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200'
-              }`}
+              onClick={() => navigate('/purchase-orders')}
+              className="btn secondary flex items-center gap-1.5"
             >
-              {tab.label}
+              <ShoppingCart size={14} className="text-cyan-400" />
+              <span>Purchase Orders</span>
             </button>
-          ))}
+            <button
+              onClick={loadVendors}
+              disabled={isLoading}
+              className="btn secondary flex items-center gap-1.5"
+              title="Reload supplier records from database"
+            >
+              <RefreshCw size={14} className={isLoading ? 'animate-spin text-cyan-400' : ''} />
+              <span>Refresh Vendors</span>
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn primary flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              <span>+ Add Vendor</span>
+            </button>
+          </div>
+        }
+      />
+
+      {/* Telemetry KPI Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Approved Suppliers</span>
+            <Building2 size={14} className="text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold text-white mt-1">{kpis.total}</div>
+          <div className="text-[11px] text-emerald-400 mt-0.5 flex items-center gap-1">
+            <CheckCircle2 size={12} /> Master SLA Enforced
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Status Filter */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Preferred Tier-1</span>
+            <Award size={14} className="text-amber-400" />
+          </div>
+          <div className="text-2xl font-bold text-amber-400 mt-1">{kpis.preferred}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Direct OEM Strategic Contracts</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Supplier Quality</span>
+            <Star size={14} className="text-yellow-400 fill-yellow-400" />
+          </div>
+          <div className="text-2xl font-bold text-white mt-1">{kpis.avgRating} <span className="text-xs font-normal text-slate-500">/ 5.0</span></div>
+          <div className="text-[11px] text-emerald-400 mt-0.5">99.2% On-Time Delivery SLA</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Sourced Hardware SKUs</span>
+            <Layers size={14} className="text-indigo-400" />
+          </div>
+          <div className="text-2xl font-bold text-indigo-400 mt-1">{kpis.totalSourcedSKUs}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Products in Catalog Master</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Active PO Spend</span>
+            <DollarSign size={14} className="text-emerald-400" />
+          </div>
+          <div className="text-2xl font-bold text-emerald-400 mt-1">${(kpis.totalPOValue / 1000).toFixed(1)}k</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Open Inbound Orders</div>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1 bg-slate-950/70 border border-slate-800/80 p-1 rounded-lg text-xs">
+            {[
+              { id: 'all', label: 'All Categories' },
+              { id: 'Hardware OEM', label: 'Hardware OEM' },
+              { id: 'Carrier Routing Core', label: 'Carrier Routing' },
+              { id: 'Optical Fiber Infrastructure', label: 'Fiber Infrastructure' },
+              { id: 'Test & Measurement Equipment', label: 'Test Equipment' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedCategory(tab.id)}
+                className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                  selectedCategory === tab.id
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Status / Tier Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-800/80 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500"
+            className="bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500"
           >
             <option value="all">All Supplier Tiers</option>
             <option value="preferred">Preferred Tier-1</option>
             <option value="active">Active Suppliers</option>
           </select>
+        </div>
 
-          {/* Search Box */}
-          <div className="relative flex-1 lg:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search vendor name, code, SKU..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800/80 border border-slate-700/80 text-slate-200 text-xs rounded-lg pl-8 pr-3 py-1.5 placeholder-slate-500 focus:outline-none focus:border-sky-500"
-            />
-          </div>
+        {/* Search Box */}
+        <div className="relative min-w-[220px]">
+          <Search size={14} className="absolute left-3 top-2.5 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search vendor name, code, SKU..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-cyan-500"
+          />
         </div>
       </div>
 
       {/* Vendors Master Table */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden backdrop-blur-md">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Certified Supplier Master Directory</h2>
-            <p className="text-xs text-slate-400">
-              Showing {filteredVendors.length} qualified hardware OEMs, optical fiber distributors, and measurement partners.
-            </p>
-          </div>
+          <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+            <Building2 size={16} className="text-cyan-400" />
+            <span>Certified Supplier Master Directory</span>
+            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-normal">
+              {filteredVendors.length} qualified suppliers
+            </span>
+          </h3>
+          <span className="text-xs text-slate-500">Authorized OEM procurement channels & payment terms</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/70 uppercase text-[10px] tracking-wider text-slate-400 font-semibold border-b border-slate-800/80">
+          <table className="w-full text-left text-xs min-w-[1050px]">
+            <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="py-3.5 px-4">Vendor Code & Ref</th>
-                <th className="py-3.5 px-4">Company Name</th>
-                <th className="py-3.5 px-4">Supply Category</th>
-                <th className="py-3.5 px-4">Primary Contact & Rep</th>
-                <th className="py-3.5 px-4">Commercial Terms</th>
-                <th className="py-3.5 px-4 text-center">Quality Rating</th>
-                <th className="py-3.5 px-4 text-right">Active PO Commitments</th>
-                <th className="py-3.5 px-4">Tier Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 font-semibold min-w-[140px]">Vendor Code & Ref</th>
+                <th className="py-3 px-4 font-semibold min-w-[260px]">Company Name</th>
+                <th className="py-3 px-4 font-semibold min-w-[150px]">Supply Category</th>
+                <th className="py-3 px-4 font-semibold min-w-[180px]">Primary Contact & Rep</th>
+                <th className="py-3 px-4 font-semibold min-w-[120px]">Commercial Terms</th>
+                <th className="py-3 px-4 font-semibold text-center min-w-[110px]">Quality Rating</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[130px]">Active PO Spend</th>
+                <th className="py-3 px-4 font-semibold text-center min-w-[120px]">Tier Status</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[150px]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-800/60 text-slate-200">
               {filteredVendors.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-500">
@@ -494,47 +512,47 @@ export function VendorsCatalogView() {
                       className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
                       onClick={() => setSelectedVendor(vendor)}
                     >
-                      <td className="py-3.5 px-4 font-mono font-medium text-sky-400">
-                        <div>{vendor.vendor_code}</div>
-                        <div className="text-[10px] text-slate-500 font-sans">{vendor.ref}</div>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="font-mono font-bold text-cyan-400 text-xs">{vendor.vendor_code}</div>
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">{vendor.ref}</div>
                       </td>
-                      <td className="py-3.5 px-4 max-w-xs">
-                        <div className="font-semibold text-white group-hover:text-sky-300 transition-colors">
+                      <td className="py-3 px-4 min-w-[260px] whitespace-normal">
+                        <div className="font-bold text-slate-100 text-xs leading-snug group-hover:text-cyan-300 transition-colors">
                           {vendor.account_name}
                         </div>
                         <div className="text-[11px] text-slate-400 mt-0.5">
                           Tax ID: {vendor.tax_id || 'On File'}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700/60">
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
                           {vendor.vendor_category}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-300">
+                      <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
                         <div className="font-medium text-white">{vendor.contact_person}</div>
                         <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                           <Mail className="w-3 h-3 text-slate-500" />
                           <span>{vendor.account_email}</span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-300">
+                      <td className="py-3 px-4 font-mono text-slate-300 whitespace-nowrap">
                         {vendor.payment_terms}
                       </td>
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 font-semibold text-amber-400">
                           <Star className="w-3.5 h-3.5 fill-amber-400" />
                           {(Number(vendor.rating) || 4.5).toFixed(1)}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-semibold text-emerald-400">
+                      <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-400 whitespace-nowrap">
                         {(Number(vendor.active_po_value) || 0) > 0 ? (
                           `$${(Number(vendor.active_po_value) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                         ) : (
                           <span className="text-slate-500">$0.00</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                           vendor.status.includes('Preferred')
                             ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
@@ -544,13 +562,22 @@ export function VendorsCatalogView() {
                           {vendor.status}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => setSelectedVendor(vendor)}
-                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium transition-colors"
-                        >
-                          Profile & SKUs
-                        </button>
+                      <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setSelectedVendor(vendor)}
+                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 hover:border-cyan-500/50 text-[11px] font-medium transition-colors"
+                          >
+                            Profile & SKUs
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVendor(vendor)}
+                            title="Move to Recycle Bin"
+                            className="p-1 rounded bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

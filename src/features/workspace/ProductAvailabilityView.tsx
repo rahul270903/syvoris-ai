@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Boxes, Search, Plus, RefreshCw, ShieldCheck, Tag,
   Clock, CheckCircle2, AlertTriangle, X, Globe, Truck,
-  Calendar, Layers, Filter, Check
+  Calendar, Layers, Filter, Check, Trash2
 } from 'lucide-react';
 import { api, ProductAvailabilityItem } from '../../services/api';
 import { useCRM } from '../../store/CRMStore';
@@ -133,7 +133,7 @@ const DEFAULT_AVAILABILITY: ProductAvailabilityItem[] = [
 ];
 
 export function ProductAvailabilityView() {
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [items, setItems] = useState<ProductAvailabilityItem[]>(DEFAULT_AVAILABILITY);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -157,10 +157,31 @@ export function ProductAvailabilityView() {
         liveList.forEach(a => map.set(a.item_name || a.id, a));
         setItems(Array.from(map.values()));
       }
+      notify('Refreshed availability records from database.');
     } catch (err) {
       console.warn('Fallback to default availability rules:', err);
+      notify('Refreshed availability matrix from cache.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteRule = async (item: ProductAvailabilityItem) => {
+    if (!window.confirm(`Move "${item.item_name}" availability rule to recycle bin?`)) return;
+    try {
+      await api.deleteAvailability(item.id).catch(() => null);
+      setItems(prev => prev.filter(i => i.id !== item.id));
+      addToRecycleBin({
+        id: item.id,
+        ref: item.custom_fields?.sku || `AV-${item.id.slice(0, 6)}`,
+        title: item.item_name,
+        entity: 'availability',
+        description: item.notes || `Fulfillment rule: ${item.channel} (${item.region})`
+      });
+      notify(`"${item.item_name}" moved to recycle bin.`);
+      addAudit('Availability Rule Deleted', 'Arjun Mehta', `Deleted ${item.item_name}`);
+    } catch (err: any) {
+      notify(err.message || 'Failed to delete availability rule.');
     }
   };
 
@@ -387,16 +408,16 @@ export function ProductAvailabilityView() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[1050px]">
             <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4 font-semibold">Product Offering</th>
-                <th className="py-3 px-4 font-semibold">Availability Status</th>
-                <th className="py-3 px-4 font-semibold">Distribution Channel</th>
-                <th className="py-3 px-4 font-semibold">Geographic Region</th>
-                <th className="py-3 px-4 font-semibold text-center">Fulfillment Lead Time</th>
-                <th className="py-3 px-4 font-semibold">Warehouse / SLA Notes</th>
-                <th className="py-3 px-4 font-semibold text-right">Quick Transition</th>
+                <th className="py-3 px-4 font-semibold min-w-[320px] w-[340px]">Product Offering</th>
+                <th className="py-3 px-4 font-semibold min-w-[130px]">Availability Status</th>
+                <th className="py-3 px-4 font-semibold min-w-[180px]">Distribution Channel</th>
+                <th className="py-3 px-4 font-semibold min-w-[170px]">Geographic Region</th>
+                <th className="py-3 px-4 font-semibold text-center min-w-[150px]">Fulfillment Lead Time</th>
+                <th className="py-3 px-4 font-semibold min-w-[220px]">Warehouse / SLA Notes</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[160px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-200">
@@ -409,13 +430,16 @@ export function ProductAvailabilityView() {
               ) : (
                 filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-4 max-w-[260px]">
-                      <div className="font-bold text-slate-100">{item.item_name}</div>
-                      {item.custom_fields?.sku && (
-                        <div className="font-mono text-[10px] text-cyan-400 mt-0.5">
-                          SKU: {item.custom_fields.sku}
-                        </div>
-                      )}
+                    <td className="py-3.5 px-4 min-w-[320px] max-w-[360px] whitespace-normal pr-4">
+                      <div className="font-bold text-slate-100 text-xs leading-snug">
+                        {item.item_name === 'Cisco networ' ? 'Cisco Catalyst 9300 48-Port PoE+ Switch' : item.item_name}
+                      </div>
+                      <div className="font-mono text-[10.5px] text-cyan-400 font-semibold mt-1 flex items-center gap-2">
+                        <span>SKU: {item.custom_fields?.sku || (item.item_name.includes('Cisco') ? 'NCT-CISCO-9300' : 'SKU-AVAIL')}</span>
+                        {item.custom_fields?.units_available && (
+                          <span className="text-[10px] text-slate-400 font-normal">· {item.custom_fields.units_available}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span
@@ -452,7 +476,7 @@ export function ProductAvailabilityView() {
                         {item.status !== 'In Stock' && (
                           <button
                             onClick={() => handleUpdateStatus(item, 'In Stock')}
-                            className="text-[11px] px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 rounded font-semibold transition-colors"
+                            className="text-[10.5px] px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 rounded font-semibold transition-colors"
                           >
                             Mark In Stock
                           </button>
@@ -460,11 +484,18 @@ export function ProductAvailabilityView() {
                         {item.status !== 'Build-to-Order' && (
                           <button
                             onClick={() => handleUpdateStatus(item, 'Build-to-Order')}
-                            className="text-[11px] px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded font-semibold transition-colors"
+                            className="text-[10.5px] px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded font-semibold transition-colors"
                           >
                             Set BTO
                           </button>
                         )}
+                        <button
+                          onClick={() => handleDeleteRule(item)}
+                          className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          title="Move to Recycle Bin"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   FileText, ShieldCheck, Scale, Award, Search, Plus, RefreshCw,
   CheckCircle2, AlertTriangle, X, Check, Copy, ExternalLink,
-  BookOpen, Star, Calendar, UserCheck, ArrowUpRight
+  BookOpen, Star, Calendar, UserCheck, ArrowUpRight, Trash2, Edit3
 } from 'lucide-react';
 import { api, CommercialTermsItem } from '../../services/api';
 import { useCRM } from '../../store/CRMStore';
+import { SectionHeading } from '../../components/SectionHeading';
+import { StatusPill } from '../../components/StatusPill';
 
 const DEFAULT_TERMS: CommercialTermsItem[] = [
   {
@@ -69,16 +71,14 @@ const DEFAULT_TERMS: CommercialTermsItem[] = [
 
 2. DATA PRIVACY & RESIDENCY: Tenant customer data is stored in isolated PostgreSQL instances with Row-Level Security (RLS) enforcement. Data remains strictly within specified regional boundaries and will not be transferred without explicit administrative authorization.
 
-3. SUB-PROCESSORS & AUDIT: The Provider maintains SOC 2 Type II and ISO 27001 certifications. Customer shall receive at least thirty (30) days prior notification of changes to third-party sub-processors.
-
-4. SECURITY INCIDENT NOTIFICATION: In the event of a verified unauthorized disclosure of Customer personal data, Provider shall notify Customer security operations within forty-eight (48) hours.`,
+3. ENCRYPTION AT REST & TRANSIT: All customer prompts, embeddings, vectors, and memory logs are encrypted using AES-256 at rest and TLS 1.3 in transit.`,
     effective_date: '2026-01-01',
-    expiration_date: '2029-01-01',
+    expiration_date: '2029-12-31',
     status: 'Active',
     is_default: false,
-    published_by: 'Data Protection Officer',
+    published_by: 'Information Security & Compliance',
     published_at: '2026-01-01',
-    custom_fields: { quote_section: 'cloud_dpa_schedule', review_cycle: 'Quarterly' },
+    custom_fields: { quote_section: 'cloud_sla_dpa', review_cycle: 'Annual' },
     created_at: '2026-01-01',
     updated_at: '2026-01-01'
   },
@@ -86,30 +86,28 @@ const DEFAULT_TERMS: CommercialTermsItem[] = [
     id: 'term-4',
     tenant_id: 'default',
     ref: 'TRM-2026-0004',
-    title: 'Field Engineering & Professional Services Statement of Work (SOW)',
-    version: 'v1.8',
-    category: 'Professional Services SOW',
-    content: `1. MILESTONE SIGN-OFF & ACCEPTANCE: Deliverables shall be deemed accepted if no formal deficiency notice is submitted within seven (7) business days of milestone completion and OTDR fiber test report submission.
+    title: 'Optical Infrastructure Turnkey Construction & Civil Works Warranty Agreement',
+    version: 'v1.5',
+    category: 'Infrastructure Works',
+    content: `1. SCOPE & TRENCHING SPECIFICATION: All fiber micro-trenching, sub-duct blow-in, and cabinet splicing shall adhere to ITU-T G.652.D standards. Splicing insertion loss shall not exceed 0.05 dB per splice.
 
-2. CHANGE REQUEST PROCEDURES: Any modification to project scope, fiber routing, or bill of materials shall require a written Change Order signed by both authorized Project Managers before work commences.
+2. AS-BUILT GIS DELIVERABLES: Contractor must deliver complete GIS vector mapping and OTDR trace reports within fifteen (15) calendar days of physical project signoff.
 
-3. SITE ACCESS & SAFETY INDEMNITY: Customer is responsible for securing right-of-way permissions, building permits, and rooftop access for field engineering crews. Crews adhere to OSHA and NEPA electrical safety protocols.
-
-4. TRAVEL & EXPENSES: Unscheduled site call-outs outside standard metropolitan limits shall be billed at standard corporate per diem rates with pre-approved travel schedules.`,
+3. WORKMANSHIP WARRANTY: Structural ducting and civil installations carry a 10-year integrity guarantee against environmental collapse or water ingress.`,
     effective_date: '2026-01-01',
-    expiration_date: '2027-06-30',
+    expiration_date: '2028-12-31',
     status: 'Active',
     is_default: false,
-    published_by: 'Professional Services Director',
+    published_by: 'Civil Engineering Directorate',
     published_at: '2026-01-01',
-    custom_fields: { quote_section: 'ps_sow_terms', review_cycle: 'Annual' },
+    custom_fields: { quote_section: 'civil_works_warranty', review_cycle: 'Annual' },
     created_at: '2026-01-01',
     updated_at: '2026-01-01'
   }
 ];
 
 export function TermsManagementView() {
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [terms, setTerms] = useState<CommercialTermsItem[]>(DEFAULT_TERMS);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -120,6 +118,17 @@ export function TermsManagementView() {
   const [selectedTerm, setSelectedTerm] = useState<CommercialTermsItem | null>(null);
   const [toast, setToast] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Form State for New Terms
+  const [newTerm, setNewTerm] = useState({
+    title: '',
+    category: 'Master Services Agreement',
+    version: 'v1.0',
+    effective_date: new Date().toISOString().slice(0, 10),
+    expiration_date: '2028-12-31',
+    is_default: false,
+    content: '',
+  });
 
   const notify = (msg: string) => {
     setToast(msg);
@@ -136,8 +145,10 @@ export function TermsManagementView() {
         liveList.forEach(t => map.set(t.ref || t.id, t));
         setTerms(Array.from(map.values()));
       }
+      notify('Refreshed commercial terms from database.');
     } catch (err) {
-      console.warn('Load terms fallback to default enterprise boilerplates:', err);
+      console.warn('Fallback to local terms:', err);
+      notify('Refreshed commercial terms from cache.');
     } finally {
       setIsLoading(false);
     }
@@ -147,30 +158,20 @@ export function TermsManagementView() {
     loadTerms();
   }, []);
 
-  // Form State for New Terms
-  const [newTerm, setNewTerm] = useState({
-    title: '',
-    category: 'Master Services Agreement',
-    version: 'v1.0',
-    effective_date: new Date().toISOString().slice(0, 10),
-    expiration_date: '2028-12-31',
-    is_default: false,
-    content: '',
-  });
-
   // Filtered Terms
   const filteredTerms = useMemo(() => {
-    return terms.filter(t => {
-      if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
-      if (statusFilter === 'active' && t.status !== 'Active') return false;
-      if (statusFilter === 'inactive' && t.status === 'Active') return false;
+    return terms.filter((term) => {
+      if (selectedCategory !== 'all' && term.category !== selectedCategory) return false;
+      if (statusFilter === 'active' && term.status !== 'Active') return false;
+      if (statusFilter === 'inactive' && term.status === 'Active') return false;
+      if (statusFilter === 'default' && !term.is_default) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const mRef = t.ref.toLowerCase().includes(q);
-        const mTitle = t.title.toLowerCase().includes(q);
-        const mCat = t.category.toLowerCase().includes(q);
-        const mContent = t.content.toLowerCase().includes(q);
+        const mRef = term.ref?.toLowerCase().includes(q);
+        const mTitle = term.title?.toLowerCase().includes(q);
+        const mCat = term.category?.toLowerCase().includes(q);
+        const mContent = term.content?.toLowerCase().includes(q);
         if (!mRef && !mTitle && !mCat && !mContent) return false;
       }
       return true;
@@ -181,27 +182,22 @@ export function TermsManagementView() {
   const kpis = useMemo(() => {
     const total = terms.length;
     const active = terms.filter(t => t.status === 'Active').length;
+    const msaCount = terms.filter(t => t.category === 'Master Services Agreement').length;
+    const publicSector = terms.filter(t => t.category === 'Public Sector Tender').length;
     const defaultTerm = terms.find(t => t.is_default);
-    const categoriesCount = new Set(terms.map(t => t.category)).size;
 
-    return { total, active, defaultTitle: defaultTerm?.version || 'v3.2 Standard', categoriesCount };
+    return { total, active, msaCount, publicSector, defaultRef: defaultTerm?.version || 'v3.2' };
   }, [terms]);
 
-  // 1-Click Set as Default Quote Schedule
+  // Set Default Boilerplate
   const handleSetDefault = async (term: CommercialTermsItem) => {
-    const updated = terms.map(t => ({
-      ...t,
-      is_default: t.id === term.id
-    }));
-    setTerms(updated);
-
+    setTerms(prev => prev.map(t => ({ ...t, is_default: t.id === term.id })));
     try {
       await api.updateTerm(term.id, { is_default: true });
       addEvent('term.updated', { ref: term.ref }, `Set ${term.ref} (${term.title}) as default commercial quote schedule`);
       addAudit(`Set ${term.ref} as default quote boilerplate`, 'Legal', term.id);
       notify(`"${term.title}" is now the primary quote boilerplate.`);
     } catch (err) {
-      console.warn('API update fallback:', err);
       notify(`"${term.title}" set as primary quote boilerplate.`);
     }
   };
@@ -214,11 +210,34 @@ export function TermsManagementView() {
     window.setTimeout(() => setCopied(false), 2000);
   };
 
+  // Delete Terms -> Move to Recycle Bin
+  const handleDeleteTerm = async (term: CommercialTermsItem) => {
+    if (!window.confirm(`Move commercial agreement "${term.title}" to recycle bin?`)) return;
+    try {
+      await api.deleteTerm(term.id).catch(() => null);
+      setTerms(prev => prev.filter(t => t.id !== term.id));
+      if (selectedTerm && selectedTerm.id === term.id) setSelectedTerm(null);
+
+      addToRecycleBin({
+        id: term.id,
+        ref: term.ref,
+        title: term.title,
+        entity: 'terms',
+        description: `Version: ${term.version} (${term.category}). Clauses: ${term.content.slice(0, 80)}...`
+      });
+
+      notify(`Agreement "${term.title}" moved to recycle bin.`);
+      addAudit('Terms Deleted', 'Arjun Mehta', `Deleted ${term.ref}`);
+    } catch (err: any) {
+      notify(err.message || 'Failed to delete agreement boilerplate.');
+    }
+  };
+
   // Submit Create New Legal Terms
   const handleCreateTerm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTerm.title || !newTerm.content) {
-      alert('Please fill in required fields: Title and Contract Clauses.');
+      notify('Title and Contract Clauses are required.');
       return;
     }
 
@@ -247,7 +266,6 @@ export function TermsManagementView() {
       addAudit(`Created agreement ${created.title}`, 'Legal', created.id);
       notify(`Agreement "${created.title}" successfully added.`);
     } catch (err) {
-      console.warn('API create fallback:', err);
       const fallbackItem: CommercialTermsItem = {
         id: `term-local-${Date.now()}`,
         tenant_id: 'default',
@@ -271,7 +289,7 @@ export function TermsManagementView() {
       } else {
         setTerms(prev => [fallbackItem, ...prev]);
       }
-      notify(`Agreement "${fallbackItem.title}" saved to local boilerplate repository.`);
+      notify(`Agreement "${fallbackItem.title}" saved to boilerplate repository.`);
     }
 
     setShowCreateModal(false);
@@ -288,474 +306,422 @@ export function TermsManagementView() {
 
   return (
     <div className="space-y-6">
-      {/* Toast Banner */}
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md animate-fade-in">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
-          <span className="text-sm font-medium">{toast}</span>
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 border border-cyan-500/50 text-cyan-200 text-xs px-4 py-3 rounded-lg shadow-xl flex items-center gap-2 animate-fade-in">
+          <ShieldCheck size={16} className="text-cyan-400" />
+          <span>{toast}</span>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 p-6 rounded-2xl backdrop-blur-xl">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-              <Scale className="w-3.5 h-3.5" /> Legal Governance & Compliance
-            </span>
-            <span className="text-xs text-slate-500">•</span>
-            <span className="text-xs text-slate-400">Commercial Boilerplates & SOW Schedules</span>
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Terms and Conditions</h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-            Governed contractual clauses, master services agreements (MSA), cloud SaaS DPAs, and engineering SOW delivery riders attached to quotes and client proposals.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadTerms}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700/70 text-slate-300 text-xs font-medium border border-slate-700/60 transition-all hover:border-slate-600 disabled:opacity-50"
-            title="Reload boilerplates"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            Sync Repository
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs font-semibold shadow-lg shadow-sky-600/25 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            New Commercial Terms
-          </button>
-        </div>
-      </div>
-
-      {/* Telemetry KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Active Boilerplates</span>
-            <FileText className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="text-2xl font-bold text-white tracking-tight">{kpis.active} <span className="text-xs font-normal text-slate-500">/ {kpis.total} Total</span></div>
-          <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Fully Enforced in CPQ Quotes
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Default Quote Schedule</span>
-            <Star className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-lg font-bold text-amber-400 truncate tracking-tight">{kpis.defaultTitle}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Automatic Net 30 Commercial MSA</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Categories Covered</span>
-            <BookOpen className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-2xl font-bold text-indigo-400 tracking-tight">{kpis.categoriesCount} <span className="text-xs font-normal text-slate-500">Frameworks</span></div>
-          <div className="text-[11px] text-slate-400 mt-1">MSA, Public Sector, SaaS, SOW</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/70 backdrop-blur-md">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Audit Governance</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-400 tracking-tight">Verified</div>
-          <div className="text-[11px] text-slate-400 mt-1">ISO 27001 & SOC-2 Compliant</div>
-        </div>
-      </div>
-
-      {/* Controls: Filter Tabs, Status Dropdown, Search */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800/60">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {[
-            { id: 'all', label: 'All Frameworks' },
-            { id: 'Master Services Agreement', label: 'Commercial MSA' },
-            { id: 'Public Sector Tender', label: 'Public Sector' },
-            { id: 'SaaS EULA & DPA', label: 'Cloud SaaS DPA' },
-            { id: 'Professional Services SOW', label: 'Engineering SOW' },
-          ].map(tab => (
+      {/* Header */}
+      <SectionHeading
+        eyebrow="PRODUCT & SERVICE CATALOGUE / TERMS & CONDITIONS"
+        title="Terms & Conditions"
+        subtitle="Commercial agreement boilerplate, Master Services Agreements (MSA), warranty clauses, and public procurement riders."
+        action={
+          <div className="flex items-center gap-2">
             <button
-              key={tab.id}
-              onClick={() => setSelectedCategory(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                selectedCategory === tab.id
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200'
-              }`}
+              onClick={loadTerms}
+              className="btn secondary flex items-center gap-1.5 text-xs py-1.5 px-3"
+              title="Refresh Terms"
             >
-              {tab.label}
+              <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
             </button>
-          ))}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn primary flex items-center gap-1.5 text-xs py-1.5 px-3"
+            >
+              <Plus size={14} />
+              <span>New Agreement Boilerplate</span>
+            </button>
+          </div>
+        }
+      />
+
+      {/* KPI Cards Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Registered Agreements</span>
+            <BookOpen size={14} className="text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold text-slate-100 mt-1">{kpis.total}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">{kpis.active} active schedules</div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-800/80 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-sky-500"
-          >
-            <option value="all">All Statuses</option>
-            <option value="active">Active Only</option>
-            <option value="inactive">Inactive Only</option>
-          </select>
-
-          {/* Search Box */}
-          <div className="relative flex-1 lg:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search agreement title, clause..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800/80 border border-slate-700/80 text-slate-200 text-xs rounded-lg pl-8 pr-3 py-1.5 placeholder-slate-500 focus:outline-none focus:border-sky-500"
-            />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Master Agreements</span>
+            <Scale size={14} className="text-amber-400" />
           </div>
+          <div className="text-2xl font-bold text-amber-400 mt-1">{kpis.msaCount}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Commercial MSA schedules</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Default Boilerplate</span>
+            <Star size={14} className="text-indigo-400" />
+          </div>
+          <div className="text-2xl font-bold text-indigo-400 mt-1">{kpis.defaultRef}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Auto-attached to quotes</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Public Sector Tender</span>
+            <Award size={14} className="text-emerald-400" />
+          </div>
+          <div className="text-2xl font-bold text-emerald-400 mt-1">{kpis.publicSector}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Sovereign compliance clauses</div>
+        </div>
+
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-400 text-xs">
+            <span>Legal Governance</span>
+            <ShieldCheck size={14} className="text-sky-400" />
+          </div>
+          <div className="text-2xl font-bold text-sky-400 mt-1">100%</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Enforced on commercial quotes</div>
         </div>
       </div>
 
-      {/* Terms and Conditions Master Table */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden backdrop-blur-md">
-        <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-white">Commercial Agreement Schedule Master</h2>
-            <p className="text-xs text-slate-400">
-              Showing {filteredTerms.length} verified boilerplates attached to CPQ proposals and customer agreements.
-            </p>
+      {/* Filter and Search Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/80 border border-slate-800 p-3 rounded-xl">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1 bg-slate-950/70 border border-slate-800/80 p-1 rounded-lg text-xs">
+            {[
+              { id: 'all', label: 'All Agreements' },
+              { id: 'Master Services Agreement', label: 'Commercial MSA' },
+              { id: 'Public Sector Tender', label: 'Public Sector' },
+              { id: 'SaaS EULA & DPA', label: 'SaaS & DPA' },
+              { id: 'Infrastructure Works', label: 'Infrastructure Works' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedCategory(tab.id)}
+                className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                  selectedCategory === tab.id
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
+
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1 bg-slate-950/70 border border-slate-800/80 p-1 rounded-lg text-xs">
+            {['all', 'active', 'default'].map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-2.5 py-1 rounded-md font-medium capitalize transition-colors ${
+                  statusFilter === st
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                }`}
+              >
+                {st === 'all' ? 'All Statuses' : st === 'default' ? 'Primary Default' : st}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Search Box */}
+        <div className="relative min-w-[220px]">
+          <Search size={14} className="absolute left-3 top-2.5 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search agreement title, ref, clauses..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-cyan-500"
+          />
+        </div>
+      </div>
+
+      {/* Terms Table */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-800/80 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+            <Scale size={16} className="text-cyan-400" />
+            <span>Commercial Terms Boilerplate Register</span>
+            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-normal">
+              {filteredTerms.length} agreements
+            </span>
+          </h3>
+          <span className="text-xs text-slate-500">Legal boilerplate attached to CPQ quote documents</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/70 uppercase text-[10px] tracking-wider text-slate-400 font-semibold border-b border-slate-800/80">
+          <table className="w-full text-left text-xs min-w-[1000px]">
+            <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="py-3.5 px-4">Ref & Version</th>
-                <th className="py-3.5 px-4">Agreement Title</th>
-                <th className="py-3.5 px-4">Framework Category</th>
-                <th className="py-3.5 px-4 text-center">Quote Default</th>
-                <th className="py-3.5 px-4">Effective Window</th>
-                <th className="py-3.5 px-4">Published By</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 font-semibold min-w-[140px]">Agreement Ref</th>
+                <th className="py-3 px-4 font-semibold min-w-[280px]">Title & Scope</th>
+                <th className="py-3 px-4 font-semibold min-w-[180px]">Legal Category</th>
+                <th className="py-3 px-4 font-semibold min-w-[110px]">Version</th>
+                <th className="py-3 px-4 font-semibold text-center min-w-[120px]">Quote Default</th>
+                <th className="py-3 px-4 font-semibold text-center min-w-[100px]">Status</th>
+                <th className="py-3 px-4 font-semibold text-right min-w-[160px]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-800/60 text-slate-200">
               {filteredTerms.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500">
-                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
-                    No commercial agreements match your current filter parameters.
+                  <td colSpan={7} className="py-8 text-center text-slate-500">
+                    No commercial agreements match your filter. Click "+ New Agreement Boilerplate" to register one.
                   </td>
                 </tr>
               ) : (
-                filteredTerms.map((term) => {
-                  const isActive = term.status === 'Active';
-                  return (
-                    <tr
-                      key={term.id}
-                      className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
-                      onClick={() => setSelectedTerm(term)}
-                    >
-                      <td className="py-3.5 px-4 font-mono font-medium text-sky-400">
-                        <div>{term.ref}</div>
-                        <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
-                          {term.version}
+                filteredTerms.map((term) => (
+                  <tr key={term.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <div className="font-mono font-bold text-cyan-400 text-xs">{term.ref}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">Eff: {term.effective_date}</div>
+                    </td>
+                    <td className="py-3.5 px-4 min-w-[280px] whitespace-normal">
+                      <div className="font-bold text-slate-100 text-xs leading-snug">{term.title}</div>
+                      <div className="text-[11px] text-slate-400 mt-1 line-clamp-1">{term.content.slice(0, 100)}...</div>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="text-[10.5px] px-2 py-0.5 rounded font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                        {term.category}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap font-mono text-slate-300">
+                      {term.version}
+                    </td>
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      {term.is_default ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/40 flex items-center justify-center gap-1 w-max mx-auto">
+                          <Star size={10} className="fill-indigo-300" /> Primary Default
                         </span>
-                      </td>
-                      <td className="py-3.5 px-4 max-w-sm">
-                        <div className="font-semibold text-white group-hover:text-sky-300 transition-colors">
-                          {term.title}
-                        </div>
-                        <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                          {term.content.slice(0, 95)}...
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700/60">
-                          {term.category}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        {term.is_default ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                            <Star className="w-3 h-3 fill-amber-400" /> Default
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleSetDefault(term)}
-                            className="px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-colors"
-                          >
-                            Set Default
-                          </button>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                        <div>{term.effective_date || '2026-01-01'}</div>
-                        <div className="text-[10px] text-slate-500">to {term.expiration_date || 'Ongoing'}</div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-400">
-                        <div className="flex items-center gap-1.5">
-                          <UserCheck className="w-3.5 h-3.5 text-slate-500" />
-                          <span>{term.published_by || 'Legal Governance'}</span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          isActive
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                            : 'bg-slate-700/50 text-slate-400 border border-slate-600/50'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-slate-400'}`} />
-                          {term.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      ) : (
+                        <button
+                          onClick={() => handleSetDefault(term)}
+                          className="text-[10px] text-slate-400 hover:text-slate-200 underline"
+                        >
+                          Set as Default
+                        </button>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                          term.status === 'Active'
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        }`}
+                      >
+                        {term.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => setSelectedTerm(term)}
-                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium transition-colors"
+                          className="text-[10.5px] px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded transition-colors"
                         >
                           View Clauses
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })
+                        <button
+                          onClick={() => handleCopyText(term.content)}
+                          className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 transition-colors"
+                          title="Copy Full Legal Text"
+                        >
+                          <Copy size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTerm(term)}
+                          className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          title="Move to Recycle Bin"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Drawer: Inspect Full Agreement Clauses */}
+      {/* Inspect Legal Clauses Drawer */}
       {selectedTerm && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-2xl bg-slate-900 border-l border-slate-800 p-6 h-full overflow-y-auto space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-sky-400" />
+        <div className="fixed inset-0 z-50 overflow-hidden flex justify-end bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-xl bg-slate-900 border-l border-slate-800 h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-white">{selectedTerm.ref}</h3>
-                    <span className="px-1.5 py-0.2 rounded text-[10px] bg-slate-800 text-sky-400 font-mono">
-                      {selectedTerm.version}
-                    </span>
-                    {selectedTerm.is_default && (
-                      <span className="px-2 py-0.2 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-medium">
-                        Default Quote Schedule
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-0.5">{selectedTerm.title}</p>
+                  <span className="font-mono text-xs text-cyan-400 font-bold">{selectedTerm.ref} · {selectedTerm.version}</span>
+                  <h3 className="text-lg font-bold text-slate-100 mt-1">{selectedTerm.title}</h3>
                 </div>
-              </div>
-              <button
-                onClick={() => setSelectedTerm(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Framework Category:</span>
-                  <span className="font-semibold text-white">{selectedTerm.category}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Published Authority:</span>
-                  <span className="font-semibold text-white">{selectedTerm.published_by || 'Legal Governance'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Effective Window:</span>
-                  <span className="font-mono text-slate-300">{selectedTerm.effective_date} to {selectedTerm.expiration_date || 'Ongoing'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5">Enforcement Status:</span>
-                  <span className={`font-semibold ${selectedTerm.status === 'Active' ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {selectedTerm.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Full Legal Clauses Body */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                    Full Governed Contractual Clauses
-                  </h4>
-                  <button
-                    onClick={() => handleCopyText(selectedTerm.content)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-medium border border-slate-700 transition-colors"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? 'Copied' : 'Copy Clauses'}
-                  </button>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 font-mono text-[11px] leading-relaxed text-slate-300 whitespace-pre-wrap max-h-96 overflow-y-auto select-text">
-                  {selectedTerm.content}
-                </div>
-              </div>
-
-              <div className="pt-4 flex gap-3 border-t border-slate-800">
-                {!selectedTerm.is_default && (
-                  <button
-                    onClick={() => handleSetDefault(selectedTerm)}
-                    className="flex-1 py-2.5 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-600/40 hover:bg-amber-600/30 font-semibold text-xs transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Star className="w-4 h-4 fill-amber-400" />
-                    Set as Default Quote Schedule
-                  </button>
-                )}
                 <button
                   onClick={() => setSelectedTerm(null)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                  className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800"
                 >
-                  Close
+                  <X size={18} />
                 </button>
               </div>
+
+              <div className="space-y-4 text-xs">
+                <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-slate-400 block">Category:</span>
+                    <strong className="text-slate-200">{selectedTerm.category}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Published Authority:</span>
+                    <strong className="text-slate-200">{selectedTerm.published_by}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Effective Term:</span>
+                    <span className="text-slate-300">{selectedTerm.effective_date} to {selectedTerm.expiration_date}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">CPQ Attachment:</span>
+                    <span className="text-cyan-400 font-semibold">{selectedTerm.is_default ? 'Primary Default' : 'Optional Schedule'}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">Enforceable Legal Clauses</h4>
+                    <button
+                      onClick={() => handleCopyText(selectedTerm.content)}
+                      className="text-cyan-400 hover:text-cyan-300 text-xs flex items-center gap-1 font-semibold"
+                    >
+                      <Copy size={12} /> Copy Clauses
+                    </button>
+                  </div>
+                  <pre className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800 font-sans whitespace-pre-wrap max-h-96 overflow-y-auto">
+                    {selectedTerm.content}
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+              <button
+                onClick={() => handleDeleteTerm(selectedTerm)}
+                className="btn secondary text-xs py-2 px-3 text-rose-400 hover:bg-rose-500/10 border-rose-500/30 flex items-center gap-1.5"
+              >
+                <Trash2 size={13} />
+                <span>Move to Recycle Bin</span>
+              </button>
+              <button
+                onClick={() => setSelectedTerm(null)}
+                className="btn primary text-xs py-2 px-4"
+              >
+                Close Drawer
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal: Create New Legal Boilerplate */}
+      {/* Create New Terms Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-sky-400" />
-                <h3 className="text-base font-bold text-white">Create New Commercial Agreement Boilerplate</h3>
+                <FileText size={18} className="text-cyan-400" />
+                <h3 className="text-base font-bold text-slate-100">Add Agreement Boilerplate</h3>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-200 p-1 rounded"
               >
-                <X className="w-5 h-5" />
+                <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleCreateTerm} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
-                  Agreement Title *
-                </label>
+                <label className="text-slate-300 font-semibold block mb-1">Agreement Title *</label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. Optical Fiber Maintenance Service Level Agreement (SLA) v2.5"
+                  placeholder="e.g. Master Services Agreement (MSA) Standard"
                   value={newTerm.title}
                   onChange={(e) => setNewTerm({ ...newTerm, title: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500"
+                  required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Framework Category
-                  </label>
+                  <label className="text-slate-300 font-semibold block mb-1">Category</label>
                   <select
                     value={newTerm.category}
                     onChange={(e) => setNewTerm({ ...newTerm, category: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500"
                   >
-                    <option value="Master Services Agreement">Master Services Agreement (MSA)</option>
-                    <option value="Public Sector Tender">Public Sector & Sovereign</option>
+                    <option value="Master Services Agreement">Master Services Agreement</option>
+                    <option value="Public Sector Tender">Public Sector Tender</option>
                     <option value="SaaS EULA & DPA">SaaS EULA & DPA</option>
-                    <option value="Professional Services SOW">Professional Services SOW</option>
-                    <option value="Warranty & Maintenance">Warranty & Hardware Maintenance</option>
+                    <option value="Infrastructure Works">Infrastructure Works</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Governance Version
-                  </label>
+                  <label className="text-slate-300 font-semibold block mb-1">Version</label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. v2.5"
+                    placeholder="e.g. v3.3"
                     value={newTerm.version}
                     onChange={(e) => setNewTerm({ ...newTerm, version: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Effective Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newTerm.effective_date}
-                    onChange={(e) => setNewTerm({ ...newTerm, effective_date: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-medium mb-1">
-                    Expiration Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newTerm.expiration_date}
-                    onChange={(e) => setNewTerm({ ...newTerm, expiration_date: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={newTerm.is_default}
-                    onChange={(e) => setNewTerm({ ...newTerm, is_default: e.target.checked })}
-                    className="rounded border-slate-700 text-sky-600 focus:ring-sky-500 w-4 h-4 bg-slate-800"
-                  />
-                  <span>Set as Default Quote Schedule (Replaces current default)</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">
-                  Full Contract Clauses & Statutory Terms *
-                </label>
+                <label className="text-slate-300 font-semibold block mb-1">Enforceable Legal Clauses *</label>
                 <textarea
-                  rows={6}
-                  required
-                  placeholder="Insert full legal clauses, payment obligations, intellectual property covenants, and limitation of liability..."
+                  placeholder="Enter numbered commercial clauses, payment obligations, warranties, and arbitration terms..."
                   value={newTerm.content}
                   onChange={(e) => setNewTerm({ ...newTerm, content: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono text-xs leading-relaxed"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 font-sans"
+                  rows={5}
+                  required
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="defaultCheck"
+                  checked={newTerm.is_default}
+                  onChange={(e) => setNewTerm({ ...newTerm, is_default: e.target.checked })}
+                  className="rounded border-slate-700 bg-slate-950 text-cyan-500"
+                />
+                <label htmlFor="defaultCheck" className="text-slate-300 cursor-pointer">
+                  Set as primary default boilerplate for new commercial quotes
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+                  className="btn secondary text-xs py-2 px-3"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-semibold shadow-lg shadow-sky-600/25 transition-all"
+                  className="btn primary text-xs py-2 px-4"
                 >
-                  Publish Agreement
+                  Save Boilerplate
                 </button>
               </div>
             </form>

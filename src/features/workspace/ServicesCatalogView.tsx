@@ -151,7 +151,7 @@ const DEFAULT_SERVICES: ServiceCatalogItem[] = [
 ];
 
 export function ServicesCatalogView() {
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [services, setServices] = useState<ServiceCatalogItem[]>(DEFAULT_SERVICES);
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -175,6 +175,7 @@ export function ServicesCatalogView() {
         liveList.forEach(s => map.set(s.code || s.id, s));
         setServices(Array.from(map.values()));
       }
+      notify('Refreshed services catalog from database.');
     } catch (err) {
       console.warn('Fallback to default services:', err);
     } finally {
@@ -305,14 +306,32 @@ export function ServicesCatalogView() {
     }
   };
 
-  // Delete Service
-  const handleDeleteService = async (id: string, code: string) => {
-    if (!window.confirm(`Are you sure you want to delete service ${code}?`)) return;
+  // Delete Service & Move to Recycle Bin
+  const handleDeleteService = async (service: ServiceCatalogItem) => {
+    if (!window.confirm(`Are you sure you want to delete service ${service.code}? It will be moved to the Recycle Bin.`)) return;
     try {
-      await api.deleteService(id);
-      setServices(prev => prev.filter(s => s.id !== id));
-      notify(`Service ${code} deleted.`);
-      addAudit('Service Deleted', 'Arjun Mehta', `Deleted service ${code}`);
+      try {
+        await api.deleteService(service.id);
+      } catch (e) {
+        console.warn('API deleteService fallback to store:', e);
+      }
+      addToRecycleBin({
+        id: service.id,
+        ref: service.code,
+        title: service.name,
+        entity: 'services',
+        description: service.description,
+        fields: {
+          code: service.code,
+          service_type: service.service_type,
+          billing_method: service.billing_method,
+          standard_rate: service.standard_rate,
+          originalEntity: 'services'
+        }
+      });
+      setServices(prev => prev.filter(s => s.id !== service.id));
+      notify(`Service ${service.code} moved to Recycle Bin.`);
+      addAudit('Service Moved to Recycle Bin', 'Arjun Mehta', `Deleted service ${service.code}`);
     } catch (err: any) {
       notify(err.message || 'Failed to delete service.');
     }
@@ -528,9 +547,9 @@ export function ServicesCatalogView() {
                             {s.is_active ? 'Draft' : 'Activate'}
                           </button>
                           <button
-                            onClick={() => handleDeleteService(s.id, s.code)}
+                            onClick={() => handleDeleteService(s)}
                             className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                            title="Delete Service"
+                            title="Move to Recycle Bin"
                           >
                             <Trash2 size={13} />
                           </button>

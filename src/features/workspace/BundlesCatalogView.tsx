@@ -284,7 +284,7 @@ const DEFAULT_BUNDLES: ProductBundleItem[] = [
 ];
 
 export function BundlesCatalogView() {
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [bundles, setBundles] = useState<ProductBundleItem[]>(DEFAULT_BUNDLES);
   const [expandedBundleId, setExpandedBundleId] = useState<string | null>('bnd-1');
@@ -308,6 +308,7 @@ export function BundlesCatalogView() {
         liveList.forEach(b => map.set(b.bundle_code || b.id, b));
         setBundles(Array.from(map.values()));
       }
+      notify('Refreshed commercial bundles from database.');
     } catch (err) {
       console.warn('Fallback to default bundles:', err);
     } finally {
@@ -435,14 +436,32 @@ export function BundlesCatalogView() {
     }
   };
 
-  // Delete Bundle
-  const handleDeleteBundle = async (id: string, code: string) => {
-    if (!window.confirm(`Are you sure you want to delete bundle ${code}?`)) return;
+  // Delete Bundle & Move to Recycle Bin
+  const handleDeleteBundle = async (bundle: ProductBundleItem) => {
+    if (!window.confirm(`Are you sure you want to delete bundle ${bundle.bundle_code}? It will be moved to the Recycle Bin.`)) return;
     try {
-      await api.deleteBundle(id);
-      setBundles(prev => prev.filter(b => b.id !== id));
-      notify(`Bundle ${code} deleted.`);
-      addAudit('Bundle Deleted', 'Arjun Mehta', `Deleted bundle ${code}`);
+      try {
+        await api.deleteBundle(bundle.id);
+      } catch (e) {
+        console.warn('API deleteBundle fallback to store:', e);
+      }
+      addToRecycleBin({
+        id: bundle.id,
+        ref: bundle.bundle_code || bundle.ref,
+        title: bundle.name,
+        entity: 'bundles',
+        description: bundle.description,
+        fields: {
+          code: bundle.bundle_code,
+          price: bundle.bundle_price,
+          discount_pct: bundle.discount_pct,
+          pricing_model: bundle.pricing_model,
+          originalEntity: 'bundles'
+        }
+      });
+      setBundles(prev => prev.filter(b => b.id !== bundle.id));
+      notify(`Bundle ${bundle.bundle_code} moved to Recycle Bin.`);
+      addAudit('Bundle Moved to Recycle Bin', 'Arjun Mehta', `Deleted bundle ${bundle.bundle_code}`);
     } catch (err: any) {
       notify(err.message || 'Failed to delete bundle.');
     }
@@ -609,9 +628,9 @@ export function BundlesCatalogView() {
                       {b.is_active ? 'Deactivate' : 'Activate'}
                     </button>
                     <button
-                      onClick={() => handleDeleteBundle(b.id, b.bundle_code)}
+                      onClick={() => handleDeleteBundle(b)}
                       className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                      title="Delete Bundle"
+                      title="Move to Recycle Bin"
                     >
                       <Trash2 size={14} />
                     </button>

@@ -70,6 +70,7 @@ import { TaxManagementView } from './TaxManagementView';
 import { TermsManagementView } from './TermsManagementView';
 import { StockManagementView } from './StockManagementView';
 import { VendorsCatalogView } from './VendorsCatalogView';
+import { RecycleBinView } from './RecycleBinView';
 import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
@@ -4083,6 +4084,15 @@ export function WorkspacePage({ item }: Props) {
     return (
       <div className="workspace-page">
         <VendorsCatalogView />
+      </div>
+    );
+  }
+
+  // RECYCLE BIN & DATA RETENTION VAULT DEDICATED VIEW
+  if (item.path === '/admin/recycle-bin' || item.path === '/recycle-bin' || item.entity === 'recycleBin') {
+    return (
+      <div className="workspace-page">
+        <RecycleBinView />
       </div>
     );
   }

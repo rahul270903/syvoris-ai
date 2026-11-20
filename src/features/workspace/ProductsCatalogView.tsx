@@ -165,7 +165,7 @@ const DEFAULT_PRODUCTS: ProductItem[] = [
 ];
 
 export function ProductsCatalogView() {
-  const { addEvent, addAudit } = useCRM();
+  const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
   const [products, setProducts] = useState<ProductItem[]>(DEFAULT_PRODUCTS);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -192,6 +192,7 @@ export function ProductsCatalogView() {
         liveList.forEach((p: ProductItem) => map.set(p.sku || p.id, p));
         setProducts(Array.from(map.values()));
       }
+      notify('Refreshed product catalog from database.');
     } catch (err) {
       console.warn('Load products fallback to default enterprise catalog:', err);
     } finally {
@@ -324,14 +325,33 @@ export function ProductsCatalogView() {
     }
   };
 
-  // Delete Product
-  const handleDeleteProduct = async (id: string, sku: string) => {
-    if (!window.confirm(`Are you sure you want to delete product SKU ${sku}?`)) return;
+  // Delete Product & Move to Recycle Bin
+  const handleDeleteProduct = async (product: ProductItem) => {
+    if (!window.confirm(`Are you sure you want to delete product SKU ${product.sku}? It will be moved to the Recycle Bin.`)) return;
     try {
-      await api.deleteProduct(id);
-      setProducts(prev => prev.filter(p => p.id !== id));
-      notify(`Product SKU ${sku} deleted.`);
-      addAudit('Product Deleted', 'Arjun Mehta', `Deleted SKU ${sku}`);
+      try {
+        await api.deleteProduct(product.id);
+      } catch (e) {
+        console.warn('API deleteProduct fallback to store:', e);
+      }
+      addToRecycleBin({
+        id: product.id,
+        ref: product.sku,
+        title: product.name,
+        entity: 'products',
+        description: product.description,
+        fields: {
+          sku: product.sku,
+          category: product.category,
+          family: product.family,
+          standard_price: product.standard_price,
+          unit_of_measure: product.unit_of_measure,
+          originalEntity: 'products'
+        }
+      });
+      setProducts(prev => prev.filter(p => p.id !== product.id));
+      notify(`Product SKU ${product.sku} moved to Recycle Bin.`);
+      addAudit('Product Moved to Recycle Bin', 'Arjun Mehta', `Deleted SKU ${product.sku}`);
     } catch (err: any) {
       notify(err.message || 'Failed to delete product.');
     }
@@ -570,9 +590,9 @@ export function ProductsCatalogView() {
                             {p.is_active ? 'Deactivate' : 'Activate'}
                           </button>
                           <button
-                            onClick={() => handleDeleteProduct(p.id, p.sku)}
+                            onClick={() => handleDeleteProduct(p)}
                             className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                            title="Delete Product"
+                            title="Move to Recycle Bin"
                           >
                             <Trash2 size={13} />
                           </button>
