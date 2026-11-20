@@ -216,12 +216,4 @@ Visit `http://localhost:8080`.
 2. Upload the contents of `dist/` to any static web hosting service.
 3. Configure your web server to serve `index.html` for all 404 paths (standard Single Page Application routing).
 
----
 
-
-- [x] 14 specialist AI agents configured with autonomy modes and explainable decision trails.
-- [x] Browser `localStorage` persistence under `syvoris-ai:prototype:v1`.
-- [x] Brand identity strictly uses **SYVORIS Ai™** throughout (no legacy CRM branding in code or UI).
-- [x] `npm run check:project` passed (132 routes verified).
-- [x] `npm run typecheck` passed (0 TypeScript diagnostics).
-- [x] `npm run build` completed successfully (`dist/`).
