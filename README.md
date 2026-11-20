@@ -218,18 +218,7 @@ Visit `http://localhost:8080`.
 
 ---
 
-## Verification & Acceptance Checklist
 
-- [x] Application loads without runtime errors.
-- [x] All 132 navigation routes are unique and resolve to populated workspace views.
-- [x] 0 dead navigation links; 0 blank workspaces.
-- [x] Customer 360 workspace provides 10 contextual tabs with connected records.
-- [x] 4-step Lead Conversion Wizard creates linked Organization, Contact, and Deal records.
-- [x] Interactive Kanban Pipeline supports moving deals between stages with real-time recalculation of pipeline and weighted forecast totals.
-- [x] Quote Builder supports multiple line items, discount guardrail validation, manager approval workflow, and conversion to Sales Order.
-- [x] Closed-Won opportunity triggers delivery project creation handoff.
-- [x] Support cases feature SLA countdown indicators, escalation, and resolution notes auto-posting to customer timeline.
-- [x] Communication simulator supports Email, Phone Calls, SMS with consent check, Live Chat, and Meetings.
 - [x] 14 specialist AI agents configured with autonomy modes and explainable decision trails.
 - [x] Browser `localStorage` persistence under `syvoris-ai:prototype:v1`.
 - [x] Brand identity strictly uses **SYVORIS Ai™** throughout (no legacy CRM branding in code or UI).
