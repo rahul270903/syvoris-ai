@@ -19,6 +19,7 @@ import { Register } from './app/Register';
 import { api, CurrentUserProfile } from './services/api';
 import { StatusPill } from './components/StatusPill';
 import { Toast } from './components/Toast';
+import { HelpCenterDrawer } from './components/HelpCenterDrawer';
 import type { ToastMessage } from './data/models';
 
 interface AppShellProps {
@@ -787,43 +788,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
         </div>
       )}
 
-      {showHelp && (
-        <div className="overlay" onMouseDown={e => e.target === e.currentTarget && setShowHelp(false)}>
-          <aside className="detail-panel narrow">
-            <div className="detail-head">
-              <div>
-                <span className="eyebrow">SYVORIS Ai SUPPORT</span>
-                <h2>Help centre</h2>
-                <p>Operational navigation and workflow guidance.</p>
-              </div>
-              <button className="icon-close" onClick={() => setShowHelp(false)}>
-                <X size={18} />
-              </button>
-            </div>
-            <div className="detail-scroll">
-              <div className="help-card">
-                <Sparkles size={18} />
-                <b>Getting started</b>
-                <p>Use the sidebar to open each workspace. Select a record to see details and actions. Use Ctrl/Cmd + K for global search.</p>
-              </div>
-              <div className="help-card">
-                <ShieldCheck size={18} />
-                <b>Platform Architecture & Governance</b>
-                <p>Enterprise multi-tenant data layer backed by PostgreSQL Row-Level Security, Redis cache, Radium ERP sync bridge, and 14 autonomous AI specialist agents.</p>
-              </div>
-              <button
-                className="btn primary full"
-                onClick={() => {
-                  setShowHelp(false);
-                  navigate('/workflows/lifecycle');
-                }}
-              >
-                Open workflow navigator <ChevronRight size={15} />
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
+      {showHelp && <HelpCenterDrawer onClose={() => setShowHelp(false)} />}
 
       <Toast items={toasts} onDismiss={id => setToasts(old => old.filter(t => t.id !== id))} />
     </div>

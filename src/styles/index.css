@@ -969,5 +969,118 @@ body { font-size: 16px; line-height: 1.5; }
   }
 }
 
+/* ==========================================================================
+   ENTERPRISE HELP & OPERATIONS CENTER DRAWER
+   ========================================================================== */
+.overlay:has(.help-drawer) {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: stretch !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(3px) !important;
+  padding: 0 !important;
+}
+
+.help-drawer {
+  position: relative !important;
+  width: min(520px, 100vw) !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  background: #ffffff !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-left: 1px solid #cbd5e1 !important;
+  box-shadow: -20px 0 55px rgba(15, 23, 42, 0.25) !important;
+  animation: formDrawerSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  overflow: hidden !important;
+  z-index: 10000 !important;
+}
+
+.help-drawer-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 20px 22px 16px !important;
+  border-bottom: 1px solid #edf2f7 !important;
+  background: #ffffff !important;
+  flex-shrink: 0 !important;
+}
+
+.help-tab-strip {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 10px 18px !important;
+  border-bottom: 1px solid #edf2f7 !important;
+  background: #ffffff !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  flex-shrink: 0 !important;
+}
+.help-tab-strip::-webkit-scrollbar {
+  display: none !important;
+}
+
+.help-tab-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 11px !important;
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #64748b !important;
+  font-size: 11.5px !important;
+  font-weight: 650 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+.help-tab-btn:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+.help-tab-btn.active {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+}
+
+.help-drawer-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  padding: 18px 22px !important;
+  background: #f8fafc !important;
+}
+
+.help-guide-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.15s ease !important;
+}
+.help-guide-card:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+}
+
+.help-drawer-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 14px 22px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  flex-shrink: 0 !important;
+}
+
+
 
 

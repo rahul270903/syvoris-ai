@@ -83,6 +83,9 @@ import { AIModelConfigView } from './AIModelConfigView';
 import { AgentPoliciesView } from './AgentPoliciesView';
 import { DataManagementAdminView } from './DataManagementAdminView';
 import { ImportExportView } from './ImportExportView';
+import { InternalTicketsView } from '../servicedesk/InternalTicketsView';
+import { EmployeesDirectoryView } from '../servicedesk/EmployeesDirectoryView';
+import { InternalFAQView } from '../servicedesk/InternalFAQView';
 import { api, type AccountItem } from '../../services/api';
 
 type Props = { item: { path: string; label: string; description: string; entity: string; category: string; icon: any } };
@@ -4213,6 +4216,33 @@ export function WorkspacePage({ item }: Props) {
     return (
       <div className="workspace-page">
         <ImportExportView />
+      </div>
+    );
+  }
+
+  // INTERNAL TICKETS & SERVICE DESK VIEW
+  if (item.path === '/internal/tickets' || item.entity === 'internalTickets') {
+    return (
+      <div className="workspace-page">
+        <InternalTicketsView />
+      </div>
+    );
+  }
+
+  // EMPLOYEES DIRECTORY VIEW
+  if (item.path === '/internal/employees' || item.entity === 'employees') {
+    return (
+      <div className="workspace-page">
+        <EmployeesDirectoryView />
+      </div>
+    );
+  }
+
+  // INTERNAL FAQ & SOPS VIEW
+  if (item.path === '/internal/faq') {
+    return (
+      <div className="workspace-page">
+        <InternalFAQView />
       </div>
     );
   }
