@@ -38,12 +38,12 @@ export function ServiceDashboardView() {
   }, []);
 
   const statusChartData = metrics ? [
-    { name: 'New', count: metrics.new_cases || metrics.status_distribution['New'] || 0, fill: '#3b82f6' },
-    { name: 'Assigned', count: metrics.assigned_cases || metrics.status_distribution['Assigned'] || 0, fill: '#6366f1' },
-    { name: 'In Progress', count: metrics.in_progress_cases || metrics.status_distribution['In Progress'] || 0, fill: '#f59e0b' },
-    { name: 'Awaiting', count: metrics.awaiting_customer_cases || metrics.status_distribution['Awaiting Customer'] || 0, fill: '#8b5cf6' },
-    { name: 'Resolved', count: metrics.resolved_cases || metrics.status_distribution['Resolved'] || 0, fill: '#10b981' },
-    { name: 'Closed', count: metrics.closed_cases || metrics.status_distribution['Closed'] || 0, fill: '#64748b' },
+    { name: 'New', count: metrics.new_cases || metrics.status_distribution?.['New'] || 0, fill: '#3b82f6' },
+    { name: 'Assigned', count: metrics.assigned_cases || metrics.status_distribution?.['Assigned'] || 0, fill: '#6366f1' },
+    { name: 'In Progress', count: metrics.in_progress_cases || metrics.status_distribution?.['In Progress'] || 0, fill: '#f59e0b' },
+    { name: 'Awaiting', count: metrics.awaiting_customer_cases || metrics.status_distribution?.['Awaiting Customer'] || 0, fill: '#8b5cf6' },
+    { name: 'Resolved', count: metrics.resolved_cases || metrics.status_distribution?.['Resolved'] || 0, fill: '#10b981' },
+    { name: 'Closed', count: metrics.closed_cases || metrics.status_distribution?.['Closed'] || 0, fill: '#64748b' },
   ] : [];
 
   return (

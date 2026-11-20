@@ -7,9 +7,38 @@
 import type {
   AccountItem,
   ContactItem,
+  LeadItem,
+  OpportunityItem,
+  ProductItem,
+  ServiceCatalogItem,
+  CatalogCategoryItem,
+  ProductBundleItem,
+  ProductAvailabilityItem,
+  TaxRuleItem,
+  CommercialTermsItem,
+  WarehouseLocationItem,
+  InventoryStockItem,
+  VendorProfileItem,
+  ProjectItem,
+  ProjectTaskItem,
+  ProjectMilestoneItem,
+  ProjectResourceItem,
+  ProjectCostItem,
+  CaseItem,
+  SLAPolicyItem,
+  ServiceDashboardMetrics,
+  SupportQueueItem,
+  KnowledgeArticleItem,
+  QuoteItem,
+  SalesOrderItem,
+  InvoiceItem,
+  CampaignItem,
+  AudienceSegmentItem,
+  EmailTemplateItem,
   UserMemberResponse,
   RoleResponse,
   PermissionResponse,
+  AuditEventItem,
   CurrentUserProfile,
   AuthResponse,
   TenantProfile
@@ -436,6 +465,268 @@ const initialContacts: ContactItem[] = [
   }
 ];
 
+const initialCases: CaseItem[] = [
+  {
+    id: 'case_01',
+    tenant_id: 'tenant_bp_01',
+    ref: 'CASE-2026-00001',
+    subject: 'Enterprise SSO SAML Certificate Expiration Warning',
+    description: 'Production identity provider signing certificate expires within 48 hours. Zero-downtime rollover required.',
+    account_id: 'acc_03',
+    account_name: 'Vertex Global Solutions',
+    contact_id: 'con_05',
+    contact_name: 'Dr. Aris Thorne',
+    status: 'New',
+    priority: 'High',
+    category: 'Security & Auth',
+    channel: 'Channel Portal',
+    sentiment: 'Urgent',
+    assigned_user_id: 'usr_arjun_01',
+    assigned_user_name: 'Arjun Mehta',
+    assigned_queue: 'Cloud & Identity Engineering',
+    sla_breached: true,
+    sla_response_deadline: new Date(Date.now() - 3600000).toISOString(),
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'case_02',
+    tenant_id: 'tenant_bp_01',
+    ref: 'CASE-2026-00002',
+    subject: 'API Webhook Latency Spikes during Peak Batch Ingestion',
+    description: 'Webhook queue backpressure resolved by tuning Redis stream consumer concurrency.',
+    account_id: 'acc_01',
+    account_name: 'NovaTech Solutions',
+    contact_id: 'con_02',
+    contact_name: 'Elena Vance',
+    status: 'Closed',
+    priority: 'High',
+    category: 'API & Performance',
+    channel: 'API Telemetry',
+    sentiment: 'Satisfied',
+    assigned_user_id: 'usr_karen_01',
+    assigned_user_name: 'Tier-1 Support Team',
+    assigned_queue: 'Tier-1 Help Desk',
+    sla_breached: false,
+    resolution_summary: 'Scaled Redis consumer group workers from 2 to 8 threads.',
+    resolved_at: new Date(Date.now() - 86400000).toISOString(),
+    closed_at: new Date(Date.now() - 82000000).toISOString(),
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'case_03',
+    tenant_id: 'tenant_bp_01',
+    ref: 'CASE-2026-00003',
+    subject: 'Updated VAT Exemption Certificate Verification for Q4',
+    description: 'Verified ministry tax exemption certificate and attached to customer master profile.',
+    account_id: 'acc_01',
+    account_name: 'NovaTech Solutions',
+    contact_id: 'con_01',
+    contact_name: 'Marcus Sterling',
+    status: 'Resolved',
+    priority: 'Normal',
+    category: 'Billing & Compliance',
+    channel: 'Email',
+    sentiment: 'Neutral',
+    assigned_user_id: 'usr_karen_01',
+    assigned_user_name: 'Tier-1 Support Team',
+    assigned_queue: 'CPQ & Billing Inquiries',
+    sla_breached: false,
+    resolution_summary: 'Tax profile exemption code updated and active.',
+    resolved_at: new Date(Date.now() - 120000000).toISOString(),
+    created_at: new Date(Date.now() - 250000000).toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'case_04',
+    tenant_id: 'tenant_bp_01',
+    ref: 'CASE-2026-00004',
+    subject: 'Telematics MQTT Handshake TLS 1.3 Cipher Negotiation',
+    description: 'Edge telematics hardware units reporting intermittent handshake resets with Miami ingest broker.',
+    account_id: 'acc_02',
+    account_name: 'Apex Global Logistics',
+    contact_id: 'con_03',
+    contact_name: 'Tariq Vance',
+    status: 'In Progress',
+    priority: 'High',
+    category: 'IoT Gateway',
+    channel: 'Customer Portal',
+    sentiment: 'Concerned',
+    assigned_user_id: 'usr_karen_01',
+    assigned_user_name: 'Karen Thompson',
+    assigned_queue: 'Tier-1 Help Desk',
+    sla_breached: false,
+    sla_response_deadline: new Date(Date.now() + 14400000).toISOString(),
+    created_at: new Date(Date.now() - 18000000).toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'case_05',
+    tenant_id: 'tenant_bp_01',
+    ref: 'CASE-2026-00005',
+    subject: 'DWDM Optical Port Transceiver Low Power Alarm',
+    description: 'Port 8 on subsea interface chassis reporting -22 dBm optical received power. Field crew dispatched with OTDR.',
+    account_id: 'acc_05',
+    account_name: 'Caribbean Fiber Solutions',
+    contact_id: 'con_07',
+    contact_name: 'Janelle Brown',
+    status: 'In Progress',
+    priority: 'Critical',
+    category: 'Optical Physical Layer',
+    channel: 'Carrier NOC Bridge',
+    sentiment: 'Critical',
+    assigned_user_id: 'usr_marcus_01',
+    assigned_user_name: 'Marcus Clarke',
+    assigned_queue: 'Optical NOC Incident Response',
+    sla_breached: false,
+    sla_response_deadline: new Date(Date.now() + 3600000).toISOString(),
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'case_06',
+    tenant_id: 'tenant_bp_01',
+    ref: 'CASE-2026-00006',
+    subject: 'Municipal SCADA Telemetry Gateway Intermittent Dropouts',
+    description: 'Streetlight monitoring remote terminal unit reporting packet loss during peak thunderstorm activity.',
+    account_id: 'acc_08',
+    account_name: 'Spalding Municipal Works',
+    contact_id: 'con_10',
+    contact_name: 'Tanya Blake',
+    status: 'Assigned',
+    priority: 'Normal',
+    category: 'SCADA Infrastructure',
+    channel: 'Webform',
+    sentiment: 'Neutral',
+    assigned_user_id: 'usr_devina_01',
+    assigned_user_name: 'Devina Foster',
+    assigned_queue: 'Tier-1 Help Desk',
+    sla_breached: false,
+    sla_response_deadline: new Date(Date.now() + 28800000).toISOString(),
+    created_at: new Date(Date.now() - 36000000).toISOString(),
+    updated_at: new Date().toISOString()
+  }
+];
+
+const initialSLAPolicies: SLAPolicyItem[] = [
+  {
+    id: 'sla_01',
+    tenant_id: 'tenant_bp_01',
+    ref: 'SLA-001',
+    name: 'P1 Mission-Critical Carrier Fiber Outage (15 Min / 2 Hr)',
+    description: 'Statutory carrier outage SLA triggering immediate NOC war room, SMS escalations, and rapid field dispatch.',
+    priority: 'Critical',
+    first_response_hours: 0.25,
+    resolution_hours: 2,
+    business_hours_only: false,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'sla_02',
+    tenant_id: 'tenant_bp_01',
+    ref: 'SLA-002',
+    name: 'P2 High-Priority Enterprise Degradation (30 Min / 4 Hr)',
+    description: 'High-priority production disruption policy for packet loss, route flap, or hardware failover incidents.',
+    priority: 'High',
+    first_response_hours: 0.5,
+    resolution_hours: 4,
+    business_hours_only: false,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'sla_03',
+    tenant_id: 'tenant_bp_01',
+    ref: 'SLA-003',
+    name: 'P3 Normal Technical Support & Configuration (2 Hr / 12 Hr)',
+    description: 'Standard technical assistance, firewall rule changes, and configuration requests.',
+    priority: 'Normal',
+    first_response_hours: 2,
+    resolution_hours: 12,
+    business_hours_only: true,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'sla_04',
+    tenant_id: 'tenant_bp_01',
+    ref: 'SLA-004',
+    name: 'P4 Routine Inquiry & Administrative Task (4 Hr / 48 Hr)',
+    description: 'General account inquiries, billing statement requests, and user profile management.',
+    priority: 'Low',
+    first_response_hours: 4,
+    resolution_hours: 48,
+    business_hours_only: true,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00Z'
+  }
+];
+
+const initialQueues: SupportQueueItem[] = [
+  {
+    id: 'q_01',
+    tenant_id: 'tenant_bp_01',
+    ref: 'QUE-001',
+    name: 'Tier-1 Help Desk',
+    code: 'TIER1',
+    description: 'General customer support and ticketing triage',
+    priority: 'Normal',
+    default_channel: 'Portal',
+    max_capacity: 50,
+    is_active: true,
+    active_case_count: 3,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'q_02',
+    tenant_id: 'tenant_bp_01',
+    ref: 'QUE-002',
+    name: 'Optical NOC Incident Response',
+    code: 'NOC-OPT',
+    description: 'Emergency fiber and DWDM optical physical layer alarms',
+    priority: 'Critical',
+    default_channel: 'Monitoring',
+    max_capacity: 25,
+    is_active: true,
+    active_case_count: 1,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'q_03',
+    tenant_id: 'tenant_bp_01',
+    ref: 'QUE-003',
+    name: 'Cloud & Identity Engineering',
+    code: 'ENG-ID',
+    description: 'SAML SSO, RBAC permissions, and API integrations',
+    priority: 'High',
+    default_channel: 'Portal',
+    max_capacity: 20,
+    is_active: true,
+    active_case_count: 2,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'q_04',
+    tenant_id: 'tenant_bp_01',
+    ref: 'QUE-004',
+    name: 'CPQ & Billing Inquiries',
+    code: 'FIN-BILL',
+    description: 'Invoices, VAT tax exemptions, and subscription billing',
+    priority: 'Normal',
+    default_channel: 'Email',
+    max_capacity: 30,
+    is_active: true,
+    active_case_count: 1,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z'
+  }
+];
+
 function getStored<T>(key: string, fallback: T[]): T[] {
   try {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${key}`);
@@ -654,7 +945,129 @@ export async function handleOfflineRequest<T>(endpoint: string, options: Request
     }
   }
 
-  // 4. Admin Users & Roles
+  // 4. Cases & Service Support
+  if (pathname === '/cases') {
+    const cases = getStored<CaseItem>('cases', initialCases);
+    if (method === 'GET') {
+      const q = (searchParams.get('q') || '').toLowerCase();
+      const filtered = cases.filter(c => !q || c.subject.toLowerCase().includes(q) || (c.ref && c.ref.toLowerCase().includes(q)));
+      return { items: filtered, total: filtered.length, page: 1, limit: 100 } as unknown as T;
+    }
+    if (method === 'POST') {
+      const newCase: CaseItem = {
+        id: `case_${Date.now()}`,
+        tenant_id: 'tenant_bp_01',
+        ref: `CASE-2026-${String(cases.length + 1).padStart(5, '0')}`,
+        subject: body.subject || 'New Support Incident',
+        description: body.description || '',
+        account_id: body.account_id,
+        account_name: body.account_name || 'NovaTech Solutions',
+        status: body.status || 'New',
+        priority: body.priority || 'Normal',
+        category: body.category || 'General',
+        channel: body.channel || 'Portal',
+        sentiment: 'Neutral',
+        sla_breached: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      cases.unshift(newCase);
+      setStored('cases', cases);
+      return newCase as unknown as T;
+    }
+  }
+
+  if (pathname === '/service/dashboard-metrics') {
+    const cases = getStored<CaseItem>('cases', initialCases);
+    const metrics: ServiceDashboardMetrics = {
+      total_cases: cases.length,
+      open_cases: cases.filter(c => ['New', 'Assigned', 'In Progress'].includes(c.status)).length,
+      new_cases: cases.filter(c => c.status === 'New').length,
+      assigned_cases: cases.filter(c => c.status === 'Assigned').length,
+      in_progress_cases: cases.filter(c => c.status === 'In Progress').length,
+      awaiting_customer_cases: cases.filter(c => c.status === 'Awaiting Customer').length,
+      resolved_cases: cases.filter(c => c.status === 'Resolved').length,
+      closed_cases: cases.filter(c => c.status === 'Closed').length,
+      unassigned_cases: 0,
+      sla_compliance_rate: 94.8,
+      sla_breached_count: cases.filter(c => c.sla_breached).length,
+      avg_first_response_hours: 0.4,
+      avg_resolution_hours: 3.2,
+      priority_distribution: {
+        'Critical': cases.filter(c => c.priority === 'Critical').length,
+        'High': cases.filter(c => c.priority === 'High').length,
+        'Normal': cases.filter(c => c.priority === 'Normal').length,
+        'Low': cases.filter(c => c.priority === 'Low').length
+      },
+      status_distribution: {
+        'New': cases.filter(c => c.status === 'New').length,
+        'Assigned': cases.filter(c => c.status === 'Assigned').length,
+        'In Progress': cases.filter(c => c.status === 'In Progress').length,
+        'Awaiting Customer': cases.filter(c => c.status === 'Awaiting Customer').length,
+        'Resolved': cases.filter(c => c.status === 'Resolved').length,
+        'Closed': cases.filter(c => c.status === 'Closed').length
+      },
+      channel_distribution: {
+        'Portal': 2,
+        'Email': 2,
+        'Phone': 1,
+        'API': 1
+      },
+      agent_workloads: [
+        { user_id: 'usr_arjun_01', user_name: 'Arjun Mehta', active_cases: 2, resolved_cases: 5 },
+        { user_id: 'usr_karen_01', user_name: 'Karen Thompson', active_cases: 2, resolved_cases: 8 }
+      ],
+      recent_activity: cases.slice(0, 4).map(c => ({
+        id: c.id,
+        ref: c.ref,
+        subject: c.subject,
+        priority: c.priority,
+        status: c.status,
+        channel: c.channel,
+        updated_at: c.updated_at
+      }))
+    };
+    return metrics as unknown as T;
+  }
+
+  if (pathname === '/service/sla' || pathname.startsWith('/service/sla/')) {
+    const policies = getStored<SLAPolicyItem>('sla_policies', initialSLAPolicies);
+    if (method === 'GET') {
+      return policies as unknown as T;
+    }
+    if (method === 'POST') {
+      const newPol: SLAPolicyItem = {
+        id: `sla_${Date.now()}`,
+        tenant_id: 'tenant_bp_01',
+        ref: `SLA-00${policies.length + 1}`,
+        name: body.name || 'New SLA Policy',
+        priority: body.priority || 'Normal',
+        first_response_hours: body.first_response_hours || 2,
+        resolution_hours: body.resolution_hours || 8,
+        business_hours_only: body.business_hours_only ?? true,
+        is_active: true,
+        created_at: new Date().toISOString()
+      };
+      policies.push(newPol);
+      setStored('sla_policies', policies);
+      return newPol as unknown as T;
+    }
+    if (method === 'PUT' || method === 'PATCH') {
+      const polId = pathname.replace('/service/sla/', '');
+      const idx = policies.findIndex(p => p.id === polId);
+      if (idx !== -1) {
+        policies[idx] = { ...policies[idx], ...body, updated_at: new Date().toISOString() };
+        setStored('sla_policies', policies);
+        return policies[idx] as unknown as T;
+      }
+    }
+  }
+
+  if (pathname === '/service/queues') {
+    return initialQueues as unknown as T;
+  }
+
+  // 5. Admin Users & Roles
   if (pathname === '/admin/users/' || pathname === '/admin/users') {
     return {
       items: [
@@ -684,7 +1097,7 @@ export async function handleOfflineRequest<T>(endpoint: string, options: Request
     ] as unknown as T;
   }
 
-  // 5. AI Copilot Query
+  // 6. AI Copilot Query
   if (pathname === '/ai/chat' || pathname.startsWith('/ai/copilot')) {
     return {
       answer: 'Hello! I am SYVORIS AI Copilot, grounded in your enterprise CRM dataset. BluePeak Innovations currently oversees 8 account master records with $1.9M in weighted pipeline. How may I assist your operations today?',

@@ -46,8 +46,8 @@ export function SLAManagementView() {
         api.listSLAPolicies(),
         api.listCases({ limit: 50 })
       ]);
-      setPolicies(policiesRes || []);
-      setActiveCases(casesRes.items || []);
+      setPolicies(Array.isArray(policiesRes) ? policiesRes : (policiesRes as any)?.items || []);
+      setActiveCases(Array.isArray(casesRes) ? casesRes : (casesRes as any)?.items || []);
     } catch (err: any) {
       setError(err?.message || 'Failed to load SLA policies.');
     } finally {
