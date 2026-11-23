@@ -16,6 +16,12 @@ async def pg_engine():
         engine = create_async_engine(POSTGRES_TEST_URL, poolclass=NullPool)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
+            try:
+                # Ensure the current role is not superuser and has no bypassrls, so PostgreSQL kernel RLS is strictly enforced
+                await conn.execute(text("ALTER ROLE CURRENT_USER NOSUPERUSER NOBYPASSRLS;"))
+                await conn.commit()
+            except Exception:
+                pass
         yield engine
         await engine.dispose()
     except Exception as e:
