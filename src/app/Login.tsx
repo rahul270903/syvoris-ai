@@ -58,8 +58,8 @@ function PasswordStrengthBar({ password }: { password: string }) {
 }
 
 export function Login({ onLogin, onNavigateRegister }: LoginProps) {
-  const [email, setEmail] = useState('arjun.mehta@example.com');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('rrborkar09@gmail.com');
+  const [password, setPassword] = useState('Rahul@2026!');
   const [tenantSlug, setTenantSlug] = useState('bluepeak-innovations');
   const [showTenantField, setShowTenantField] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -70,7 +70,7 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
   // Forgot Password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotStep, setForgotStep] = useState<'request' | 'confirm'>('request');
-  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('rrborkar09@gmail.com');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -244,8 +244,20 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
           <h2>Sign in to SYVORIS Ai</h2>
           <p>Access your customer, sales and service workspace.</p>
 
-          <div className="flex items-center gap-2 my-3">
+          <div className="flex flex-wrap items-center gap-2 my-3">
             <span className="text-[11px] text-slate-400 font-medium">Quick switch:</span>
+            <button
+              type="button"
+              className={`text-[11px] px-2.5 py-1 rounded border transition font-medium ${email === 'rrborkar09@gmail.com' ? 'bg-cyan-950/80 border-cyan-400 text-cyan-200 ring-1 ring-cyan-500/50' : 'bg-slate-850 border-slate-700 text-slate-300 hover:border-slate-500'}`}
+              onClick={() => {
+                setEmail('rrborkar09@gmail.com');
+                setPassword('Rahul@2026!');
+                setTenantSlug('bluepeak-innovations');
+                setError('');
+              }}
+            >
+              Rahul Borkar (Owner)
+            </button>
             <button
               type="button"
               className={`text-[11px] px-2.5 py-1 rounded border transition font-medium ${email === 'arjun.mehta@example.com' ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200' : 'bg-slate-850 border-slate-700 text-slate-300 hover:border-slate-500'}`}
@@ -256,7 +268,7 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
                 setError('');
               }}
             >
-              Arjun Mehta (Owner)
+              Arjun Mehta
             </button>
             <button
               type="button"
@@ -468,17 +480,28 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
                         </code>
                       </div>
                     )}
-                    <button
-                      type="button"
-                      className="w-full mt-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow"
-                      onClick={() => {
-                        setForgotStep('confirm');
-                        setResetSuccessMessage('');
-                        setResetError('');
-                      }}
-                    >
-                      Enter Recovery Token & Set New Password <ArrowRight size={14} />
-                    </button>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow"
+                        onClick={() => {
+                          setForgotStep('confirm');
+                          setResetSuccessMessage('');
+                          setResetError('');
+                        }}
+                      >
+                        Enter Recovery Token <ArrowRight size={14} />
+                      </button>
+                      <a
+                        href="https://mail.google.com/mail/u/0/#search/SYVORIS"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-semibold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1 border border-slate-700"
+                        title="Check Gmail for recovery email"
+                      >
+                        <Mail size={13} /> Open Gmail
+                      </a>
+                    </div>
                   </div>
                 )}
 

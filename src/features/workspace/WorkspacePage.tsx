@@ -1845,6 +1845,20 @@ export function WorkspacePage({ item }: Props) {
             lines: orderLines as any,
           });
           notify(`Sales order ${newOrder.ref} created in PostgreSQL.`);
+          try {
+            await api.sendDispatchedEmail({
+              to: 'rrborkar09@gmail.com',
+              from: 'orders@syvoris.ai',
+              subject: `Order Confirmation: ${newOrder.ref} ($${Number(newOrder.total_amount || 0).toLocaleString()})`,
+              category: 'Order Confirmation',
+              preview: `Order ${newOrder.ref} confirmed for ${fields.name || 'Enterprise Deployment'}`,
+              content: `Hello Rahul Borkar,\n\nYour Sales Order ${newOrder.ref} has been successfully registered and provisioned in the BluePeak Innovations ERP.\n\nOrder Ref: ${newOrder.ref}\nAccount: ${fields.name || fields.customer || 'Enterprise Account'}\nTotal Amount: $${Number(newOrder.total_amount || 0).toLocaleString()} USD\nDelivery Depot: ${fields.warehouse || 'Kingston Central Logistics Hub'}\nStatus: Confirmed & Routed to Warehouse\nRecipient Email: rrborkar09@gmail.com\n\nTrack your order in real-time in the Syvoris Platform at https://syvoris-ai.vercel.app/sales-orders.\n\nBest regards,\nSYVORIS Enterprise Operations`,
+              meta: { order_ref: newOrder.ref, amount: newOrder.total_amount, customer: fields.name || fields.customer }
+            });
+            notify(`Order confirmation dispatched to rrborkar09@gmail.com`);
+          } catch (e) {
+            console.warn('Order confirmation dispatch error:', e);
+          }
         }
         await fetchLiveCRMData();
         closeModal();
@@ -4673,6 +4687,30 @@ export function WorkspacePage({ item }: Props) {
               {a}
             </button>
           ))}
+          {(config.entity === 'salesOrders' || selected.ref?.startsWith('SO-') || selected.ref?.startsWith('ORD-') || item.path === '/sales-orders') && (
+            <button
+              className="btn primary"
+              style={{ background: '#0284c7', borderColor: '#0369a1', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              onClick={async () => {
+                try {
+                  await api.sendDispatchedEmail({
+                    to: 'rrborkar09@gmail.com',
+                    from: 'orders@syvoris.ai',
+                    subject: `Order Dispatch Notice: ${selected.ref} - ${selected.title} (${money(selected.amount)})`,
+                    category: 'Order Confirmation',
+                    preview: `Order ${selected.ref} routed to rrborkar09@gmail.com`,
+                    content: `Hello Rahul Borkar,\n\nSales Order ${selected.ref} (${selected.title}) has been verified and dispatched to your email.\n\nOrder Value: ${money(selected.amount)}\nAccount: ${selected.owner || 'BluePeak Innovations'}\nDate: ${selected.date}\nStatus: ${selected.status}\nRecipient Email: rrborkar09@gmail.com\n\nAll tracking updates and delivery manifests are active for this account.`,
+                    meta: { order_ref: selected.ref, amount: selected.amount, status: selected.status }
+                  });
+                  notify('Order dispatch confirmation sent to rrborkar09@gmail.com');
+                } catch (err: any) {
+                  notify(`Email dispatch failed: ${err?.message || 'Error'}`);
+                }
+              }}
+            >
+              <Mail size={14} /> Dispatch to rrborkar09@gmail.com
+            </button>
+          )}
           <button className="btn danger-ghost" onClick={() => setConfirmDelete(true)}>
             <Trash2 size={14}/> Move to recycle bin
           </button>

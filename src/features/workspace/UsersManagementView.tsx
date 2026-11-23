@@ -25,6 +25,19 @@ export interface AdminUser {
 
 const INITIAL_USERS: AdminUser[] = [
   {
+    id: 'usr-100',
+    name: 'Rahul Borkar',
+    email: 'rrborkar09@gmail.com',
+    role: 'Super Administrator',
+    team: 'Executive Leadership',
+    profile: 'Global Tenant Owner & Founder',
+    mfaEnabled: true,
+    status: 'Active',
+    lastLogin: 'Active now (Current Session)',
+    createdDate: '2026-01-01',
+    phone: '+1 (876) 920-4000'
+  },
+  {
     id: 'usr-101',
     name: 'Arjun Mehta',
     email: 'arjun.mehta@bluepeak.internal',

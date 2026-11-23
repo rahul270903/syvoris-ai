@@ -4,7 +4,7 @@ import {
   Bell, ChevronDown, ChevronLeft, ChevronRight, Command, HelpCircle,
   LayoutDashboard, LogOut, Menu, Search, Settings, ShieldCheck,
   Sparkles, Workflow, X, Plus, Target, Briefcase, FileCheck2,
-  LifeBuoy, CheckSquare, Building2, Check, ArrowUpRight, Zap, ChevronsUpDown
+  LifeBuoy, CheckSquare, Building2, Check, ArrowUpRight, Zap, ChevronsUpDown, Mail
 } from 'lucide-react';
 import { navGroups, allNavItems, getNavItem } from './app/navigation';
 import { CRMProvider, useCRM } from './store/CRMStore';
@@ -20,6 +20,8 @@ import { api, CurrentUserProfile } from './services/api';
 import { StatusPill } from './components/StatusPill';
 import { Toast } from './components/Toast';
 import { HelpCenterDrawer } from './components/HelpCenterDrawer';
+import { EmailDispatchCenterModal } from './components/EmailDispatchCenterModal';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import type { ToastMessage } from './data/models';
 
 interface AppShellProps {
@@ -49,15 +51,34 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   const [userProfile, setUserProfile] = useState<CurrentUserProfile>(initialProfile);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [dispatchedCount, setDispatchedCount] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:dispatched_emails');
+      if (raw) return JSON.parse(raw).length;
+    } catch {}
+    return 3;
+  });
   const tenantDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleRefresh = () => setNotifRefreshTrigger(v => v + 1);
+    const updateEmailCount = () => {
+      try {
+        const raw = localStorage.getItem('syvoris:dispatched_emails');
+        if (raw) setDispatchedCount(JSON.parse(raw).length);
+      } catch {}
+    };
     window.addEventListener('syvoris:notifications:refresh', handleRefresh);
+    window.addEventListener('syvoris:email_dispatched', updateEmailCount);
     window.addEventListener('storage', handleRefresh);
+    window.addEventListener('storage', updateEmailCount);
     return () => {
       window.removeEventListener('syvoris:notifications:refresh', handleRefresh);
+      window.removeEventListener('syvoris:email_dispatched', updateEmailCount);
       window.removeEventListener('storage', handleRefresh);
+      window.removeEventListener('storage', updateEmailCount);
     };
   }, []);
 
@@ -252,7 +273,26 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
         isRead: readNotificationIds.includes(x.id)
       }));
 
-    return [...aiProposalNotifs, ...decisionNotifs, ...caseNotifs, ...taskNotifs];
+    // 5. Recent Dispatched Orders & Notifications for Rahul Borkar
+    let emailNotifs: any[] = [];
+    try {
+      const rawEmails = localStorage.getItem('syvoris:dispatched_emails');
+      if (rawEmails) {
+        const emails = JSON.parse(rawEmails);
+        if (Array.isArray(emails)) {
+          emailNotifs = emails.slice(0, 3).map((e: any) => ({
+            id: e.id,
+            path: e.meta?.order_ref ? '/sales-orders' : '/ai/activity',
+            title: `Order & Notice Dispatched (${e.to})`,
+            body: e.subject,
+            time: e.sent_at ? new Date(e.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Dispatched',
+            isRead: readNotificationIds.includes(e.id)
+          }));
+        }
+      }
+    } catch {}
+
+    return [...aiProposalNotifs, ...decisionNotifs, ...caseNotifs, ...taskNotifs, ...emailNotifs];
   }, [records, notifRefreshTrigger, readNotificationIds]);
 
   const unreadNotifications = useMemo(() => {
@@ -675,6 +715,25 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
               )}
             </div>
 
+            {/* Email & Order Dispatch Hub Trigger */}
+            <div className="top-menu-wrap">
+              <button
+                className={`top-icon ${showEmailModal ? 'selected' : ''}`}
+                onClick={() => {
+                  setShowEmailModal(true);
+                  setNotificationsOpen(false);
+                  setProfileOpen(false);
+                  setQuickCreateOpen(false);
+                  setTelemetryOpen(false);
+                }}
+                title="Email & Order Dispatch Hub (rrborkar09@gmail.com)"
+                aria-label="Email dispatch hub"
+              >
+                <Mail size={18} />
+                {dispatchedCount > 0 && <i className="notif-count" style={{ background: '#0284c7' }}>{dispatchedCount}</i>}
+              </button>
+            </div>
+
             {/* Notifications Menu */}
             <div className="top-menu-wrap">
               <button
@@ -772,10 +831,10 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                 aria-label="User profile"
               >
                 <span className="profile-avatar">
-                  {userProfile.user ? `${userProfile.user.first_name[0] || 'A'}${userProfile.user.last_name[0] || 'M'}` : 'AM'}
+                  {userProfile.user ? `${userProfile.user.first_name[0] || 'R'}${userProfile.user.last_name[0] || 'B'}` : 'RB'}
                 </span>
                 <span className="profile-info">
-                  <b className="profile-name">{userProfile.user?.full_name || 'Arjun Mehta'}</b>
+                  <b className="profile-name">{userProfile.user?.full_name || 'Rahul Borkar'}</b>
                   <small className="profile-role">{userProfile.active_tenant?.role || 'Tenant Owner'}</small>
                 </span>
                 <ChevronDown size={13} className={`profile-chevron ${profileOpen ? 'open' : ''}`} />
@@ -785,11 +844,11 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                 <div className="dropdown profile-dropdown">
                   <div className="profile-summary">
                     <span className="profile-avatar large">
-                      {userProfile.user ? `${userProfile.user.first_name[0] || 'A'}${userProfile.user.last_name[0] || 'M'}` : 'AM'}
+                      {userProfile.user ? `${userProfile.user.first_name[0] || 'R'}${userProfile.user.last_name[0] || 'B'}` : 'RB'}
                     </span>
                     <span>
-                      <b>{userProfile.user?.full_name || 'Arjun Mehta'}</b>
-                      <small>{userProfile.user?.email || 'arjun.mehta@bluepeak.example'}</small>
+                      <b>{userProfile.user?.full_name || 'Rahul Borkar'}</b>
+                      <small>{userProfile.user?.email || 'rrborkar09@gmail.com'}</small>
                     </span>
                   </div>
                   <label>ASSIGNED ORGANIZATION ROLE</label>
@@ -802,6 +861,15 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                       Enforced by PostgreSQL RLS & RBAC policies
                     </div>
                   </div>
+                  <div className="profile-divider" />
+                  <button onClick={() => { setProfileOpen(false); setShowEmailModal(true); }}>
+                    <Mail size={14} className="text-cyan-400" />
+                    <span>Email & Orders Hub (<span className="text-cyan-300">rrborkar09@gmail.com</span>)</span>
+                  </button>
+                  <button onClick={() => { setProfileOpen(false); setShowChangePasswordModal(true); }}>
+                    <ShieldCheck size={14} className="text-emerald-400" />
+                    <span>Change Password / Security</span>
+                  </button>
                   <div className="profile-divider" />
                   <button onClick={() => { setProfileOpen(false); navigate('/customers/360'); }}>
                     <Settings size={14} />
@@ -956,6 +1024,20 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
       )}
 
       {showHelp && <HelpCenterDrawer onClose={() => setShowHelp(false)} />}
+
+      <EmailDispatchCenterModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        userEmail={userProfile?.user?.email || 'rrborkar09@gmail.com'}
+        userName={userProfile?.user?.full_name || 'Rahul Borkar'}
+      />
+
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        userEmail={userProfile?.user?.email || 'rrborkar09@gmail.com'}
+        userName={userProfile?.user?.full_name || 'Rahul Borkar'}
+      />
 
       <Toast items={toasts} onDismiss={id => setToasts(old => old.filter(t => t.id !== id))} />
     </div>

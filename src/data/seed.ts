@@ -1359,6 +1359,14 @@ export const seedData: CRMData = {
   ],
 
   users: [
+    r('usr_0', 'USR-0000', 'Rahul Borkar', 'Active', 'System Admin', 0, {
+      name: 'Rahul Borkar',
+      email: 'rrborkar09@gmail.com',
+      role: 'Tenant Owner & Platform Administrator',
+      team: 'Executive Leadership & Engineering',
+      status: 'Active',
+      description: 'Primary tenant owner, full super-admin access across CRM, CPQ, and AI workforce.'
+    }),
     r('usr_1', 'USR-0001', 'Arjun Mehta', 'Active', 'System Admin', 0, {
       name: 'Arjun Mehta',
       email: 'arjun.mehta@example.com',

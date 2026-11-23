@@ -48,6 +48,48 @@ async def sync():
             owner_role = r_res2.scalars().first()
         owner_role_id = owner_role.id if owner_role else None
 
+        # 1.5 Ensure Rahul Borkar exists as Primary Owner
+        rahul_res = await db.execute(select(User).where(User.email == "rrborkar09@gmail.com"))
+        rahul = rahul_res.scalar_one_or_none()
+        if rahul:
+            rahul.password_hash = get_password_hash("Rahul@2026!")
+            rahul.is_verified = True
+            rahul_id = rahul.id
+            print(f"Updated Rahul Borkar ({rahul_id}) password to 'Rahul@2026!'")
+        else:
+            rahul = User(
+                email="rrborkar09@gmail.com",
+                password_hash=get_password_hash("Rahul@2026!"),
+                first_name="Rahul",
+                last_name="Borkar",
+                is_verified=True
+            )
+            db.add(rahul)
+            await db.flush()
+            rahul_id = rahul.id
+            print(f"Created Rahul Borkar ({rahul_id})")
+
+        # Ensure membership for Rahul
+        rm_res = await db.execute(
+            select(TenantMembership).where(
+                TenantMembership.tenant_id == tenant_id,
+                TenantMembership.user_id == rahul_id
+            )
+        )
+        if not rm_res.scalar_one_or_none():
+            db.add(TenantMembership(tenant_id=tenant_id, user_id=rahul_id, status="Active"))
+
+        # Ensure UserRole for Rahul
+        if owner_role_id:
+            rur_res = await db.execute(
+                select(UserRole).where(
+                    UserRole.user_id == rahul_id,
+                    UserRole.tenant_id == tenant_id
+                )
+            )
+            if not rur_res.scalar_one_or_none():
+                db.add(UserRole(user_id=rahul_id, role_id=owner_role_id, tenant_id=tenant_id))
+
         # 2. Update Arjun Mehta
         arjun_res = await db.execute(select(User).where(User.email == "arjun.mehta@example.com"))
         arjun = arjun_res.scalar_one_or_none()

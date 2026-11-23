@@ -2117,6 +2117,33 @@ class ApiClient {
     });
   }
 
+  public async changePassword(new_password: string, old_password?: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ new_password, old_password }),
+    });
+  }
+
+  public async listDispatchedEmails(email?: string): Promise<any[]> {
+    const qs = email ? `?email=${encodeURIComponent(email)}` : '';
+    return this.request<any[]>(`/notifications/dispatched-emails${qs}`);
+  }
+
+  public async sendDispatchedEmail(payload: {
+    to: string;
+    from?: string;
+    subject: string;
+    category?: string;
+    preview?: string;
+    content: string;
+    meta?: Record<string, any>;
+  }): Promise<any> {
+    return this.request<any>('/notifications/dispatched-emails', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   public async verifyEmail(token: string): Promise<{ message: string }> {
     return this.request<{ message: string }>('/auth/verify-email', {
       method: 'POST',
