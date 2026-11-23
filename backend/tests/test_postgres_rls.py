@@ -13,18 +13,37 @@ POSTGRES_TEST_URL = os.getenv("POSTGRES_TEST_URL", "postgresql+asyncpg://syvoris
 @pytest_asyncio.fixture(scope="function")
 async def pg_engine():
     try:
-        engine = create_async_engine(POSTGRES_TEST_URL, poolclass=NullPool)
+        admin_engine = create_async_engine(POSTGRES_TEST_URL, poolclass=NullPool)
+        test_url = POSTGRES_TEST_URL
+        async with admin_engine.connect() as conn:
+            is_super = await conn.execute(text("SELECT usesuper FROM pg_user WHERE usename = CURRENT_USER;"))
+            val = is_super.scalar()
+            if val is True:
+                # In CI containers, POSTGRES_USER is created as superuser. Superusers bypass PostgreSQL kernel RLS.
+                # Provision a non-superuser application role to rigorously verify RLS enforcement.
+                await conn.execute(text("""
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'syvoris_rls_runner') THEN
+                            CREATE ROLE syvoris_rls_runner WITH LOGIN PASSWORD 'syvoris_ci_secure_2026' NOSUPERUSER NOBYPASSRLS;
+                        END IF;
+                    END
+                    $$;
+                    GRANT ALL PRIVILEGES ON SCHEMA public TO syvoris_rls_runner;
+                    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO syvoris_rls_runner;
+                    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO syvoris_rls_runner;
+                    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO syvoris_rls_runner;
+                """))
+                await conn.commit()
+                from sqlalchemy.engine.url import make_url
+                u = make_url(POSTGRES_TEST_URL)
+                u = u.set(username="syvoris_rls_runner")
+                test_url = str(u)
+        await admin_engine.dispose()
+
+        engine = create_async_engine(test_url, poolclass=NullPool)
         async with engine.connect() as conn:
-            try:
-                # Dynamically retrieve acting role and ensure it is not superuser and has no bypassrls,
-                # so PostgreSQL kernel RLS policies are strictly enforced during tests.
-                res = await conn.execute(text("SELECT current_user;"))
-                acting_role = res.scalar()
-                if acting_role:
-                    await conn.execute(text(f'ALTER ROLE "{acting_role}" NOSUPERUSER NOBYPASSRLS;'))
-                    await conn.commit()
-            except Exception:
-                pass
+            await conn.execute(text("SELECT 1"))
         yield engine
         await engine.dispose()
     except Exception as e:
@@ -149,7 +168,7 @@ async def test_postgresql_connection_pooling_leak_prevention(pg_session_factory,
     VERIFY CONNECTION REUSE DOES NOT LEAK TENANT CONTEXT ACROSS POOLED SESSIONS:
     With pool_size=1, force the exact same connection to be reused in two back-to-back transactions.
     """
-    single_engine = create_async_engine(POSTGRES_TEST_URL, pool_size=1, max_overflow=0)
+    single_engine = create_async_engine(pg_engine.url, pool_size=1, max_overflow=0)
     single_session_factory = async_sessionmaker(bind=single_engine, class_=AsyncSession, expire_on_commit=False)
 
     tenant_secret_id = uuid.uuid4()
