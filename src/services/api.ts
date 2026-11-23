@@ -3980,6 +3980,13 @@ class ApiClient {
     });
   }
 
+  public async createAIAgent(payload: Partial<AIAgentItem>): Promise<AIAgentItem> {
+    return this.request<AIAgentItem>('/ai/agents', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   public async listAIProposals(params?: { status?: string; agent_id?: string }): Promise<AIProposalItem[]> {
     const q = new URLSearchParams();
     if (params?.status) q.set('status', params.status);

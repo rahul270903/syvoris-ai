@@ -135,7 +135,29 @@ const DEFAULT_AVAILABILITY: ProductAvailabilityItem[] = [
 export function ProductAvailabilityView() {
   const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
-  const [items, setItems] = useState<ProductAvailabilityItem[]>(DEFAULT_AVAILABILITY);
+  const [items, setItems] = useState<ProductAvailabilityItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('syvoris:catalog_availability');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: ProductAvailabilityItem) => {
+            if (item.item_name === 'Cisco networ') {
+              return {
+                ...item,
+                item_name: 'Cisco Catalyst 9300 48-Port PoE+ Managed Switch',
+                custom_fields: { ...item.custom_fields, sku: 'NCT-CISCO-9300' }
+              };
+            }
+            return item;
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Failed parsing stored availability:', e);
+    }
+    return DEFAULT_AVAILABILITY;
+  });
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -152,10 +174,20 @@ export function ProductAvailabilityView() {
     try {
       const liveList = await api.listAvailability();
       if (liveList && liveList.length > 0) {
-        const map = new Map<string, ProductAvailabilityItem>();
-        DEFAULT_AVAILABILITY.forEach(a => map.set(a.item_name, a));
-        liveList.forEach(a => map.set(a.item_name || a.id, a));
-        setItems(Array.from(map.values()));
+        const cleaned = liveList.map((item) => {
+          if (item.item_name === 'Cisco networ') {
+            return {
+              ...item,
+              item_name: 'Cisco Catalyst 9300 48-Port PoE+ Managed Switch',
+              custom_fields: { ...item.custom_fields, sku: 'NCT-CISCO-9300' }
+            };
+          }
+          return item;
+        });
+        setItems(cleaned);
+        try {
+          localStorage.setItem('syvoris:catalog_availability', JSON.stringify(cleaned));
+        } catch {}
       }
       notify('Refreshed availability records from database.');
     } catch (err) {
@@ -170,7 +202,13 @@ export function ProductAvailabilityView() {
     if (!window.confirm(`Move "${item.item_name}" availability rule to recycle bin?`)) return;
     try {
       await api.deleteAvailability(item.id).catch(() => null);
-      setItems(prev => prev.filter(i => i.id !== item.id));
+      setItems(prev => {
+        const updated = prev.filter(i => i.id !== item.id);
+        try {
+          localStorage.setItem('syvoris:catalog_availability', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       addToRecycleBin({
         id: item.id,
         ref: item.custom_fields?.sku || `AV-${item.id.slice(0, 6)}`,
@@ -248,7 +286,13 @@ export function ProductAvailabilityView() {
         custom_fields: {},
       });
 
-      setItems(prev => [created, ...prev]);
+      setItems(prev => {
+        const updated = [created, ...prev];
+        try {
+          localStorage.setItem('syvoris:catalog_availability', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       setShowCreateModal(false);
       addEvent('catalog.availability_created', { ref: created.item_name }, `Configured availability for ${created.item_name}`);
       addAudit('Availability Rule Created', 'Arjun Mehta', `Configured availability for ${created.item_name}`);
@@ -271,7 +315,13 @@ export function ProductAvailabilityView() {
   const handleUpdateStatus = async (item: ProductAvailabilityItem, nextStatus: string) => {
     try {
       await api.updateAvailability(item.id, { status: nextStatus });
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: nextStatus } : i));
+      setItems(prev => {
+        const updated = prev.map(i => i.id === item.id ? { ...i, status: nextStatus } : i);
+        try {
+          localStorage.setItem('syvoris:catalog_availability', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       notify(`Status for ${item.item_name} updated to ${nextStatus}.`);
       addAudit('Availability Status Changed', 'Arjun Mehta', `${item.item_name} set to ${nextStatus}`);
     } catch (err: any) {

@@ -160,7 +160,18 @@ const DEFAULT_STOCK_ITEMS: StockRow[] = [
 export function StockManagementView() {
   const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
-  const [stockItems, setStockItems] = useState<StockRow[]>(DEFAULT_STOCK_ITEMS);
+  const [stockItems, setStockItems] = useState<StockRow[]>(() => {
+    try {
+      const stored = localStorage.getItem('syvoris:inventory_stock');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed parsing stored stock:', e);
+    }
+    return DEFAULT_STOCK_ITEMS;
+  });
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [healthFilter, setHealthFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,7 +227,11 @@ export function StockManagementView() {
             bin_location: existing.bin_location || (s as any).bin_location || 'Standard Storage'
           });
         });
-        setStockItems(Array.from(map.values()));
+        const combined = Array.from(map.values());
+        setStockItems(combined);
+        try {
+          localStorage.setItem('syvoris:inventory_stock', JSON.stringify(combined));
+        } catch {}
       }
       notify('Refreshed stock inventory records from database.');
     } catch (err) {
@@ -230,7 +245,13 @@ export function StockManagementView() {
   const handleDeleteStockItem = async (item: StockRow) => {
     if (!window.confirm(`Move inventory item ${item.product_sku} (${item.product_name}) to recycle bin?`)) return;
     try {
-      setStockItems(prev => prev.filter(s => s.id !== item.id));
+      setStockItems(prev => {
+        const updated = prev.filter(s => s.id !== item.id);
+        try {
+          localStorage.setItem('syvoris:inventory_stock', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       if (detailItem && detailItem.id === item.id) setDetailItem(null);
 
       addToRecycleBin({
@@ -351,7 +372,13 @@ export function StockManagementView() {
       total_value: newOnHand * item.unit_cost
     };
 
-    setStockItems(prev => prev.map(s => s.id === item.id ? updatedRow : s));
+    setStockItems(prev => {
+      const updated = prev.map(s => s.id === item.id ? updatedRow : s);
+      try {
+        localStorage.setItem('syvoris:inventory_stock', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     try {
       await api.recordStockMovement({
@@ -408,7 +435,13 @@ export function StockManagementView() {
         total_value: onHand * unitCost,
         bin_location: newStock.bin_location,
       };
-      setStockItems(prev => [newRow, ...prev]);
+      setStockItems(prev => {
+        const updated = [newRow, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_stock', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       addEvent('inventory.created', { ref: newRow.product_sku || 'STK' }, `Created new warehouse inventory tracking for ${newRow.product_sku}`);
       addAudit(`Stock tracking created for ${newRow.product_sku}`, 'Inventory', created.id);
       notify(`Stock item ${newRow.product_sku} registered at ${newRow.location_name}.`);
@@ -434,7 +467,13 @@ export function StockManagementView() {
         unit_cost: unitCost,
         total_value: onHand * unitCost,
       };
-      setStockItems(prev => [fallbackRow, ...prev]);
+      setStockItems(prev => {
+        const updated = [fallbackRow, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_stock', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       notify(`Stock item ${fallbackRow.product_sku} saved to local inventory.`);
     }
 

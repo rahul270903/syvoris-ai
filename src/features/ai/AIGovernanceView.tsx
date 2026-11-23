@@ -207,8 +207,28 @@ export function AIGovernanceView() {
   const navigate = useNavigate();
   const { addAudit } = useCRM();
 
-  const [policies, setPolicies] = useState<GuardrailPolicy[]>(INITIAL_POLICIES);
-  const [agents, setAgents] = useState<GovernedAgent[]>(INITIAL_GOVERNED_AGENTS);
+  const [policies, setPolicies] = useState<GuardrailPolicy[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:ai_governance:policies');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_POLICIES;
+  });
+
+  const [agents, setAgents] = useState<GovernedAgent[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:ai_governance:agents');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_GOVERNED_AGENTS;
+  });
+
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
   const [activeTab, setActiveTab] = useState<'Policies' | 'Autonomy Matrix' | 'Audit Ledger'>('Policies');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -219,17 +239,29 @@ export function AIGovernanceView() {
   };
 
   const handleTogglePolicyMode = (policy: GuardrailPolicy) => {
-    const nextMode = policy.enforcementMode === 'Enforce (Blocking)'
+    const nextMode: 'Enforce (Blocking)' | 'Advisory (Audit Only)' = policy.enforcementMode === 'Enforce (Blocking)'
       ? 'Advisory (Audit Only)'
       : 'Enforce (Blocking)';
 
-    setPolicies(prev => prev.map(p => p.id === policy.id ? { ...p, enforcementMode: nextMode } : p));
+    setPolicies(prev => {
+      const updated = prev.map(p => p.id === policy.id ? { ...p, enforcementMode: nextMode } : p);
+      try {
+        localStorage.setItem('syvoris:ai_governance:policies', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     addAudit('AI Governance Policy Toggled', 'Arjun Mehta', `${policy.code} switched to ${nextMode}`);
     showToast(`${policy.code} mode set to ${nextMode}.`);
   };
 
   const handleAutonomyChange = async (agent: GovernedAgent, newLevel: GovernedAgent['autonomyLevel']) => {
-    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, autonomyLevel: newLevel } : a));
+    setAgents(prev => {
+      const updated = prev.map(a => a.id === agent.id ? { ...a, autonomyLevel: newLevel } : a);
+      try {
+        localStorage.setItem('syvoris:ai_governance:agents', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     try {
       await api.updateAIAgent(agent.id, { autonomy_level: newLevel }).catch(() => null);
     } catch {

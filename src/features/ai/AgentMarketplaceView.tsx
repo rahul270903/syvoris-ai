@@ -188,7 +188,16 @@ const INITIAL_PACKAGES: AgentPackage[] = [
 export function AgentMarketplaceView() {
   const navigate = useNavigate();
   const { addAudit } = useCRM();
-  const [packages, setPackages] = useState<AgentPackage[]>(INITIAL_PACKAGES);
+  const [packages, setPackages] = useState<AgentPackage[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:agent_marketplace:packages');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_PACKAGES;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedPackage, setSelectedPackage] = useState<AgentPackage | null>(null);
@@ -213,14 +222,54 @@ export function AgentMarketplaceView() {
   const handleDeploy = async (pkg: AgentPackage) => {
     setInstallingId(pkg.id);
     try {
-      // Simulate real deployment handshake
-      await new Promise(r => setTimeout(r, 650));
+      await new Promise(r => setTimeout(r, 500));
       
-      // Update local state
-      setPackages(prev => prev.map(p => p.id === pkg.id ? { ...p, installed: true } : p));
+      const updatedPackages = packages.map(p => p.id === pkg.id ? { ...p, installed: true } : p);
+      setPackages(updatedPackages);
+      try {
+        localStorage.setItem('syvoris:agent_marketplace:packages', JSON.stringify(updatedPackages));
+      } catch {}
+
       if (selectedPackage && selectedPackage.id === pkg.id) {
         setSelectedPackage({ ...selectedPackage, installed: true });
       }
+
+      // Automatically register into live workforce API and storage
+      await api.createAIAgent({
+        id: `agt-${pkg.id}`,
+        name: pkg.name,
+        persona: pkg.name,
+        module: pkg.category,
+        role_description: pkg.description,
+        autonomy_level: pkg.autonomyDefault,
+        status: 'Active',
+        tool_permissions: pkg.requiredTools,
+        primary_kpi: 'Execution Reliability >= 99%'
+      }).catch(() => null);
+
+      try {
+        const rawWorkforce = localStorage.getItem('syvoris:ai_workforce_agents');
+        const workforce = rawWorkforce ? JSON.parse(rawWorkforce) : [];
+        if (Array.isArray(workforce) && !workforce.some((w: any) => w.name === pkg.name)) {
+          workforce.unshift({
+            id: `agt-${pkg.id}`,
+            ref: `AGT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+            name: pkg.name,
+            persona: pkg.name,
+            department: pkg.category,
+            role_description: pkg.description,
+            autonomy_level: pkg.autonomyDefault,
+            status: 'Active',
+            primary_kpi: 'Execution Reliability >= 99%',
+            current_metric: 'Active & Ingesting Telemetry',
+            success_rate: 99.4,
+            daily_executions: 24,
+            tool_permissions: pkg.requiredTools,
+            system_prompt: 'Operate safely within tenant policies.'
+          });
+          localStorage.setItem('syvoris:ai_workforce_agents', JSON.stringify(workforce));
+        }
+      } catch {}
 
       addAudit('AI Agent Package Deployed', 'Arjun Mehta', `Deployed ${pkg.name} (${pkg.version}) to Workforce`);
       showToast(`Successfully deployed ${pkg.name} into live agent workforce.`);
@@ -235,10 +284,27 @@ export function AgentMarketplaceView() {
     setInstallingId(pkg.id);
     try {
       await new Promise(r => setTimeout(r, 400));
-      setPackages(prev => prev.map(p => p.id === pkg.id ? { ...p, installed: false } : p));
+      const updatedPackages = packages.map(p => p.id === pkg.id ? { ...p, installed: false } : p);
+      setPackages(updatedPackages);
+      try {
+        localStorage.setItem('syvoris:agent_marketplace:packages', JSON.stringify(updatedPackages));
+      } catch {}
+
       if (selectedPackage && selectedPackage.id === pkg.id) {
         setSelectedPackage({ ...selectedPackage, installed: false });
       }
+
+      try {
+        const rawWorkforce = localStorage.getItem('syvoris:ai_workforce_agents');
+        if (rawWorkforce) {
+          const workforce = JSON.parse(rawWorkforce);
+          if (Array.isArray(workforce)) {
+            const filtered = workforce.filter((w: any) => w.name !== pkg.name && w.id !== `agt-${pkg.id}`);
+            localStorage.setItem('syvoris:ai_workforce_agents', JSON.stringify(filtered));
+          }
+        }
+      } catch {}
+
       addAudit('AI Agent Package Removed', 'Arjun Mehta', `Removed ${pkg.name} from Workforce`);
       showToast(`Removed ${pkg.name} from active workforce.`);
     } finally {

@@ -192,7 +192,16 @@ export function AgentWorkforceView() {
   const navigate = useNavigate();
   const { addEvent, addAudit } = useCRM();
 
-  const [agents, setAgents] = useState<WorkforceAgent[]>(DEFAULT_AGENTS);
+  const [agents, setAgents] = useState<WorkforceAgent[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:ai_workforce_agents');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_AGENTS;
+  });
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [autonomyFilter, setAutonomyFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -211,27 +220,34 @@ export function AgentWorkforceView() {
     try {
       const liveList = await api.listAIAgents();
       if (liveList && liveList.length > 0) {
-        const map = new Map<string, WorkforceAgent>();
-        DEFAULT_AGENTS.forEach(a => map.set(a.name, a));
-        liveList.forEach(a => {
-          const key = a.name || a.persona;
-          const existing = map.get(key) || ({} as WorkforceAgent);
-          map.set(key, {
-            ...existing,
-            ...a,
-            department: a.module || existing.department || 'Operations',
-            role_description: a.role_description || existing.role_description || 'Specialist CRM agent',
-            primary_kpi: a.primary_kpi || existing.primary_kpi || 'Execution Reliability',
-            current_metric: existing.current_metric || 'Active & Monitoring',
-            success_rate: existing.success_rate || 99.0,
-            daily_executions: existing.daily_executions || 120,
-            tool_permissions: a.tool_permissions || existing.tool_permissions || ['crm:read'],
-            system_prompt: a.system_prompt || existing.system_prompt || 'Adhere to platform safety policies.',
-            status: a.status === 'Active' ? 'Active' : 'Paused',
-            autonomy_level: (a.autonomy_level as any) || existing.autonomy_level || 'Suggest Only'
+        setAgents(prev => {
+          const map = new Map<string, WorkforceAgent>();
+          DEFAULT_AGENTS.forEach(a => map.set(a.name, a));
+          prev.forEach(a => map.set(a.name, a));
+          liveList.forEach(a => {
+            const key = a.name || a.persona;
+            const existing = map.get(key) || ({} as WorkforceAgent);
+            map.set(key, {
+              ...existing,
+              ...a,
+              department: a.module || existing.department || 'Operations',
+              role_description: a.role_description || existing.role_description || 'Specialist CRM agent',
+              primary_kpi: a.primary_kpi || existing.primary_kpi || 'Execution Reliability',
+              current_metric: existing.current_metric || 'Active & Monitoring',
+              success_rate: existing.success_rate || 99.0,
+              daily_executions: existing.daily_executions || 120,
+              tool_permissions: a.tool_permissions || existing.tool_permissions || ['crm:read'],
+              system_prompt: a.system_prompt || existing.system_prompt || 'Adhere to platform safety policies.',
+              status: (a.status === 'Active' || a.status === 'Paused') ? a.status : (existing.status || 'Active'),
+              autonomy_level: (a.autonomy_level as any) || existing.autonomy_level || 'Suggest Only'
+            });
           });
+          const combined = Array.from(map.values());
+          try {
+            localStorage.setItem('syvoris:ai_workforce_agents', JSON.stringify(combined));
+          } catch {}
+          return combined;
         });
-        setAgents(Array.from(map.values()));
       }
     } catch (err) {
       console.warn('API agents fallback to default workforce:', err);
@@ -287,8 +303,14 @@ export function AgentWorkforceView() {
 
   // 1-Click Status Toggle
   const handleToggleStatus = async (agent: WorkforceAgent) => {
-    const nextStatus = agent.status === 'Active' ? 'Paused' : 'Active';
-    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, status: nextStatus } : a));
+    const nextStatus: 'Active' | 'Paused' = agent.status === 'Active' ? 'Paused' : 'Active';
+    setAgents(prev => {
+      const updated = prev.map(a => a.id === agent.id ? { ...a, status: nextStatus } : a);
+      try {
+        localStorage.setItem('syvoris:ai_workforce_agents', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     try {
       await api.updateAIAgent(agent.id, { status: nextStatus });
@@ -302,7 +324,13 @@ export function AgentWorkforceView() {
 
   // 1-Click Autonomy Change
   const handleAutonomyChange = async (agent: WorkforceAgent, level: WorkforceAgent['autonomy_level']) => {
-    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, autonomy_level: level } : a));
+    setAgents(prev => {
+      const updated = prev.map(a => a.id === agent.id ? { ...a, autonomy_level: level } : a);
+      try {
+        localStorage.setItem('syvoris:ai_workforce_agents', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     try {
       await api.updateAIAgent(agent.id, { autonomy_level: level });
@@ -315,7 +343,7 @@ export function AgentWorkforceView() {
   };
 
   // Deploy New Custom Agent
-  const handleDeployAgent = (e: React.FormEvent) => {
+  const handleDeployAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAgent.name || !newAgent.role_description) {
       alert('Please fill in Agent Name and Description.');
@@ -339,7 +367,28 @@ export function AgentWorkforceView() {
       system_prompt: newAgent.system_prompt || 'Operate within assigned departmental boundaries.'
     };
 
-    setAgents(prev => [created, ...prev]);
+    setAgents(prev => {
+      const updated = [created, ...prev];
+      try {
+        localStorage.setItem('syvoris:ai_workforce_agents', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    try {
+      await api.createAIAgent({
+        id: created.id,
+        name: created.name,
+        persona: created.persona,
+        module: created.department,
+        role_description: created.role_description,
+        autonomy_level: created.autonomy_level,
+        status: 'Active',
+        tool_permissions: created.tool_permissions,
+        primary_kpi: created.primary_kpi
+      }).catch(() => null);
+    } catch {}
+
     addEvent('agent.deployed', { ref: created.ref }, `Deployed custom agent ${created.name}`);
     addAudit(`Agent deployed: ${created.name}`, 'Arjun Mehta', created.id);
     notify(`Agent "${created.name}" successfully deployed into workforce.`);

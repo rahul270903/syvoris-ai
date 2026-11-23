@@ -129,7 +129,18 @@ export function VendorsCatalogView() {
   const navigate = useNavigate();
   const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
-  const [vendors, setVendors] = useState<VendorExtended[]>(DEFAULT_VENDORS);
+  const [vendors, setVendors] = useState<VendorExtended[]>(() => {
+    try {
+      const stored = localStorage.getItem('syvoris:inventory_vendors');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed parsing stored vendors:', e);
+    }
+    return DEFAULT_VENDORS;
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,7 +176,11 @@ export function VendorsCatalogView() {
             active_po_value: Number(existing.active_po_value || (v as any).active_po_value || 0)
           });
         });
-        setVendors(Array.from(map.values()));
+        const combined = Array.from(map.values());
+        setVendors(combined);
+        try {
+          localStorage.setItem('syvoris:inventory_vendors', JSON.stringify(combined));
+        } catch {}
       }
       notify('Refreshed vendor directory from database.');
     } catch (err) {
@@ -191,7 +206,13 @@ export function VendorsCatalogView() {
         terms: vendor.payment_terms,
       }
     });
-    setVendors(prev => prev.filter(v => v.id !== vendor.id));
+    setVendors(prev => {
+      const next = prev.filter(v => v.id !== vendor.id);
+      try {
+        localStorage.setItem('syvoris:inventory_vendors', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     addEvent('vendor.deleted', { ref: vendor.vendor_code }, `Moved vendor ${vendor.account_name} to Recycle Bin.`);
     addAudit(`Deleted vendor ${vendor.vendor_code}`, 'Procurement', vendor.id);
     notify(`Vendor "${vendor.account_name}" moved to Recycle Bin.`);
@@ -277,7 +298,13 @@ export function VendorsCatalogView() {
         sourced_skus: [],
         active_po_value: 0
       };
-      setVendors(prev => [newExt, ...prev]);
+      setVendors(prev => {
+        const next = [newExt, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_vendors', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       addEvent('vendor.created', { ref: newExt.vendor_code }, `Registered new commercial supplier ${newExt.account_name}`);
       addAudit(`Created supplier ${newExt.vendor_code}`, 'Procurement', created.id);
       notify(`Vendor "${newExt.account_name}" successfully registered.`);
@@ -303,7 +330,13 @@ export function VendorsCatalogView() {
         sourced_skus: [],
         active_po_value: 0,
       };
-      setVendors(prev => [fallbackExt, ...prev]);
+      setVendors(prev => {
+        const next = [fallbackExt, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_vendors', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       notify(`Vendor "${fallbackExt.account_name}" saved to local directory.`);
     }
 

@@ -118,7 +118,18 @@ const DEFAULT_TAX_RULES: TaxRuleItem[] = [
 export function TaxManagementView() {
   const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
-  const [taxRules, setTaxRules] = useState<TaxRuleItem[]>(DEFAULT_TAX_RULES);
+  const [taxRules, setTaxRules] = useState<TaxRuleItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('syvoris:inventory_taxes');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed parsing stored tax rules:', e);
+    }
+    return DEFAULT_TAX_RULES;
+  });
   const [selectedType, setSelectedType] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [regionFilter, setRegionFilter] = useState<string>('all');
@@ -156,7 +167,11 @@ export function TaxManagementView() {
           ...t,
           rate: typeof t.rate === 'number' && !isNaN(t.rate) ? t.rate : parseFloat(String(t.rate || 0)) || 0
         }));
-        setTaxRules(Array.from(map.values()));
+        const combined = Array.from(map.values());
+        setTaxRules(combined);
+        try {
+          localStorage.setItem('syvoris:inventory_taxes', JSON.stringify(combined));
+        } catch {}
       }
       notify('Refreshed statutory tax schedules from database.');
     } catch (err) {
@@ -211,7 +226,13 @@ export function TaxManagementView() {
   const handleToggleStatus = async (rule: TaxRuleItem) => {
     const newStatus = rule.status === 'Active' ? 'Inactive' : 'Active';
     const updated = { ...rule, status: newStatus };
-    setTaxRules(prev => prev.map(t => t.id === rule.id ? updated : t));
+    setTaxRules(prev => {
+      const next = prev.map(t => t.id === rule.id ? updated : t);
+      try {
+        localStorage.setItem('syvoris:inventory_taxes', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
     try {
       await api.updateTax(rule.id, { status: newStatus });
@@ -228,7 +249,13 @@ export function TaxManagementView() {
     if (!window.confirm(`Move tax rule ${rule.code} (${rule.name}) to recycle bin?`)) return;
     try {
       await api.deleteTax(rule.id).catch(() => null);
-      setTaxRules(prev => prev.filter(t => t.id !== rule.id));
+      setTaxRules(prev => {
+        const next = prev.filter(t => t.id !== rule.id);
+        try {
+          localStorage.setItem('syvoris:inventory_taxes', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       if (selectedRule && selectedRule.id === rule.id) setSelectedRule(null);
 
       addToRecycleBin({
@@ -269,7 +296,13 @@ export function TaxManagementView() {
 
     try {
       const created = await api.createTax(payload);
-      setTaxRules(prev => [created, ...prev]);
+      setTaxRules(prev => {
+        const next = [created, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_taxes', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       addEvent('tax.created', { ref: payload.code! }, `New statutory tax rule ${payload.code} created at ${payload.rate}%`);
       addAudit(`Created tax rule ${payload.code}`, 'System', created.id);
       notify(`Tax Rule ${payload.code} (${payload.rate}%) successfully activated.`);
@@ -291,7 +324,13 @@ export function TaxManagementView() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      setTaxRules(prev => [fallbackItem, ...prev]);
+      setTaxRules(prev => {
+        const next = [fallbackItem, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_taxes', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       notify(`Tax Rule ${payload.code} saved to active register.`);
     }
 

@@ -72,7 +72,16 @@ export function RevenueDigitalTwinView() {
   const [loadingBackend, setLoadingBackend] = useState<boolean>(false);
 
   // Saved Scenarios Drawer
-  const [savedScenarios, setSavedScenarios] = useState<SavedScenarioItem[]>(DEFAULT_SAVED_SCENARIOS);
+  const [savedScenarios, setSavedScenarios] = useState<SavedScenarioItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:revenue_twin:scenarios');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_SAVED_SCENARIOS;
+  });
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
   const [saveModalOpen, setSaveModalOpen] = useState<boolean>(false);
   const [newScenarioName, setNewScenarioName] = useState<string>('');
@@ -180,7 +189,13 @@ export function RevenueDigitalTwinView() {
       notes: newScenarioNotes.trim() || 'Simulated what-if scenario'
     };
 
-    setSavedScenarios(prev => [newItem, ...prev]);
+    setSavedScenarios(prev => {
+      const updated = [newItem, ...prev];
+      try {
+        localStorage.setItem('syvoris:revenue_twin:scenarios', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     addAudit('Revenue Twin Scenario Saved', 'Arjun Mehta', `${newRef}: ${newScenarioName}`);
     addEvent('ai.scenario.saved', { ref: newRef }, `Saved revenue twin scenario ${newRef}`);
     setSaveModalOpen(false);
@@ -200,7 +215,13 @@ export function RevenueDigitalTwinView() {
 
   const handleDeleteScenario = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSavedScenarios(prev => prev.filter(s => s.id !== id));
+    setSavedScenarios(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      try {
+        localStorage.setItem('syvoris:revenue_twin:scenarios', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     showToast('Deleted saved scenario.');
   };
 

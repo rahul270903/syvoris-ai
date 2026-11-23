@@ -164,7 +164,18 @@ const DEFAULT_QUEUE_ITEMS: ActivityQueueItem[] = [
 export function AIActivityQueueView() {
   const navigate = useNavigate();
   const { addAudit, addEvent } = useCRM();
-  const [queueItems, setQueueItems] = useState<ActivityQueueItem[]>(DEFAULT_QUEUE_ITEMS);
+  const [queueItems, setQueueItems] = useState<ActivityQueueItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:ai_activity_queue');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_QUEUE_ITEMS;
+  });
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Pending Approval' | 'Auto-Executed' | 'Rejected'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<ActivityQueueItem | null>(null);
@@ -180,31 +191,40 @@ export function AIActivityQueueView() {
         if (proposals && proposals.length > 0) {
           // Merge backend proposals seamlessly
           setQueueItems(prev => {
-            const backendMapped: ActivityQueueItem[] = proposals.map((p: any, idx) => ({
-              id: p.id,
-              ref: p.ref || `ACT-2026-${(idx + 10).toString().padStart(4, '0')}`,
-              title: p.action || p.title || 'AI Action Proposal',
-              agentName: p.agent_name || 'Autonomous Agent',
-              category: 'Commercial',
-              riskLevel: p.payload?.risk_level === 'High' ? 'High' : p.payload?.risk_level === 'Medium' ? 'Medium' : 'Low',
-              status: p.status === 'Approved' ? 'Approved' : p.status === 'Rejected' ? 'Rejected' : 'Pending Approval',
-              confidence: Number(p.confidence ? (p.confidence <= 1 ? p.confidence * 100 : p.confidence) : 92.5),
-              createdAt: p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
-              targetRecord: {
-                ref: p.payload?.target_ref || 'REC-001',
-                name: p.payload?.target_name || p.action || 'Target Record',
-                link: p.payload?.target_link || '/sales/pipeline'
-              },
-              summary: p.reasoning || p.action,
-              rationale: p.reasoning || 'Engine verified with rule-based grounding.',
-              groundingEvidence: p.evidence ? (Array.isArray(p.evidence) ? p.evidence : [String(p.evidence)]) : ['Tenant database record match verified'],
-              governancePolicy: p.policy_check || 'Three-tier architectural guardrail enforced.',
-              impactValue: p.payload?.amount || 0
-            }));
-            // Combine with default queue items without duplicating ids
+            const prevMap = new Map(prev.map(p => [p.id, p]));
+            const backendMapped: ActivityQueueItem[] = proposals.map((p: any, idx) => {
+              const existing = prevMap.get(p.id);
+              return {
+                id: p.id,
+                ref: p.ref || `ACT-2026-${(idx + 10).toString().padStart(4, '0')}`,
+                title: p.action || p.title || 'AI Action Proposal',
+                agentName: p.agent_name || 'Autonomous Agent',
+                category: (p.payload?.category as any) || existing?.category || 'Commercial',
+                riskLevel: (p.payload?.risk_level as any) || existing?.riskLevel || 'Low',
+                status: (p.status as any) || existing?.status || 'Pending Approval',
+                confidence: Number(p.confidence ? (p.confidence <= 1 ? p.confidence * 100 : p.confidence) : (existing?.confidence || 92.5)),
+                createdAt: p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (existing?.createdAt || 'Recently'),
+                targetRecord: {
+                  ref: p.payload?.target_ref || existing?.targetRecord.ref || 'REC-001',
+                  name: p.payload?.target_name || existing?.targetRecord.name || p.action || 'Target Record',
+                  link: p.payload?.target_link || existing?.targetRecord.link || '/sales/pipeline'
+                },
+                summary: p.reasoning || existing?.summary || p.action,
+                rationale: p.reasoning || existing?.rationale || 'Engine verified with rule-based grounding.',
+                groundingEvidence: p.evidence ? (Array.isArray(p.evidence) ? p.evidence : [String(p.evidence)]) : (existing?.groundingEvidence || ['Tenant database record match verified']),
+                governancePolicy: p.policy_check || existing?.governancePolicy || 'Three-tier architectural guardrail enforced.',
+                impactValue: p.payload?.amount !== undefined ? p.payload.amount : (existing?.impactValue || 0)
+              };
+            });
             const existingIds = new Set(backendMapped.map(b => b.id));
             const remainingDefaults = prev.filter(d => !existingIds.has(d.id));
-            return [...backendMapped, ...remainingDefaults];
+            const combined = [...backendMapped, ...remainingDefaults];
+            try {
+              localStorage.setItem('syvoris:ai_activity_queue', JSON.stringify(combined));
+            } catch {
+              // ignore
+            }
+            return combined;
           });
         }
       })
@@ -221,17 +241,27 @@ export function AIActivityQueueView() {
   const handleApprove = async (item: ActivityQueueItem) => {
     setProcessingId(item.id);
     try {
-      // Try backend call
+      // Backend call
       await api.decideAIProposal(item.id, {
         approved: true,
         notes: 'Approved via Enterprise AI Activity Queue'
       }).catch(() => null);
 
-      setQueueItems(prev => prev.map(q => q.id === item.id ? { ...q, status: 'Approved' } : q));
+      setQueueItems(prev => {
+        const updated = prev.map(q => q.id === item.id ? { ...q, status: 'Approved' as const } : q);
+        try {
+          localStorage.setItem('syvoris:ai_activity_queue', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+
       if (selectedItem && selectedItem.id === item.id) {
         setSelectedItem({ ...selectedItem, status: 'Approved' });
       }
 
+      window.dispatchEvent(new CustomEvent('syvoris:notifications:refresh'));
       addAudit('AI Proposal Approved', 'Arjun Mehta', `${item.ref}: ${item.title}`);
       addEvent('ai.proposal.approved', { ref: item.ref }, `Approved action proposal for ${item.targetRecord.name}`);
       showToast(`Approved ${item.ref}. Execution committed to audit ledger.`);
@@ -252,11 +282,21 @@ export function AIActivityQueueView() {
         notes: rejectionReason || 'Rejected by operational reviewer'
       }).catch(() => null);
 
-      setQueueItems(prev => prev.map(q => q.id === item.id ? { ...q, status: 'Rejected' } : q));
+      setQueueItems(prev => {
+        const updated = prev.map(q => q.id === item.id ? { ...q, status: 'Rejected' as const } : q);
+        try {
+          localStorage.setItem('syvoris:ai_activity_queue', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+
       if (selectedItem && selectedItem.id === item.id) {
         setSelectedItem({ ...selectedItem, status: 'Rejected' });
       }
 
+      window.dispatchEvent(new CustomEvent('syvoris:notifications:refresh'));
       addAudit('AI Proposal Rejected', 'Arjun Mehta', `${item.ref}: ${rejectionReason || 'Rejected by reviewer'}`);
       addEvent('ai.proposal.rejected', { ref: item.ref }, `Rejected proposal: ${rejectionReason || 'No notes'}`);
       showToast(`Rejected ${item.ref}. Action cancelled.`);
@@ -279,7 +319,16 @@ export function AIActivityQueueView() {
       for (const p of pending) {
         await api.decideAIProposal(p.id, { approved: true, notes: 'Bulk batch approval' }).catch(() => null);
       }
-      setQueueItems(prev => prev.map(q => q.status === 'Pending Approval' ? { ...q, status: 'Approved' } : q));
+      setQueueItems(prev => {
+        const updated = prev.map(q => q.status === 'Pending Approval' ? { ...q, status: 'Approved' as const } : q);
+        try {
+          localStorage.setItem('syvoris:ai_activity_queue', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
+      window.dispatchEvent(new CustomEvent('syvoris:notifications:refresh'));
       addAudit('AI Activity Queue Bulk Approved', 'Arjun Mehta', `Approved ${pending.length} pending proposals.`);
       showToast(`Approved all ${pending.length} pending proposals successfully.`);
     } finally {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sparkles, Bot, User, Send, ArrowRight, ShieldCheck, CheckCircle2,
@@ -40,25 +40,58 @@ export function ConversationalCopilotView() {
   const [isThinking, setIsThinking] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'msg-welcome',
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:copilot:chat_history');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      {
+        id: 'msg-welcome',
+        role: 'assistant',
+        text: `Hello, Arjun. I am SYVORIS Ai Copilot, grounded in your live tenant records via PostgreSQL Row-Level Security. I currently monitor ${accounts.length} organization master profiles, ${openDeals.length} active deals totaling ${money(totalPipeline)}, and ${openCasesCount} support cases. How can I assist your commercial or operational workflow today?`,
+        timestamp: 'Just now',
+        metrics: [
+          { label: 'Active Pipeline', value: money(totalPipeline) },
+          { label: 'Weighted Value', value: money(weightedPipeline) },
+          { label: 'Open Support Cases', value: String(openCasesCount) },
+        ],
+        actions: [
+          { label: 'Inspect Pipeline Forecast', path: '/sales/pipeline' },
+          { label: 'Launch Revenue Digital Twin', path: '/ai/revenue-twin' },
+          { label: 'Review Customer 360', path: '/customers/360' },
+        ],
+        sources: ['PostgreSQL Core DB', 'Tenant RLS Boundary', 'Salesforce ERP Connector']
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('syvoris:copilot:chat_history', JSON.stringify(messages));
+    } catch {}
+  }, [messages]);
+
+  const handleClearChat = () => {
+    const welcome: ChatMessage = {
+      id: `msg-welcome-${Date.now()}`,
       role: 'assistant',
-      text: `Hello, Arjun. I am SYVORIS Ai Copilot, grounded in your live tenant records via PostgreSQL Row-Level Security. I currently monitor ${accounts.length} organization master profiles, ${openDeals.length} active deals totaling ${money(totalPipeline)}, and ${openCasesCount} support cases. How can I assist your commercial or operational workflow today?`,
+      text: `Hello, Arjun. I am SYVORIS Ai Copilot, grounded in your live tenant records via PostgreSQL Row-Level Security. Ready for your instructions.`,
       timestamp: 'Just now',
-      metrics: [
-        { label: 'Active Pipeline', value: money(totalPipeline) },
-        { label: 'Weighted Value', value: money(weightedPipeline) },
-        { label: 'Open Support Cases', value: String(openCasesCount) },
-      ],
       actions: [
         { label: 'Inspect Pipeline Forecast', path: '/sales/pipeline' },
-        { label: 'Launch Revenue Digital Twin', path: '/ai/revenue-twin' },
-        { label: 'Review Customer 360', path: '/customers/360' },
+        { label: 'Launch Revenue Digital Twin', path: '/ai/revenue-twin' }
       ],
-      sources: ['PostgreSQL Core DB', 'Tenant RLS Boundary', 'Salesforce ERP Connector']
-    }
-  ]);
+      sources: ['PostgreSQL Core DB', 'Tenant RLS Boundary']
+    };
+    setMessages([welcome]);
+    try {
+      localStorage.setItem('syvoris:copilot:chat_history', JSON.stringify([welcome]));
+    } catch {}
+  };
 
   const handleCopyMessage = (id: string, text: string) => {
     navigator.clipboard.writeText(text);

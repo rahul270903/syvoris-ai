@@ -158,7 +158,18 @@ const DEFAULT_RECOMMENDATIONS: RecommendationItem[] = [
 export function AIRecommendationsView() {
   const navigate = useNavigate();
   const { addAudit, addEvent } = useCRM();
-  const [recommendations, setRecommendations] = useState<RecommendationItem[]>(DEFAULT_RECOMMENDATIONS);
+  const [recommendations, setRecommendations] = useState<RecommendationItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:ai_recommendations');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_RECOMMENDATIONS;
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRec, setSelectedRec] = useState<RecommendationItem | null>(null);
@@ -175,8 +186,16 @@ export function AIRecommendationsView() {
   const handleApply = async (rec: RecommendationItem) => {
     setApplyingId(rec.id);
     try {
-      await new Promise(r => setTimeout(r, 500));
-      setRecommendations(prev => prev.map(r => r.id === rec.id ? { ...r, status: 'Applied' } : r));
+      await new Promise(r => setTimeout(r, 400));
+      setRecommendations(prev => {
+        const updated = prev.map(r => r.id === rec.id ? { ...r, status: 'Applied' as const } : r);
+        try {
+          localStorage.setItem('syvoris:ai_recommendations', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
       if (selectedRec && selectedRec.id === rec.id) {
         setSelectedRec({ ...selectedRec, status: 'Applied' });
       }
@@ -190,7 +209,15 @@ export function AIRecommendationsView() {
   };
 
   const handleDismiss = async (rec: RecommendationItem) => {
-    setRecommendations(prev => prev.map(r => r.id === rec.id ? { ...r, status: 'Dismissed' } : r));
+    setRecommendations(prev => {
+      const updated = prev.map(r => r.id === rec.id ? { ...r, status: 'Dismissed' as const } : r);
+      try {
+        localStorage.setItem('syvoris:ai_recommendations', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
     if (selectedRec && selectedRec.id === rec.id) {
       setSelectedRec({ ...selectedRec, status: 'Dismissed' });
     }

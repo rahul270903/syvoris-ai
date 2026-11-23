@@ -246,12 +246,41 @@ export function AgentOrgChartView() {
     setCollapsedDepts(prev => ({ ...prev, [deptId]: !prev[deptId] }));
   };
 
-  const filteredDepts = useMemo(() => {
-    if (selectedDept === 'all') return ORG_DEPARTMENTS;
-    return ORG_DEPARTMENTS.filter(d => d.id === selectedDept);
-  }, [selectedDept]);
+  const dynamicDepts = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:ai_workforce_agents');
+      if (raw) {
+        const liveWorkforce = JSON.parse(raw);
+        if (Array.isArray(liveWorkforce)) {
+          const statusMap = new Map(liveWorkforce.map((w: any) => [w.name, w]));
+          return ORG_DEPARTMENTS.map(dept => {
+            const updatedAgents = dept.agents.map(ag => {
+              const live = statusMap.get(ag.name);
+              if (live) {
+                return {
+                  ...ag,
+                  status: (live.status === 'Active' || live.status === 'Paused') ? live.status : ag.status,
+                  autonomy: (live.autonomy_level as any) || ag.autonomy,
+                  runs_today: live.daily_executions || ag.runs_today,
+                  kpi: live.primary_kpi || ag.kpi
+                };
+              }
+              return ag;
+            });
+            return { ...dept, agents: updatedAgents };
+          });
+        }
+      }
+    } catch {}
+    return ORG_DEPARTMENTS;
+  }, []);
 
-  const totalAgentsCount = ORG_DEPARTMENTS.reduce((sum, d) => sum + d.agents.length, 0);
+  const filteredDepts = useMemo(() => {
+    if (selectedDept === 'all') return dynamicDepts;
+    return dynamicDepts.filter(d => d.id === selectedDept);
+  }, [selectedDept, dynamicDepts]);
+
+  const totalAgentsCount = dynamicDepts.reduce((sum, d) => sum + d.agents.length, 0);
 
   return (
     <div className="space-y-6">

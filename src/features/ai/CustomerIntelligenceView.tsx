@@ -57,7 +57,16 @@ export function CustomerIntelligenceView() {
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || '');
   const [memoryFilter, setMemoryFilter] = useState<'All' | 'Meeting' | 'Call' | 'Support' | 'Commercial'>('All');
-  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>(INITIAL_DUPLICATES);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicateCandidate[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:customer_intelligence:duplicates');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_DUPLICATES;
+  });
   const [scanningDuplicates, setScanningDuplicates] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -191,14 +200,26 @@ export function CustomerIntelligenceView() {
   };
 
   const handleMergeDuplicate = (dup: DuplicateCandidate) => {
-    setDuplicateCandidates(prev => prev.map(d => d.id === dup.id ? { ...d, status: 'Merged' } : d));
+    setDuplicateCandidates(prev => {
+      const updated = prev.map(d => d.id === dup.id ? { ...d, status: 'Merged' as const } : d);
+      try {
+        localStorage.setItem('syvoris:customer_intelligence:duplicates', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     addAudit('Entity Resolution Merge Executed', 'Arjun Mehta', `Merged ${dup.sourceName} (${dup.sourceRef}) into ${dup.targetName} (${dup.targetRef})`);
     addEvent('customer.intelligence.merged', { ref: dup.targetRef }, `Merged duplicate record ${dup.sourceRef}`);
     showToast(`Merged ${dup.sourceRef} into master account ${dup.targetRef}.`);
   };
 
   const handleKeepDistinct = (dup: DuplicateCandidate) => {
-    setDuplicateCandidates(prev => prev.map(d => d.id === dup.id ? { ...d, status: 'Confirmed Distinct' } : d));
+    setDuplicateCandidates(prev => {
+      const updated = prev.map(d => d.id === dup.id ? { ...d, status: 'Confirmed Distinct' as const } : d);
+      try {
+        localStorage.setItem('syvoris:customer_intelligence:duplicates', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     addAudit('Entity Resolution Cleared', 'Arjun Mehta', `Marked ${dup.sourceRef} as distinct entity from ${dup.targetRef}`);
     showToast(`Marked ${dup.sourceRef} as confirmed distinct entity.`);
   };

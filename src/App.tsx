@@ -38,11 +38,28 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [telemetryOpen, setTelemetryOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('syvoris:notifications:read_ids');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  });
+  const [notifRefreshTrigger, setNotifRefreshTrigger] = useState(0);
   const [userProfile, setUserProfile] = useState<CurrentUserProfile>(initialProfile);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showHelp, setShowHelp] = useState(false);
   const tenantDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleRefresh = () => setNotifRefreshTrigger(v => v + 1);
+    window.addEventListener('syvoris:notifications:refresh', handleRefresh);
+    window.addEventListener('storage', handleRefresh);
+    return () => {
+      window.removeEventListener('syvoris:notifications:refresh', handleRefresh);
+      window.removeEventListener('storage', handleRefresh);
+    };
+  }, []);
 
   const tenantName = userProfile?.active_tenant?.tenant_name || 'BluePeak Innovations';
   const tenantInitials = useMemo(() => {
@@ -178,29 +195,69 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
       scenarios: '/ai/revenue-twin',
     }[entity] || '/dashboard');
 
-  const notifications = [
-    ...records('decisions').filter(x => x.status === 'Pending Approval').map(x => ({
-      id: x.id,
-      path: '/approvals',
-      title: 'Approval required',
-      body: `${x.ref} · ${x.title}`,
-      time: 'Requires review',
-    })),
-    ...records('cases').filter(x => x.fields.priority === 'High' && !['Resolved', 'Closed'].includes(x.status)).map(x => ({
-      id: x.id,
-      path: '/cases',
-      title: 'High-priority service case',
-      body: `${x.ref} · ${x.title}`,
-      time: 'Service queue',
-    })),
-    ...records('tasks').filter(x => x.status !== 'Completed').slice(0, 2).map(x => ({
-      id: x.id,
-      path: '/tasks',
-      title: 'Task reminder',
-      body: `${x.ref} · ${x.title}`,
-      time: x.fields.dueDate || 'Open task',
-    })),
-  ];
+  const notifications = useMemo(() => {
+    // 1. AI Proposals from Activity Queue
+    let aiProposalNotifs: any[] = [];
+    try {
+      const rawQueue = localStorage.getItem('syvoris:ai_activity_queue');
+      const queue = rawQueue ? JSON.parse(rawQueue) : [];
+      if (Array.isArray(queue)) {
+        aiProposalNotifs = queue
+          .filter((q: any) => q.status === 'Pending Approval')
+          .map((q: any) => ({
+            id: q.id,
+            path: '/ai/activity',
+            title: `AI Action: ${q.title}`,
+            body: `${q.ref} · ${q.agentName || 'Autonomous Agent'}`,
+            time: q.createdAt || 'Pending review',
+            isRead: readNotificationIds.includes(q.id)
+          }));
+      }
+    } catch {}
+
+    // 2. CRMStore Decisions
+    const decisionNotifs = records('decisions')
+      .filter(x => x.status === 'Pending Approval')
+      .map(x => ({
+        id: x.id,
+        path: '/approvals',
+        title: 'Approval required',
+        body: `${x.ref} · ${x.title}`,
+        time: 'Requires review',
+        isRead: readNotificationIds.includes(x.id)
+      }));
+
+    // 3. High Priority Cases
+    const caseNotifs = records('cases')
+      .filter(x => (x.fields?.priority === 'High' || (x as any).priority === 'High') && !['Resolved', 'Closed'].includes(x.status))
+      .map(x => ({
+        id: x.id,
+        path: '/cases',
+        title: 'High-priority service case',
+        body: `${x.ref} · ${x.title}`,
+        time: 'Service queue',
+        isRead: readNotificationIds.includes(x.id)
+      }));
+
+    // 4. Overdue/Open Tasks
+    const taskNotifs = records('tasks')
+      .filter(x => x.status !== 'Completed')
+      .slice(0, 2)
+      .map(x => ({
+        id: x.id,
+        path: '/tasks',
+        title: 'Task reminder',
+        body: `${x.ref} · ${x.title}`,
+        time: x.fields?.dueDate || 'Open task',
+        isRead: readNotificationIds.includes(x.id)
+      }));
+
+    return [...aiProposalNotifs, ...decisionNotifs, ...caseNotifs, ...taskNotifs];
+  }, [records, notifRefreshTrigger, readNotificationIds]);
+
+  const unreadNotifications = useMemo(() => {
+    return notifications.filter(n => !n.isRead).length;
+  }, [notifications]);
 
   const toggleGroup = (label: string) =>
     setExpanded(old => (old.includes(label) ? old.filter(x => x !== label) : [...old, label]));
@@ -645,7 +702,12 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                       {unreadNotifications > 0 && (
                         <button
                           onClick={() => {
-                            setUnreadNotifications(0);
+                            const allIds = notifications.map(n => n.id);
+                            const updated = Array.from(new Set([...readNotificationIds, ...allIds]));
+                            setReadNotificationIds(updated);
+                            try {
+                              localStorage.setItem('syvoris:notifications:read_ids', JSON.stringify(updated));
+                            } catch {}
                             notify('All notifications marked as read.');
                           }}
                           className="text-[11px] text-blue-600 hover:underline"
@@ -658,18 +720,23 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                   </div>
                   {notifications.slice(0, 7).map(n => (
                     <button
-                      className="notification-item"
+                      className={`notification-item ${n.isRead ? 'opacity-60' : 'bg-blue-500/5'}`}
                       key={n.id}
                       onClick={() => {
+                        const updated = Array.from(new Set([...readNotificationIds, n.id]));
+                        setReadNotificationIds(updated);
+                        try {
+                          localStorage.setItem('syvoris:notifications:read_ids', JSON.stringify(updated));
+                        } catch {}
                         setNotificationsOpen(false);
                         navigate(n.path);
                       }}
                     >
-                      <span className="notification-icon">
+                      <span className={`notification-icon ${n.isRead ? 'text-slate-400' : 'text-blue-500'}`}>
                         <Bell size={14} />
                       </span>
                       <span>
-                        <b>{n.title}</b>
+                        <b className={n.isRead ? 'font-normal text-slate-300' : 'font-bold text-white'}>{n.title}</b>
                         <small>{n.body}</small>
                         <em>{n.time}</em>
                       </span>

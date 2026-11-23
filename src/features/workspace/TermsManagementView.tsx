@@ -109,7 +109,18 @@ const DEFAULT_TERMS: CommercialTermsItem[] = [
 export function TermsManagementView() {
   const { addEvent, addAudit, addToRecycleBin } = useCRM();
 
-  const [terms, setTerms] = useState<CommercialTermsItem[]>(DEFAULT_TERMS);
+  const [terms, setTerms] = useState<CommercialTermsItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('syvoris:inventory_terms');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed parsing stored terms:', e);
+    }
+    return DEFAULT_TERMS;
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,7 +154,11 @@ export function TermsManagementView() {
         const map = new Map<string, CommercialTermsItem>();
         DEFAULT_TERMS.forEach(t => map.set(t.ref, t));
         liveList.forEach(t => map.set(t.ref || t.id, t));
-        setTerms(Array.from(map.values()));
+        const combined = Array.from(map.values());
+        setTerms(combined);
+        try {
+          localStorage.setItem('syvoris:inventory_terms', JSON.stringify(combined));
+        } catch {}
       }
       notify('Refreshed commercial terms from database.');
     } catch (err) {
@@ -191,7 +206,13 @@ export function TermsManagementView() {
 
   // Set Default Boilerplate
   const handleSetDefault = async (term: CommercialTermsItem) => {
-    setTerms(prev => prev.map(t => ({ ...t, is_default: t.id === term.id })));
+    setTerms(prev => {
+      const next = prev.map(t => ({ ...t, is_default: t.id === term.id }));
+      try {
+        localStorage.setItem('syvoris:inventory_terms', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     try {
       await api.updateTerm(term.id, { is_default: true });
       addEvent('term.updated', { ref: term.ref }, `Set ${term.ref} (${term.title}) as default commercial quote schedule`);
@@ -215,7 +236,13 @@ export function TermsManagementView() {
     if (!window.confirm(`Move commercial agreement "${term.title}" to recycle bin?`)) return;
     try {
       await api.deleteTerm(term.id).catch(() => null);
-      setTerms(prev => prev.filter(t => t.id !== term.id));
+      setTerms(prev => {
+        const next = prev.filter(t => t.id !== term.id);
+        try {
+          localStorage.setItem('syvoris:inventory_terms', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       if (selectedTerm && selectedTerm.id === term.id) setSelectedTerm(null);
 
       addToRecycleBin({
@@ -257,11 +284,15 @@ export function TermsManagementView() {
 
     try {
       const created = await api.createTerm(payload);
-      if (payload.is_default) {
-        setTerms(prev => [created, ...prev.map(t => ({ ...t, is_default: false }))]);
-      } else {
-        setTerms(prev => [created, ...prev]);
-      }
+      setTerms(prev => {
+        const next = payload.is_default
+          ? [created, ...prev.map(t => ({ ...t, is_default: false }))]
+          : [created, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_terms', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       addEvent('term.created', { ref: created.ref }, `Created commercial agreement boilerplate ${created.ref}`);
       addAudit(`Created agreement ${created.title}`, 'Legal', created.id);
       notify(`Agreement "${created.title}" successfully added.`);
@@ -284,11 +315,15 @@ export function TermsManagementView() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      if (fallbackItem.is_default) {
-        setTerms(prev => [fallbackItem, ...prev.map(t => ({ ...t, is_default: false }))]);
-      } else {
-        setTerms(prev => [fallbackItem, ...prev]);
-      }
+      setTerms(prev => {
+        const next = fallbackItem.is_default
+          ? [fallbackItem, ...prev.map(t => ({ ...t, is_default: false }))]
+          : [fallbackItem, ...prev];
+        try {
+          localStorage.setItem('syvoris:inventory_terms', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
       notify(`Agreement "${fallbackItem.title}" saved to boilerplate repository.`);
     }
 
