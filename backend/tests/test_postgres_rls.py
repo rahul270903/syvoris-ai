@@ -4,15 +4,16 @@ import pytest
 import pytest_asyncio
 from datetime import datetime, timezone
 from sqlalchemy import text, select
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.exc import DBAPIError
 
 POSTGRES_TEST_URL = os.getenv("POSTGRES_TEST_URL", "postgresql+asyncpg://syvoris_app@127.0.0.1:5433/syvoris_test_rls")
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 async def pg_engine():
     try:
-        engine = create_async_engine(POSTGRES_TEST_URL, pool_size=5, max_overflow=0)
+        engine = create_async_engine(POSTGRES_TEST_URL, poolclass=NullPool)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         yield engine
@@ -20,7 +21,7 @@ async def pg_engine():
     except Exception as e:
         pytest.skip(f"PostgreSQL RLS test cluster at {POSTGRES_TEST_URL} not accessible: {e}")
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 async def pg_session_factory(pg_engine):
     return async_sessionmaker(bind=pg_engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
 
