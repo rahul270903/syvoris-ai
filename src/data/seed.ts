@@ -1367,6 +1367,14 @@ export const seedData: CRMData = {
       status: 'Active',
       description: 'Primary tenant owner, full super-admin access across CRM, CPQ, and AI workforce.'
     }),
+    r('usr_marlon', 'USR-0000B', 'Marlon Freckleton', 'Active', 'System Admin', 0, {
+      name: 'Marlon Freckleton',
+      email: 'mnfreckleton@gmail.com',
+      role: 'Enterprise Operations Director & Co-Founder',
+      team: 'Executive Leadership & Operations',
+      status: 'Active',
+      description: 'Operations Director, full administrative oversight across CRM fulfillment, orders, and logistics.'
+    }),
     r('usr_1', 'USR-0001', 'Arjun Mehta', 'Active', 'System Admin', 0, {
       name: 'Arjun Mehta',
       email: 'arjun.mehta@example.com',

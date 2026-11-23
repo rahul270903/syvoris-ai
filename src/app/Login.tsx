@@ -260,6 +260,18 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
             </button>
             <button
               type="button"
+              className={`text-[11px] px-2.5 py-1 rounded border transition font-medium ${email === 'mnfreckleton@gmail.com' ? 'bg-cyan-950/80 border-cyan-400 text-cyan-200 ring-1 ring-cyan-500/50' : 'bg-slate-850 border-slate-700 text-slate-300 hover:border-slate-500'}`}
+              onClick={() => {
+                setEmail('mnfreckleton@gmail.com');
+                setPassword('Marlon@2026!');
+                setTenantSlug('bluepeak-innovations');
+                setError('');
+              }}
+            >
+              Marlon Freckleton (Director)
+            </button>
+            <button
+              type="button"
               className={`text-[11px] px-2.5 py-1 rounded border transition font-medium ${email === 'arjun.mehta@example.com' ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200' : 'bg-slate-850 border-slate-700 text-slate-300 hover:border-slate-500'}`}
               onClick={() => {
                 setEmail('arjun.mehta@example.com');
@@ -269,18 +281,6 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
               }}
             >
               Arjun Mehta
-            </button>
-            <button
-              type="button"
-              className={`text-[11px] px-2.5 py-1 rounded border transition font-medium ${email === 'demo@syvoris.example' ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200' : 'bg-slate-850 border-slate-700 text-slate-300 hover:border-slate-500'}`}
-              onClick={() => {
-                setEmail('demo@syvoris.example');
-                setPassword('SYVORIS-DEMO');
-                setTenantSlug('bluepeak-innovations');
-                setError('');
-              }}
-            >
-              Demo Operator
             </button>
           </div>
 

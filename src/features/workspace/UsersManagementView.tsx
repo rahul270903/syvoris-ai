@@ -38,6 +38,19 @@ const INITIAL_USERS: AdminUser[] = [
     phone: '+1 (876) 920-4000'
   },
   {
+    id: 'usr-100B',
+    name: 'Marlon Freckleton',
+    email: 'mnfreckleton@gmail.com',
+    role: 'Operations Director',
+    team: 'Executive Leadership & Operations',
+    profile: 'Enterprise Operations Director & Co-Founder',
+    mfaEnabled: true,
+    status: 'Active',
+    lastLogin: 'Active now (Enterprise Console)',
+    createdDate: '2026-01-01',
+    phone: '+1 (876) 920-4001'
+  },
+  {
     id: 'usr-101',
     name: 'Arjun Mehta',
     email: 'arjun.mehta@bluepeak.internal',

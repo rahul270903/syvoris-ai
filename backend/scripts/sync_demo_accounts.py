@@ -132,49 +132,56 @@ async def sync():
             if not ur_res.scalar_one_or_none():
                 db.add(UserRole(user_id=arjun_id, role_id=owner_role_id, tenant_id=tenant_id))
 
-        # 3. Ensure demo@syvoris.example exists with SYVORIS-DEMO
-        demo_res = await db.execute(select(User).where(User.email == "demo@syvoris.example"))
-        demo_user = demo_res.scalar_one_or_none()
-        if demo_user:
-            demo_user.password_hash = get_password_hash("SYVORIS-DEMO")
-            demo_user.is_verified = True
-            demo_id = demo_user.id
-            print(f"Updated demo@syvoris.example password to 'SYVORIS-DEMO'")
+        # 3. Ensure Marlon Freckleton exists as Co-Founder & Operations Director
+        marlon_res = await db.execute(select(User).where(User.email == "mnfreckleton@gmail.com"))
+        marlon = marlon_res.scalar_one_or_none()
+        if marlon:
+            marlon.password_hash = get_password_hash("Marlon@2026!")
+            marlon.is_verified = True
+            marlon_id = marlon.id
+            print(f"Updated Marlon Freckleton ({marlon_id}) password to 'Marlon@2026!'")
         else:
-            demo_user = User(
-                email="demo@syvoris.example",
-                password_hash=get_password_hash("SYVORIS-DEMO"),
-                first_name="Demo",
-                last_name="Operator",
+            marlon = User(
+                email="mnfreckleton@gmail.com",
+                password_hash=get_password_hash("Marlon@2026!"),
+                first_name="Marlon",
+                last_name="Freckleton",
                 is_verified=True
             )
-            db.add(demo_user)
+            db.add(marlon)
             await db.flush()
-            demo_id = demo_user.id
-            print(f"Created demo@syvoris.example ({demo_id})")
+            marlon_id = marlon.id
+            print(f"Created Marlon Freckleton ({marlon_id})")
 
-        # Membership for demo_user
-        m_demo = await db.execute(
+        # Membership for Marlon
+        m_marlon = await db.execute(
             select(TenantMembership).where(
                 TenantMembership.tenant_id == tenant_id,
-                TenantMembership.user_id == demo_id
+                TenantMembership.user_id == marlon_id
             )
         )
-        if not m_demo.scalar_one_or_none():
-            db.add(TenantMembership(tenant_id=tenant_id, user_id=demo_id, status="Active"))
+        if not m_marlon.scalar_one_or_none():
+            db.add(TenantMembership(tenant_id=tenant_id, user_id=marlon_id, status="Active"))
 
         if owner_role_id:
-            ur_demo = await db.execute(
+            ur_marlon = await db.execute(
                 select(UserRole).where(
-                    UserRole.user_id == demo_id,
+                    UserRole.user_id == marlon_id,
                     UserRole.tenant_id == tenant_id
                 )
             )
-            if not ur_demo.scalar_one_or_none():
-                db.add(UserRole(user_id=demo_id, role_id=owner_role_id, tenant_id=tenant_id))
+            if not ur_marlon.scalar_one_or_none():
+                db.add(UserRole(user_id=marlon_id, role_id=owner_role_id, tenant_id=tenant_id))
+
+        # 4. Purge legacy demo operator account if present
+        demo_res = await db.execute(select(User).where(User.email == "demo@syvoris.example"))
+        demo_user = demo_res.scalar_one_or_none()
+        if demo_user:
+            await db.delete(demo_user)
+            print("Purged legacy demo operator account (demo@syvoris.example)")
 
         await db.commit()
-        print("Demo accounts and permissions successfully synchronized!")
+        print("Accounts and permissions successfully synchronized!")
 
     await engine.dispose()
 

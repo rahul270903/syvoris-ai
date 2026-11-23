@@ -285,7 +285,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
             path: e.meta?.order_ref ? '/sales-orders' : '/ai/activity',
             title: `Order & Notice Dispatched (${e.to})`,
             body: e.subject,
-            time: e.sent_at ? new Date(e.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Dispatched',
+            time: (e.sent_at || e.timestamp) ? new Date(e.sent_at || e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Dispatched',
             isRead: readNotificationIds.includes(e.id)
           }));
         }
@@ -726,7 +726,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                   setQuickCreateOpen(false);
                   setTelemetryOpen(false);
                 }}
-                title="Email & Order Dispatch Hub (rrborkar09@gmail.com)"
+                title={`Email & Order Dispatch Hub (${userProfile?.user?.email || 'rrborkar09@gmail.com'})`}
                 aria-label="Email dispatch hub"
               >
                 <Mail size={18} />
@@ -864,7 +864,7 @@ function AppShell({ initialProfile, onLogout }: AppShellProps) {
                   <div className="profile-divider" />
                   <button onClick={() => { setProfileOpen(false); setShowEmailModal(true); }}>
                     <Mail size={14} className="text-cyan-400" />
-                    <span>Email & Orders Hub (<span className="text-cyan-300">rrborkar09@gmail.com</span>)</span>
+                    <span>Email & Orders Hub (<span className="text-cyan-300">{userProfile?.user?.email || 'rrborkar09@gmail.com'}</span>)</span>
                   </button>
                   <button onClick={() => { setProfileOpen(false); setShowChangePasswordModal(true); }}>
                     <ShieldCheck size={14} className="text-emerald-400" />

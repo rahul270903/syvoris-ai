@@ -21,8 +21,15 @@ export function EmailDispatchCenterModal({
 }: EmailDispatchCenterModalProps) {
   const [emails, setEmails] = useState<DispatchedEmailRecord[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<DispatchedEmailRecord | null>(null);
+  const [targetEmail, setTargetEmail] = useState(userEmail);
+  const [targetName, setTargetName] = useState(userName);
   const [sendingTest, setSendingTest] = useState(false);
   const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    setTargetEmail(userEmail);
+    setTargetName(userName);
+  }, [userEmail, userName]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -49,18 +56,18 @@ export function EmailDispatchCenterModal({
     setSendingTest(true);
     setTimeout(() => {
       const newEmail = recordDispatchedEmail({
-        to: userEmail,
+        to: targetEmail,
         from: 'notifications@syvoris.ai',
         subject: `SYVORIS Ai — Live Alert Dispatched (${new Date().toLocaleTimeString()})`,
         category: 'Notification Alert',
-        preview: `System telemetry and notification alert routed to ${userEmail}.`,
-        content: `Hello ${userName},\n\nThis is an automated operational notification dispatched to your verified corporate email address: ${userEmail}.\n\n• Event: Real-time System Verification Ping\n• Timestamp: ${new Date().toISOString()}\n• Tenant: BluePeak Innovations\n• Status: Operational & Grounded\n\nAll subsequent CRM alerts, quotes, and order receipts are configured to route directly to this address.`,
+        preview: `System telemetry and notification alert routed to ${targetEmail}.`,
+        content: `Hello ${targetName},\n\nThis is an automated operational notification dispatched to your verified corporate email address: ${targetEmail}.\n\n• Event: Real-time System Verification Ping\n• Timestamp: ${new Date().toISOString()}\n• Tenant: BluePeak Innovations\n• Status: Operational & Grounded\n\nAll subsequent CRM alerts, quotes, and order receipts are configured to route directly to this address.`,
         meta: { type: 'test_alert' }
       });
       loadEmails();
       setSelectedEmail(newEmail);
       setSendingTest(false);
-      showToast(`Test notification dispatched to ${userEmail}!`);
+      showToast(`Test notification dispatched to ${targetEmail}!`);
     }, 400);
   };
 
@@ -69,18 +76,18 @@ export function EmailDispatchCenterModal({
     setTimeout(() => {
       const orderNum = `SO-2026-${Math.floor(10000 + Math.random() * 90000)}`;
       const newEmail = recordDispatchedEmail({
-        to: userEmail,
+        to: targetEmail,
         from: 'orders@syvoris.ai',
         subject: `Order Confirmation: ${orderNum} ($185,000.00)`,
         category: 'Order Confirmation',
-        preview: `Sales order ${orderNum} placed. Allocated to ${userName}.`,
-        content: `Hello ${userName},\n\nThank you for your order! Sales Order ${orderNum} has been received and committed to our fulfillment pipeline.\n\nOrder Specification:\n• Order Reference: ${orderNum}\n• Account: Apex Global Logistics\n• Total Amount: $185,000.00 USD\n• Ordered Items: Apex Fleet Telematics Gateway Pack (1,200 units)\n• Fulfillment Depot: Kingston Central Logistics Hub\n• Ordered By: ${userName} (${userEmail})\n• Payment Terms: Net 30 Commercial\n\nA PDF delivery receipt and shipment tracking details have been staged for dispatch to ${userEmail}.`,
+        preview: `Sales order ${orderNum} placed. Allocated to ${targetName}.`,
+        content: `Hello ${targetName},\n\nThank you for your order! Sales Order ${orderNum} has been received and committed to our fulfillment pipeline.\n\nOrder Specification:\n• Order Reference: ${orderNum}\n• Account: Apex Global Logistics\n• Total Amount: $185,000.00 USD\n• Ordered Items: Apex Fleet Telematics Gateway Pack (1,200 units)\n• Fulfillment Depot: Kingston Central Logistics Hub\n• Ordered By: ${targetName} (${targetEmail})\n• Payment Terms: Net 30 Commercial\n\nA PDF delivery receipt and shipment tracking details have been staged for dispatch to ${targetEmail}.`,
         meta: { order_ref: orderNum, amount: 185000 }
       });
       loadEmails();
       setSelectedEmail(newEmail);
       setSendingTest(false);
-      showToast(`Order confirmation ${orderNum} dispatched to ${userEmail}!`);
+      showToast(`Order confirmation ${orderNum} dispatched to ${targetEmail}!`);
     }, 450);
   };
 
@@ -110,9 +117,29 @@ export function EmailDispatchCenterModal({
                   <CheckCircle2 size={11} /> SMTP Relay Active
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Target Email: <b className="text-cyan-300 font-mono">{userEmail}</b> · Real-time delivery for orders, security tokens & platform notifications
-              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-xs text-slate-400">
+                  Target: <b className="text-cyan-300 font-mono">{targetEmail}</b> ({targetName})
+                </p>
+                <div className="flex items-center gap-1 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800">
+                  <span className="text-[10px] text-slate-500">Quick select:</span>
+                  <button
+                    type="button"
+                    className={`text-[10px] px-1.5 py-0.5 rounded transition ${targetEmail === 'rrborkar09@gmail.com' ? 'bg-cyan-900/80 text-cyan-200 font-bold' : 'text-slate-400 hover:text-white'}`}
+                    onClick={() => { setTargetEmail('rrborkar09@gmail.com'); setTargetName('Rahul Borkar'); }}
+                  >
+                    Rahul
+                  </button>
+                  <span className="text-slate-700">|</span>
+                  <button
+                    type="button"
+                    className={`text-[10px] px-1.5 py-0.5 rounded transition ${targetEmail === 'mnfreckleton@gmail.com' ? 'bg-cyan-900/80 text-cyan-200 font-bold' : 'text-slate-400 hover:text-white'}`}
+                    onClick={() => { setTargetEmail('mnfreckleton@gmail.com'); setTargetName('Marlon Freckleton'); }}
+                  >
+                    Marlon
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           <button
@@ -141,7 +168,7 @@ export function EmailDispatchCenterModal({
               disabled={sendingTest}
               className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow"
             >
-              <Send size={13} /> Send Test Notification to {userEmail}
+              <Send size={13} /> Send Test Notification to {targetEmail}
             </button>
             <button
               onClick={handleSendSampleOrder}
@@ -151,7 +178,7 @@ export function EmailDispatchCenterModal({
               <ShoppingCart size={13} /> Dispatch Order Confirmation
             </button>
             <a
-              href={`mailto:${userEmail}?subject=SYVORIS%20Ai%20Workspace%20Notification`}
+              href={`mailto:${targetEmail}?subject=SYVORIS%20Ai%20Workspace%20Notification`}
               className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
               target="_blank"
               rel="noreferrer"

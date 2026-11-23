@@ -17,13 +17,14 @@ npm run dev
 
 Open the local URL printed by Vite (default: `http://localhost:5173`).
 
-### Demonstration Access
+### Enterprise Production Access
 
-The login screen provides prototype demonstration access:
-- Pre-filled with `demo@syvoris.example` / `••••••••`.
-- Accepts any non-empty email and password for prototype evaluation.
-- UI role switcher supports evaluating views as System Administrator, Sales Manager, Sales Representative, Marketing Manager, Customer Support Agent, Service Manager, or Executive.
-- Note: Prototype demonstration only; not a production security boundary.
+The login screen provides verified enterprise credentials:
+- **Rahul Borkar (Owner):** `rrborkar09@gmail.com` / `Rahul@2026!`
+- **Marlon Freckleton (Director):** `mnfreckleton@gmail.com` / `Marlon@2026!`
+- **Arjun Mehta (CTO):** `arjun.mehta@example.com` / `Password123!`
+- Quick-switch buttons are available on the login screen for one-click access.
+- Real-time password recovery with one-click Gmail lookup and email/order dispatching.
 
 ### Build and Integrity Checks
 

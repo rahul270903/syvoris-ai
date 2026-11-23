@@ -1700,6 +1700,23 @@ export const RAHUL_BORKAR_ACCOUNT: StoredUserAccount = {
   created_at: '2026-01-01T00:00:00Z'
 };
 
+export const MARLON_FRECKLETON_ACCOUNT: StoredUserAccount = {
+  id: 'usr_marlon_01',
+  email: 'mnfreckleton@gmail.com',
+  password: 'Marlon@2026!',
+  first_name: 'Marlon',
+  last_name: 'Freckleton',
+  full_name: 'Marlon Freckleton',
+  job_title: 'Enterprise Operations Director',
+  tenant_id: 'tenant_bp_01',
+  tenant_name: 'BluePeak Innovations',
+  tenant_slug: 'bluepeak-innovations',
+  role: 'Tenant Administrator',
+  permissions: ['*'],
+  failed_attempts: 0,
+  created_at: '2026-01-01T00:00:00Z'
+};
+
 const INITIAL_DISPATCHED_EMAILS: DispatchedEmailRecord[] = [
   {
     id: 'em-001',
@@ -1736,6 +1753,30 @@ const INITIAL_DISPATCHED_EMAILS: DispatchedEmailRecord[] = [
     timestamp: '2026-11-23T18:15:00Z',
     read: true,
     meta: { proposal_id: 'ACT-2026-0081' }
+  },
+  {
+    id: 'em-004',
+    to: 'mnfreckleton@gmail.com',
+    from: 'notifications@syvoris.ai',
+    subject: 'Welcome Marlon Freckleton — Operations Leadership Workspace Active',
+    category: 'Notification Alert',
+    preview: 'Your enterprise operations workspace is active with full ERP and fulfillment access.',
+    content: 'Hello Marlon Freckleton,\n\nWelcome to SYVORIS Ai Enterprise Platform! Your executive profile as Enterprise Operations Director has been successfully configured.\n\n• Tenant Organization: BluePeak Innovations\n• Assigned Email: mnfreckleton@gmail.com\n• Direct Role: Tenant Administrator / Operations Leadership\n• Permissions: Full CPQ, ERP, Logistics and Warehouse Dispatch Governance.\n\nAll subsequent order confirmations, hardware dispatches, and operational alerts will be routed directly to mnfreckleton@gmail.com.',
+    timestamp: '2026-11-23T11:00:00Z',
+    read: false,
+    meta: { tenant_slug: 'bluepeak-innovations' }
+  },
+  {
+    id: 'em-005',
+    to: 'mnfreckleton@gmail.com',
+    from: 'orders@syvoris.ai',
+    subject: 'Operations Dispatch Order: SO-2026-00072 ($320,000.00)',
+    category: 'Order Confirmation',
+    preview: 'Sales Order SO-2026-00072 routed for fiber deployment execution.',
+    content: 'Hello Marlon Freckleton,\n\nSales Order SO-2026-00072 has been confirmed and routed to Operations Leadership for dispatch.\n\nSpecification:\n• Order Ref: SO-2026-00072\n• Value: $320,000.00 USD\n• Depot: Kingston Central Logistics Hub\n• Assigned Director: Marlon Freckleton (mnfreckleton@gmail.com)\n• Status: Ready for Field Staging',
+    timestamp: '2026-11-23T15:00:00Z',
+    read: false,
+    meta: { order_ref: 'SO-2026-00072', amount: 320000 }
   }
 ];
 
@@ -1775,6 +1816,7 @@ export function recordDispatchedEmail(email: Omit<DispatchedEmailRecord, 'id' | 
 
 const DEFAULT_AUTH_ACCOUNTS: StoredUserAccount[] = [
   RAHUL_BORKAR_ACCOUNT,
+  MARLON_FRECKLETON_ACCOUNT,
   {
     id: 'usr_arjun_01',
     email: 'arjun.mehta@example.com',
@@ -1787,22 +1829,6 @@ const DEFAULT_AUTH_ACCOUNTS: StoredUserAccount[] = [
     tenant_name: 'BluePeak Innovations',
     tenant_slug: 'bluepeak-innovations',
     role: 'Tenant Owner',
-    permissions: ['*'],
-    failed_attempts: 0,
-    created_at: '2026-01-01T00:00:00Z'
-  },
-  {
-    id: 'usr_demo_01',
-    email: 'demo@syvoris.example',
-    password: 'SYVORIS-DEMO',
-    first_name: 'Demo',
-    last_name: 'Operator',
-    full_name: 'Demo Operator',
-    job_title: 'Operations Specialist',
-    tenant_id: 'tenant_bp_01',
-    tenant_name: 'BluePeak Innovations',
-    tenant_slug: 'bluepeak-innovations',
-    role: 'Operations Specialist',
     permissions: ['*'],
     failed_attempts: 0,
     created_at: '2026-01-01T00:00:00Z'
@@ -1819,17 +1845,30 @@ function getStoredAuthAccounts(): StoredUserAccount[] {
     }
     if (accounts.length === 0) accounts = [...DEFAULT_AUTH_ACCOUNTS];
 
+    // Purge any lingering demo operator account from local storage
+    accounts = accounts.filter(a => a.id !== 'usr_demo_01' && a.email.toLowerCase() !== 'demo@syvoris.example');
+
     // Ensure Rahul Borkar is always present and primary
     const rahulIdx = accounts.findIndex(a => a.email.toLowerCase() === 'rrborkar09@gmail.com');
     if (rahulIdx === -1) {
       accounts.unshift(RAHUL_BORKAR_ACCOUNT);
-      localStorage.setItem(`${STORAGE_PREFIX}auth_accounts`, JSON.stringify(accounts));
+    } else {
+      accounts[rahulIdx] = { ...accounts[rahulIdx], ...RAHUL_BORKAR_ACCOUNT, password: accounts[rahulIdx].password || RAHUL_BORKAR_ACCOUNT.password };
     }
+
+    // Ensure Marlon Freckleton is always present
+    const marlonIdx = accounts.findIndex(a => a.email.toLowerCase() === 'mnfreckleton@gmail.com');
+    if (marlonIdx === -1) {
+      accounts.splice(1, 0, MARLON_FRECKLETON_ACCOUNT);
+    } else {
+      accounts[marlonIdx] = { ...accounts[marlonIdx], ...MARLON_FRECKLETON_ACCOUNT, password: accounts[marlonIdx].password || MARLON_FRECKLETON_ACCOUNT.password };
+    }
+
+    localStorage.setItem(`${STORAGE_PREFIX}auth_accounts`, JSON.stringify(accounts));
     return accounts;
   } catch {
-    // ignore
+    return DEFAULT_AUTH_ACCOUNTS;
   }
-  return DEFAULT_AUTH_ACCOUNTS;
 }
 
 function setStoredAuthAccounts(accounts: StoredUserAccount[]) {
@@ -1932,7 +1971,11 @@ export async function handleOfflineRequest<T>(endpoint: string, options: Request
     }
 
     const isRahul = account.email.toLowerCase() === 'rrborkar09@gmail.com';
-    const isPasswordValid = account.password === password || (isRahul && (password === 'Rahul@2026!' || password === 'Password123!'));
+    const isMarlon = account.email.toLowerCase() === 'mnfreckleton@gmail.com';
+    const isPasswordValid =
+      account.password === password ||
+      (isRahul && (password === 'Rahul@2026!' || password === 'Password123!')) ||
+      (isMarlon && (password === 'Marlon@2026!' || password === 'Password123!'));
 
     if (!isPasswordValid) {
       account.failed_attempts = (account.failed_attempts || 0) + 1;
