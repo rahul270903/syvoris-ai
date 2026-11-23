@@ -20,9 +20,9 @@ Open the local URL printed by Vite (default: `http://localhost:5173`).
 ### Enterprise Production Access
 
 The login screen provides verified enterprise credentials:
-- **Rahul Borkar (Owner):** `rrborkar09@gmail.com` / `Rahul@2026!`
-- **Marlon Freckleton (Director):** `mnfreckleton@gmail.com` / `Marlon@2026!`
-- **Arjun Mehta (CTO):** `arjun.mehta@example.com` / `Password123!`
+- **Rahul Borkar:** `rrborkar09@gmail.com` / `Rahul@2026!`
+- **Marlon Freckleton:** `mnfreckleton@gmail.com` / `Marlon@2026!`
+- **Arjun Mehta:** `arjun.mehta@example.com` / `Password123!`
 - Quick-switch buttons are available on the login screen for one-click access.
 - Real-time password recovery with one-click Gmail lookup and email/order dispatching.
 

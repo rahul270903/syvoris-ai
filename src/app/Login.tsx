@@ -256,7 +256,7 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
                 setError('');
               }}
             >
-              Rahul Borkar (Owner)
+              Rahul Borkar
             </button>
             <button
               type="button"
@@ -268,7 +268,7 @@ export function Login({ onLogin, onNavigateRegister }: LoginProps) {
                 setError('');
               }}
             >
-              Marlon Freckleton (Director)
+              Marlon Freckleton
             </button>
             <button
               type="button"
