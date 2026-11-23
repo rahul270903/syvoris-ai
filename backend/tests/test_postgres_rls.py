@@ -15,11 +15,14 @@ async def pg_engine():
     try:
         engine = create_async_engine(POSTGRES_TEST_URL, poolclass=NullPool)
         async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
             try:
-                # Ensure the current role is not superuser and has no bypassrls, so PostgreSQL kernel RLS is strictly enforced
-                await conn.execute(text("ALTER ROLE CURRENT_USER NOSUPERUSER NOBYPASSRLS;"))
-                await conn.commit()
+                # Dynamically retrieve acting role and ensure it is not superuser and has no bypassrls,
+                # so PostgreSQL kernel RLS policies are strictly enforced during tests.
+                res = await conn.execute(text("SELECT current_user;"))
+                acting_role = res.scalar()
+                if acting_role:
+                    await conn.execute(text(f'ALTER ROLE "{acting_role}" NOSUPERUSER NOBYPASSRLS;'))
+                    await conn.commit()
             except Exception:
                 pass
         yield engine
