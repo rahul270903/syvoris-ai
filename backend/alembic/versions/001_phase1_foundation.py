@@ -16,6 +16,13 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    if bind and bind.dialect.name == "postgresql":
+        try:
+            op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255);")
+        except Exception:
+            pass
+
     # 1. tenants
     op.create_table(
         'tenants',

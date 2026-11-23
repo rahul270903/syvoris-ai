@@ -1,7 +1,7 @@
-"""015_billing_subscriptions_and_metering
+"""015_billing_and_metering
 
-Revision ID: 015_billing_subscriptions_and_metering
-Revises: 014_integrations_webhooks_and_radium
+Revision ID: 015_billing_and_metering
+Revises: 014_integrations_and_radium
 Create Date: 2026-11-17 03:00:00.000000
 
 """
@@ -9,8 +9,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = '015_billing_subscriptions_and_metering'
-down_revision: Union[str, None] = '014_integrations_webhooks_and_radium'
+revision: str = '015_billing_and_metering'
+down_revision: Union[str, None] = '014_integrations_and_radium'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

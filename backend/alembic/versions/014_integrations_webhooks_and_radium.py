@@ -1,7 +1,7 @@
-"""014_integrations_webhooks_and_radium
+"""014_integrations_and_radium
 
-Revision ID: 014_integrations_webhooks_and_radium
-Revises: 013_ai_intelligence_and_governance
+Revision ID: 014_integrations_and_radium
+Revises: 013_ai_intel_and_governance
 Create Date: 2026-11-17 02:00:00.000000
 
 """
@@ -9,8 +9,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = '014_integrations_webhooks_and_radium'
-down_revision: Union[str, None] = '013_ai_intelligence_and_governance'
+revision: str = '014_integrations_and_radium'
+down_revision: Union[str, None] = '013_ai_intel_and_governance'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

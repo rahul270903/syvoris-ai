@@ -1,7 +1,7 @@
-"""012_workflow_automation_and_approvals
+"""012_workflow_and_approvals
 
-Revision ID: 012_workflow_automation_and_approvals
-Revises: 011_product_and_service_catalogue
+Revision ID: 012_workflow_and_approvals
+Revises: 011_product_service_catalog
 Create Date: 2026-11-17 00:00:00.000000
 
 """
@@ -9,8 +9,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = '012_workflow_automation_and_approvals'
-down_revision: Union[str, None] = '011_product_and_service_catalogue'
+revision: str = '012_workflow_and_approvals'
+down_revision: Union[str, None] = '011_product_service_catalog'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

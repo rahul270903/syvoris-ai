@@ -25,9 +25,9 @@ async def init_dbs():
         async with eng.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             await conn.run_sync(_sync_sqlite_columns)
-            await conn.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)"))
+            await conn.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(255) NOT NULL PRIMARY KEY)"))
             await conn.execute(text("DELETE FROM alembic_version"))
-            await conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('011_product_and_service_catalogue')"))
+            await conn.execute(text("INSERT INTO alembic_version (version_num) VALUES ('011_product_service_catalog')"))
         await eng.dispose()
         print(f"Successfully initialized and stamped: {abs_p}")
 

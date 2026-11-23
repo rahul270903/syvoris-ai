@@ -1,7 +1,7 @@
 """007_sales_and_revenue_cpq
 
 Revision ID: 007_sales_and_revenue_cpq
-Revises: 006_opportunity_pipelines_and_stages
+Revises: 006_opportunity_pipelines
 Create Date: 2026-11-13 01:30:00.000000
 
 """
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = '007_sales_and_revenue_cpq'
-down_revision: Union[str, None] = '006_opportunity_pipelines_and_stages'
+down_revision: Union[str, None] = '006_opportunity_pipelines'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

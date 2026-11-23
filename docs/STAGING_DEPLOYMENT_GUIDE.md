@@ -81,7 +81,7 @@ $env:DATABASE_URL="postgresql://<user>:<password>@ep-xxxxxx.us-east-2.aws.neon.t
 Verify the schema reached head:
 ```powershell
 .\venv\Scripts\python.exe -m alembic -c alembic.ini current
-# Output: 015_billing_subscriptions_and_metering (head)
+# Output: 015_billing_and_metering (head)
 ```
 
 ---

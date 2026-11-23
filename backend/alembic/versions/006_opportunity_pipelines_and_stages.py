@@ -1,6 +1,6 @@
-"""006_opportunity_pipelines_and_stages
+"""006_opportunity_pipelines
 
-Revision ID: 006_opportunity_pipelines_and_stages
+Revision ID: 006_opportunity_pipelines
 Revises: 005_merge_and_hierarchy
 Create Date: 2026-11-13 01:00:00.000000
 
@@ -9,7 +9,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = '006_opportunity_pipelines_and_stages'
+revision: str = '006_opportunity_pipelines'
 down_revision: Union[str, None] = '005_merge_and_hierarchy'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
