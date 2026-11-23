@@ -107,26 +107,17 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [activeSlug]);
 
-  // Persist tenant-specific prototype data
+  // Persist tenant-specific enterprise data
   useEffect(() => {
     const key = getTenantStorageKey(activeSlug);
-    // Ensure organizations and contacts are never stored in CRMStore for authenticated tenants
-    const toStore = {
-      ...data,
-      ...(activeSlug ? { organizations: [], contacts: [] } : {})
-    };
     try {
-      localStorage.setItem(key, JSON.stringify({ data: toStore, events }));
+      localStorage.setItem(key, JSON.stringify({ data, events }));
     } catch {
       // quota or private browsing
     }
   }, [data, events, activeSlug]);
 
   const records = (entity: string) => {
-    if (activeSlug && (entity === 'organizations' || entity === 'contacts')) {
-      // Authenticated tenants must NEVER read from CRMStore for accounts/contacts
-      return [];
-    }
     return data[entity] || [];
   };
 

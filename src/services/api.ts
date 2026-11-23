@@ -1913,6 +1913,8 @@ class ApiClient {
     localStorage.removeItem('syvoris:refresh_token');
     localStorage.removeItem('syvoris:active_tenant_slug');
     localStorage.removeItem('syvoris:active_tenant_id');
+    localStorage.removeItem('syvoris:authenticated');
+    localStorage.removeItem('syvoris:active_user');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('syvoris:session_expired'));
     }
@@ -1943,28 +1945,6 @@ class ApiClient {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-    } else if (retryOnAuth) {
-      // In development / demo environment, automatically authenticate with default tenant owner if tokens are absent
-      try {
-        const autoRes = await fetch(`${API_BASE}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: 'arjun.mehta@example.com',
-            password: 'Password123!',
-            tenant_slug: 'bluepeak-innovations',
-          }),
-        });
-        if (autoRes.ok) {
-          const autoData: AuthResponse = await autoRes.json();
-          this.setTokens(autoData.access_token, autoData.refresh_token);
-          if (autoData.tenant_slug) localStorage.setItem('syvoris:active_tenant_slug', autoData.tenant_slug);
-          if (autoData.tenant_id) localStorage.setItem('syvoris:active_tenant_id', autoData.tenant_id);
-          headers['Authorization'] = `Bearer ${autoData.access_token}`;
-        }
-      } catch {
-        // Proceed without auth header
-      }
     }
 
     let response: Response;
@@ -2123,10 +2103,17 @@ class ApiClient {
     }
   }
 
-  public async requestPasswordReset(email: string): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/auth/password-reset/request', {
+  public async requestPasswordReset(email: string): Promise<{ message: string; token?: string; reset_url?: string }> {
+    return this.request<{ message: string; token?: string; reset_url?: string }>('/auth/password-reset/request', {
       method: 'POST',
       body: JSON.stringify({ email }),
+    });
+  }
+
+  public async confirmPasswordReset(token: string, new_password: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password }),
     });
   }
 

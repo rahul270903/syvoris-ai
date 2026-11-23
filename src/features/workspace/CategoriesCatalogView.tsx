@@ -403,15 +403,15 @@ export function CategoriesCatalogView() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4 font-semibold">Ref Code</th>
-                <th className="py-3 px-4 font-semibold">Category Name</th>
-                <th className="py-3 px-4 font-semibold">Slug Identifier</th>
-                <th className="py-3 px-4 font-semibold">Classification Type</th>
+                <th className="py-3 px-4 font-semibold whitespace-nowrap">Ref Code</th>
+                <th className="py-3 px-4 font-semibold whitespace-nowrap">Category Name</th>
+                <th className="py-3 px-4 font-semibold whitespace-nowrap">Slug Identifier</th>
+                <th className="py-3 px-4 font-semibold whitespace-nowrap">Classification Type</th>
                 <th className="py-3 px-4 font-semibold">Scope Description</th>
-                <th className="py-3 px-4 font-semibold text-center">Order</th>
-                <th className="py-3 px-4 font-semibold text-center">Linked SKUs</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                <th className="py-3 px-4 font-semibold text-center whitespace-nowrap">Order</th>
+                <th className="py-3 px-4 font-semibold text-center whitespace-nowrap min-w-[120px]">Linked SKUs</th>
+                <th className="py-3 px-4 font-semibold whitespace-nowrap">Status</th>
+                <th className="py-3 px-4 font-semibold text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-200">
@@ -430,33 +430,33 @@ export function CategoriesCatalogView() {
                     <td className="py-3 px-4 font-bold text-slate-100 whitespace-nowrap">
                       {c.name}
                     </td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-slate-400">
+                    <td className="py-3 px-4 font-mono text-[11px] text-slate-400 whitespace-nowrap">
                       {c.slug}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <span className="bg-slate-800 text-slate-200 px-2 py-0.5 rounded text-[11px] font-medium border border-slate-700/60">
+                      <span className="bg-slate-800 text-slate-200 px-2 py-0.5 rounded text-[11px] font-medium border border-slate-700/60 whitespace-nowrap">
                         {c.category_type}
                       </span>
                     </td>
                     <td className="py-3 px-4 max-w-[280px] text-slate-400 truncate" title={c.description}>
                       {c.description || 'Enterprise catalog classification.'}
                     </td>
-                    <td className="py-3 px-4 text-center font-mono text-slate-300">
+                    <td className="py-3 px-4 text-center font-mono text-slate-300 whitespace-nowrap">
                       {c.sort_order}
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="bg-cyan-500/15 text-cyan-300 px-2 py-0.5 rounded font-mono font-bold border border-cyan-500/40 text-[11px]">
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center whitespace-nowrap bg-cyan-500/15 text-cyan-300 px-2.5 py-0.5 rounded-full font-mono font-bold border border-cyan-500/40 text-[11px] leading-none min-w-[76px]">
                         {c.custom_fields?.linked_items || c.subcategories_count || 3} items
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <StatusPill status={c.is_active ? 'Active' : 'Inactive'} />
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         <button
                           onClick={() => handleToggleStatus(c)}
-                          className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded font-medium transition-colors"
+                          className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded font-medium transition-colors whitespace-nowrap"
                         >
                           {c.is_active ? 'Deactivate' : 'Activate'}
                         </button>

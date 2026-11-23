@@ -1,10 +1,60 @@
 import React, { useState } from 'react';
-import { ArrowRight, Building2, CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles, User } from 'lucide-react';
+import { ArrowRight, Building2, CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles, User, AlertTriangle } from 'lucide-react';
 import { api } from '../services/api';
 
 interface RegisterProps {
   onSuccess: (email: string) => void;
   onNavigateLogin: () => void;
+}
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  const hasMinLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSymbol = /[^A-Za-z0-9]/.test(password);
+
+  const score = [hasMinLength, (hasUpper && hasLower), hasNumber, hasSymbol].filter(Boolean).length;
+
+  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+  const barColors = ['bg-rose-500', 'bg-orange-500', 'bg-amber-400', 'bg-emerald-400', 'bg-cyan-400'];
+
+  if (!password) return null;
+
+  return (
+    <div className="mt-2 space-y-1.5 text-left">
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-slate-400 font-medium">Password strength:</span>
+        <span className={`font-semibold ${score >= 3 ? 'text-emerald-400' : score === 2 ? 'text-amber-400' : 'text-rose-400'}`}>
+          {strengthLabels[score]}
+        </span>
+      </div>
+      <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden flex gap-1">
+        {[0, 1, 2, 3].map((step) => (
+          <div
+            key={step}
+            className={`h-full flex-1 rounded-full transition-all duration-300 ${
+              score > step ? barColors[score] : 'bg-slate-700/50'
+            }`}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-1 pt-1 text-[10px] text-slate-400">
+        <span className={hasMinLength ? 'text-emerald-400 flex items-center gap-1' : 'flex items-center gap-1'}>
+          {hasMinLength ? '✓' : '○'} 8+ characters
+        </span>
+        <span className={(hasUpper && hasLower) ? 'text-emerald-400 flex items-center gap-1' : 'flex items-center gap-1'}>
+          {(hasUpper && hasLower) ? '✓' : '○'} Upper & lowercase
+        </span>
+        <span className={hasNumber ? 'text-emerald-400 flex items-center gap-1' : 'flex items-center gap-1'}>
+          {hasNumber ? '✓' : '○'} Includes number
+        </span>
+        <span className={hasSymbol ? 'text-emerald-400 flex items-center gap-1' : 'flex items-center gap-1'}>
+          {hasSymbol ? '✓' : '○'} Special symbol
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function Register({ onSuccess, onNavigateLogin }: RegisterProps) {
@@ -14,7 +64,9 @@ export function Register({ onSuccess, onNavigateLogin }: RegisterProps) {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,6 +94,11 @@ export function Register({ onSuccess, onNavigateLogin }: RegisterProps) {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please verify your entries.');
+      return;
+    }
+
     setLoading(true);
     try {
       await api.registerTenant({
@@ -53,13 +110,11 @@ export function Register({ onSuccess, onNavigateLogin }: RegisterProps) {
         password,
       });
       localStorage.setItem('syvoris:authenticated', 'true');
+      localStorage.setItem('syvoris:active_tenant_slug', slug.trim());
+      localStorage.setItem('syvoris:active_tenant_name', orgName.trim());
       onSuccess(email.trim());
     } catch (err: any) {
-      console.warn('Backend registration unavailable, provisioning local workspace:', err);
-      localStorage.setItem('syvoris:authenticated', 'true');
-      localStorage.setItem('syvoris:active_tenant_slug', slug.trim() || 'acme-corp');
-      localStorage.setItem('syvoris:active_tenant_name', orgName.trim() || 'Acme Global Industries');
-      onSuccess(email.trim());
+      setError(err?.message || 'Tenant registration failed. Please check your inputs.');
     } finally {
       setLoading(false);
     }
@@ -184,13 +239,35 @@ export function Register({ onSuccess, onNavigateLogin }: RegisterProps) {
                   onChange={e => setPassword(e.target.value)}
                   required
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}>
+                <button type="button" onClick={() => setShowPassword(!showPassword)} title={showPassword ? 'Hide password' : 'Show password'}>
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <PasswordStrengthBar password={password} />
+            </label>
+
+            <label>
+              Confirm Password
+              <div className="password-input">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Re-enter password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                />
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} title={showConfirmPassword ? 'Hide password' : 'Show password'}>
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </label>
 
-            {error && <div className="login-error">{error}</div>}
+            {error && (
+              <div className="login-error flex items-center gap-2 text-xs bg-rose-950/60 border border-rose-500/50 p-2.5 rounded-lg text-rose-200">
+                <AlertTriangle size={15} className="text-rose-400 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <button className="login-submit w-full mt-4" type="submit" disabled={loading}>
               {loading ? 'Provisioning Tenant Workspace...' : 'Create Workspace & Launch'} <ArrowRight size={16} />

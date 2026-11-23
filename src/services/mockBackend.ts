@@ -748,6 +748,142 @@ function setStored<T>(key: string, items: T[]) {
   }
 }
 
+export interface StoredUserAccount {
+  id: string;
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  job_title: string;
+  tenant_id: string;
+  tenant_name: string;
+  tenant_slug: string;
+  role: string;
+  permissions: string[];
+  failed_attempts: number;
+  locked_until?: number;
+  created_at: string;
+}
+
+export interface StoredPasswordReset {
+  token: string;
+  email: string;
+  expires_at: number;
+  created_at: string;
+}
+
+const DEFAULT_AUTH_ACCOUNTS: StoredUserAccount[] = [
+  {
+    id: 'usr_arjun_01',
+    email: 'arjun.mehta@example.com',
+    password: 'Password123!',
+    first_name: 'Arjun',
+    last_name: 'Mehta',
+    full_name: 'Arjun Mehta',
+    job_title: 'Tenant Owner & CTO',
+    tenant_id: 'tenant_bp_01',
+    tenant_name: 'BluePeak Innovations',
+    tenant_slug: 'bluepeak-innovations',
+    role: 'Tenant Owner',
+    permissions: ['*'],
+    failed_attempts: 0,
+    created_at: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'usr_demo_01',
+    email: 'demo@syvoris.example',
+    password: 'SYVORIS-DEMO',
+    first_name: 'Demo',
+    last_name: 'Operator',
+    full_name: 'Demo Operator',
+    job_title: 'Operations Specialist',
+    tenant_id: 'tenant_bp_01',
+    tenant_name: 'BluePeak Innovations',
+    tenant_slug: 'bluepeak-innovations',
+    role: 'Operations Specialist',
+    permissions: ['*'],
+    failed_attempts: 0,
+    created_at: '2026-01-01T00:00:00Z'
+  }
+];
+
+function getStoredAuthAccounts(): StoredUserAccount[] {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}auth_accounts`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_AUTH_ACCOUNTS;
+}
+
+function setStoredAuthAccounts(accounts: StoredUserAccount[]) {
+  try {
+    localStorage.setItem(`${STORAGE_PREFIX}auth_accounts`, JSON.stringify(accounts));
+  } catch {
+    // ignore
+  }
+}
+
+function getStoredPasswordResets(): StoredPasswordReset[] {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}password_resets`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function setStoredPasswordResets(resets: StoredPasswordReset[]) {
+  try {
+    localStorage.setItem(`${STORAGE_PREFIX}password_resets`, JSON.stringify(resets));
+  } catch {
+    // ignore
+  }
+}
+
+function getActiveUser(): StoredUserAccount | null {
+  try {
+    const raw = localStorage.getItem('syvoris:active_user');
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function setActiveUser(user: StoredUserAccount | null) {
+  try {
+    if (user) {
+      localStorage.setItem('syvoris:active_user', JSON.stringify(user));
+      localStorage.setItem('syvoris:active_tenant_slug', user.tenant_slug);
+      localStorage.setItem('syvoris:active_tenant_id', user.tenant_id);
+      localStorage.setItem('syvoris:active_tenant_name', user.tenant_name);
+      localStorage.setItem('syvoris:authenticated', 'true');
+    } else {
+      localStorage.removeItem('syvoris:active_user');
+      localStorage.removeItem('syvoris:authenticated');
+      localStorage.removeItem('syvoris:access_token');
+      localStorage.removeItem('syvoris:refresh_token');
+      localStorage.removeItem('syvoris:active_tenant_slug');
+      localStorage.removeItem('syvoris:active_tenant_id');
+      localStorage.removeItem('syvoris:active_tenant_name');
+    }
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Main offline fallback dispatcher for all /api/v1 endpoints
  */
@@ -768,48 +904,232 @@ export async function handleOfflineRequest<T>(endpoint: string, options: Request
   }
 
   // 1. Auth & Current Profile
-  if (pathname === '/auth/login' || pathname === '/auth/register' || pathname === '/auth/switch-tenant' || pathname === '/auth/refresh') {
-    const token = 'mock_jwt_enterprise_token_bluepeak';
+  if (pathname === '/auth/login') {
+    const email = (body.email || '').trim().toLowerCase();
+    const password = body.password || '';
+    const accounts = getStoredAuthAccounts();
+    const account = accounts.find(a => a.email.toLowerCase() === email);
+
+    if (!account) {
+      throw new Error('Invalid email or password. Please verify your credentials.');
+    }
+
+    if (account.locked_until && Date.now() < account.locked_until) {
+      const remainingSeconds = Math.ceil((account.locked_until - Date.now()) / 1000);
+      const remainingMins = Math.ceil(remainingSeconds / 60);
+      throw new Error(`Account temporarily locked for security. Please try again in ${remainingMins} minute(s) (${remainingSeconds}s).`);
+    }
+
+    if (account.password !== password) {
+      account.failed_attempts = (account.failed_attempts || 0) + 1;
+      if (account.failed_attempts >= 5) {
+        account.locked_until = Date.now() + 5 * 60 * 1000; // 5 min lockout
+        setStoredAuthAccounts(accounts);
+        throw new Error('Security Alert: Account locked due to 5 consecutive failed login attempts. Please wait 5 minutes or reset your password.');
+      }
+      setStoredAuthAccounts(accounts);
+      const attemptsLeft = 5 - account.failed_attempts;
+      throw new Error(`Invalid email or password. (${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining before temporary security lockout)`);
+    }
+
+    // Login successful
+    account.failed_attempts = 0;
+    delete account.locked_until;
+    setStoredAuthAccounts(accounts);
+    setActiveUser(account);
+
+    const token = `jwt_token_${account.id}_${Date.now()}`;
     const authRes: AuthResponse = {
       access_token: token,
       token_type: 'bearer',
-      refresh_token: 'mock_refresh_token_bluepeak',
+      refresh_token: `refresh_token_${account.id}_${Date.now()}`,
       expires_in: 86400,
-      tenant_id: 'tenant_bp_01',
-      tenant_slug: 'bluepeak-innovations',
+      tenant_id: account.tenant_id,
+      tenant_slug: account.tenant_slug,
+      role: account.role,
+      permissions: account.permissions || ['*']
+    };
+    return authRes as unknown as T;
+  }
+
+  if (pathname === '/auth/register') {
+    const email = (body.email || '').trim().toLowerCase();
+    const password = body.password || '';
+    const orgName = (body.organization_name || '').trim();
+    const firstName = (body.first_name || '').trim();
+    const lastName = (body.last_name || '').trim();
+    const slug = (body.tenant_slug || orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-')).trim();
+
+    if (!email || !password || !orgName || !firstName || !lastName) {
+      throw new Error('All registration fields are required.');
+    }
+
+    if (password.length < 8) {
+      throw new Error('Password must be at least 8 characters in length.');
+    }
+
+    const accounts = getStoredAuthAccounts();
+    if (accounts.some(a => a.email.toLowerCase() === email)) {
+      throw new Error(`An enterprise account with email '${email}' already exists. Please sign in or use another email.`);
+    }
+
+    const tenantId = `ten_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const userId = `usr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+
+    const newAccount: StoredUserAccount = {
+      id: userId,
+      email,
+      password,
+      first_name: firstName,
+      last_name: lastName,
+      full_name: `${firstName} ${lastName}`,
+      job_title: 'Tenant Owner & Executive',
+      tenant_id: tenantId,
+      tenant_name: orgName,
+      tenant_slug: slug,
+      role: 'Tenant Owner',
+      permissions: ['*'],
+      failed_attempts: 0,
+      created_at: new Date().toISOString()
+    };
+
+    accounts.push(newAccount);
+    setStoredAuthAccounts(accounts);
+    setActiveUser(newAccount);
+
+    const token = `jwt_token_${userId}_${Date.now()}`;
+    const authRes: AuthResponse = {
+      access_token: token,
+      token_type: 'bearer',
+      refresh_token: `refresh_token_${userId}_${Date.now()}`,
+      expires_in: 86400,
+      tenant_id: tenantId,
+      tenant_slug: slug,
       role: 'Tenant Owner',
       permissions: ['*']
     };
     return authRes as unknown as T;
   }
 
+  if (pathname === '/auth/password-reset/request') {
+    const email = (body.email || '').trim().toLowerCase();
+    const accounts = getStoredAuthAccounts();
+    const account = accounts.find(a => a.email.toLowerCase() === email);
+
+    if (!account) {
+      return {
+        message: `If '${email}' is registered in SYVORIS Ai, a secure recovery link has been dispatched via enterprise SMTP relay.`
+      } as unknown as T;
+    }
+
+    const token = 'RST-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const resets = getStoredPasswordResets().filter(r => r.email !== email);
+    resets.push({
+      token,
+      email,
+      expires_at: Date.now() + 15 * 60 * 1000,
+      created_at: new Date().toISOString()
+    });
+    setStoredPasswordResets(resets);
+
+    return {
+      message: `A secure password reset email has been dispatched to ${email} via corporate SMTP relay.`,
+      token: token,
+      expires_in_minutes: 15,
+      reset_url: `${typeof window !== 'undefined' ? window.location.origin : 'https://syvoris-ai.vercel.app'}/reset-password?token=${token}`
+    } as unknown as T;
+  }
+
+  if (pathname === '/auth/password-reset/confirm') {
+    const token = (body.token || '').trim();
+    const newPassword = body.new_password || '';
+
+    if (!token || !newPassword) {
+      throw new Error('Reset token and new password are required.');
+    }
+
+    if (newPassword.length < 8) {
+      throw new Error('New password must be at least 8 characters in length.');
+    }
+
+    const resets = getStoredPasswordResets();
+    const resetEntry = resets.find(r => r.token.toUpperCase() === token.toUpperCase());
+
+    if (!resetEntry || Date.now() > resetEntry.expires_at) {
+      throw new Error('Password reset token is invalid or has expired (15-minute validity). Please request a new link.');
+    }
+
+    const accounts = getStoredAuthAccounts();
+    const account = accounts.find(a => a.email.toLowerCase() === resetEntry.email.toLowerCase());
+
+    if (!account) {
+      throw new Error('Associated user account was not found.');
+    }
+
+    account.password = newPassword;
+    account.failed_attempts = 0;
+    delete account.locked_until;
+    setStoredAuthAccounts(accounts);
+
+    setStoredPasswordResets(resets.filter(r => r.token !== resetEntry.token));
+
+    return {
+      message: 'Password has been successfully updated. You may now sign in with your new credentials.'
+    } as unknown as T;
+  }
+
+  if (pathname === '/auth/switch-tenant' || pathname === '/auth/refresh') {
+    const active = getActiveUser() || DEFAULT_AUTH_ACCOUNTS[0];
+    const token = `jwt_token_${active.id}_${Date.now()}`;
+    const authRes: AuthResponse = {
+      access_token: token,
+      token_type: 'bearer',
+      refresh_token: `refresh_token_${active.id}_${Date.now()}`,
+      expires_in: 86400,
+      tenant_id: active.tenant_id,
+      tenant_slug: active.tenant_slug,
+      role: active.role,
+      permissions: active.permissions || ['*']
+    };
+    return authRes as unknown as T;
+  }
+
+  if (pathname === '/auth/logout') {
+    setActiveUser(null);
+    return { message: 'Successfully logged out.' } as unknown as T;
+  }
+
   if (pathname === '/auth/me') {
+    const active = getActiveUser();
+    if (!active) {
+      throw new Error('401 Unauthorized: No active user session.');
+    }
     const me: CurrentUserProfile = {
       user: {
-        id: 'usr_arjun_01',
-        email: 'arjun.mehta@example.com',
-        first_name: 'Arjun',
-        last_name: 'Mehta',
-        full_name: 'Arjun Mehta',
-        job_title: 'Tenant Owner & CTO',
-        is_platform_admin: true,
+        id: active.id,
+        email: active.email,
+        first_name: active.first_name,
+        last_name: active.last_name,
+        full_name: active.full_name,
+        job_title: active.job_title,
+        is_platform_admin: active.role === 'Tenant Owner',
         is_verified: true
       },
       active_tenant: {
-        tenant_id: 'tenant_bp_01',
-        tenant_name: 'BluePeak Innovations',
-        tenant_slug: 'bluepeak-innovations',
-        role: 'Tenant Owner',
-        permissions: ['*'],
+        tenant_id: active.tenant_id,
+        tenant_name: active.tenant_name,
+        tenant_slug: active.tenant_slug,
+        role: active.role,
+        permissions: active.permissions || ['*'],
         status: 'active'
       },
       memberships: [
         {
-          tenant_id: 'tenant_bp_01',
-          tenant_name: 'BluePeak Innovations',
-          tenant_slug: 'bluepeak-innovations',
-          role: 'Tenant Owner',
-          permissions: ['*'],
+          tenant_id: active.tenant_id,
+          tenant_name: active.tenant_name,
+          tenant_slug: active.tenant_slug,
+          role: active.role,
+          permissions: active.permissions || ['*'],
           status: 'active'
         }
       ]
@@ -818,10 +1138,11 @@ export async function handleOfflineRequest<T>(endpoint: string, options: Request
   }
 
   if (pathname === '/tenant/profile') {
+    const active = getActiveUser();
     const profile: TenantProfile = {
-      id: 'tenant_bp_01',
-      name: 'BluePeak Innovations',
-      slug: 'bluepeak-innovations',
+      id: active ? active.tenant_id : 'tenant_bp_01',
+      name: active ? active.tenant_name : 'BluePeak Innovations',
+      slug: active ? active.tenant_slug : 'bluepeak-innovations',
       status: 'active',
       plan_tier: 'enterprise',
       max_users: 50,

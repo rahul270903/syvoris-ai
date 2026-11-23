@@ -918,48 +918,26 @@ function AuthenticatedApp() {
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   const checkSession = async () => {
+    const isAuth = localStorage.getItem('syvoris:authenticated') === 'true';
+    const hasToken = api.hasTokens();
+    const activeUser = localStorage.getItem('syvoris:active_user');
+
+    // First-time visitor or logged-out session: land directly on Login page
+    if (!isAuth && !hasToken && !activeUser) {
+      setUserProfile(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const p = await api.getMe();
       setUserProfile(p);
       localStorage.setItem('syvoris:authenticated', 'true');
     } catch {
-      if (localStorage.getItem('syvoris:authenticated') === 'true') {
-        const tenantSlug = localStorage.getItem('syvoris:active_tenant_slug') || 'bluepeak-innovations';
-        const tenantName = localStorage.getItem('syvoris:active_tenant_name') || 'BluePeak Innovations';
-        setUserProfile({
-          user: {
-            id: 'usr-arjun-mehta',
-            email: 'arjun.mehta@example.com',
-            first_name: 'Arjun',
-            last_name: 'Mehta',
-            full_name: 'Arjun Mehta',
-            job_title: 'Senior Account Executive & Tenant Owner',
-            is_platform_admin: false,
-            is_verified: true,
-          },
-          active_tenant: {
-            tenant_id: 'ten-bluepeak-001',
-            tenant_name: tenantName,
-            tenant_slug: tenantSlug,
-            role: 'Tenant Owner',
-            permissions: ['*'],
-            status: 'Active',
-          },
-          memberships: [
-            {
-              tenant_id: 'ten-bluepeak-001',
-              tenant_name: tenantName,
-              tenant_slug: tenantSlug,
-              role: 'Tenant Owner',
-              permissions: ['*'],
-              status: 'Active',
-            }
-          ],
-        });
-      } else {
-        api.clearTokens();
-        setUserProfile(null);
-      }
+      api.clearTokens();
+      localStorage.removeItem('syvoris:authenticated');
+      localStorage.removeItem('syvoris:active_user');
+      setUserProfile(null);
     } finally {
       setLoading(false);
     }
