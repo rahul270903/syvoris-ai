@@ -14,6 +14,7 @@ import { WorkflowNavigator } from './features/workspace/WorkflowNavigator';
 import { AIWorkspace } from './features/ai/AIWorkspace';
 import { IntegrationWorkspace } from './features/integrations/IntegrationWorkspace';
 import { BillingWorkspace } from './features/billing/BillingWorkspace';
+import { LandingPage } from './app/LandingPage';
 import { Login } from './app/Login';
 import { Register } from './app/Register';
 import { api, CurrentUserProfile } from './services/api';
@@ -1064,14 +1065,21 @@ function NotFound() {
 function AuthenticatedApp() {
   const [userProfile, setUserProfile] = useState<CurrentUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  const [publicView, setPublicView] = useState<'landing' | 'login' | 'register'>(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.toLowerCase();
+      if (path === '/login' || path === '/signin') return 'login';
+      if (path === '/register' || path === '/signup') return 'register';
+    }
+    return 'landing';
+  });
 
   const checkSession = async () => {
     const isAuth = localStorage.getItem('syvoris:authenticated') === 'true';
     const hasToken = api.hasTokens();
     const activeUser = localStorage.getItem('syvoris:active_user');
 
-    // First-time visitor or logged-out session: land directly on Login page
+    // First-time visitor or logged-out session: land on Public Website / Landing Page
     if (!isAuth && !hasToken && !activeUser) {
       setUserProfile(null);
       setLoading(false);
@@ -1092,11 +1100,30 @@ function AuthenticatedApp() {
     }
   };
 
+  const handleLaunchDemo = async () => {
+    setLoading(true);
+    try {
+      await api.login({
+        email: 'arjun.mehta@example.com',
+        password: 'Password123!',
+        tenant_slug: 'bluepeak-innovations',
+      });
+      localStorage.setItem('syvoris:authenticated', 'true');
+      await checkSession();
+    } catch (err) {
+      console.error('Interactive demo login error:', err);
+      setPublicView('login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     checkSession();
 
     const handleExpired = () => {
       setUserProfile(null);
+      setPublicView('landing');
     };
     window.addEventListener('syvoris:session_expired', handleExpired);
     return () => window.removeEventListener('syvoris:session_expired', handleExpired);
@@ -1114,23 +1141,45 @@ function AuthenticatedApp() {
   }
 
   if (!userProfile) {
-    if (authView === 'register') {
+    if (publicView === 'register') {
       return (
         <Register
           onSuccess={() => checkSession()}
-          onNavigateLogin={() => setAuthView('login')}
+          onNavigateLogin={() => setPublicView('login')}
+          onNavigateLanding={() => setPublicView('landing')}
         />
       );
     }
+
+    if (publicView === 'login') {
+      return (
+        <Login
+          onLogin={() => checkSession()}
+          onNavigateRegister={() => setPublicView('register')}
+          onNavigateLanding={() => setPublicView('landing')}
+          onLaunchDemo={handleLaunchDemo}
+        />
+      );
+    }
+
     return (
-      <Login
-        onLogin={() => checkSession()}
-        onNavigateRegister={() => setAuthView('register')}
+      <LandingPage
+        onNavigateLogin={() => setPublicView('login')}
+        onNavigateRegister={() => setPublicView('register')}
+        onLaunchDemo={handleLaunchDemo}
       />
     );
   }
 
-  return <AppShell initialProfile={userProfile} onLogout={() => setUserProfile(null)} />;
+  return (
+    <AppShell
+      initialProfile={userProfile}
+      onLogout={() => {
+        setUserProfile(null);
+        setPublicView('landing');
+      }}
+    />
+  );
 }
 
 export default function App() {
