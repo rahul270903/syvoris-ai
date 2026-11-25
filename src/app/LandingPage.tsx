@@ -1,8 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import HlsVideoBackground from '../components/HlsVideoBackground';
-import Aurora from '../components/Aurora';
-import BlurText from '../components/BlurText';
-import SpotlightCard from '../components/SpotlightCard';
 import {
   ArrowRight, Check, ChevronDown, ChevronRight, X, Mail, Phone,
   Building2, Users, BarChart3, Shield, Layers, Calendar, Search,
@@ -381,7 +377,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
           direct links, "Log in" and prominent pill-shaped "Start free" button.
           ========================================================================= */}
       <header className="sticky top-3 sm:top-5 z-50 w-full px-3 sm:px-6 flex justify-center pointer-events-none">
-        <div className="pointer-events-auto max-w-5xl w-full bg-[#0c1622]/85 backdrop-blur-2xl border border-white/15 rounded-full px-4 sm:px-6 py-2.5 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] ring-1 ring-white/10 flex items-center justify-between transition-all hover:border-white/25">
+        <div className="pointer-events-auto max-w-5xl w-full bg-[#1b232c]/90 backdrop-blur-xl border border-white/10 rounded-full px-4 sm:px-6 py-2.5 shadow-2xl shadow-black/30 flex items-center justify-between transition-all">
           {/* Left: Brand Logo & Title */}
           <div
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -422,7 +418,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
 
               {activeDropdown === 'product' && (
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-64 z-50">
-                  <div className="bg-[#0c1622]/95 border border-white/15 rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl text-xs space-y-1">
+                  <div className="bg-[#1b232c] border border-white/10 rounded-2xl p-2 shadow-2xl backdrop-blur-2xl text-xs space-y-1">
                     <a
                       href="#customer-360"
                       className="block p-2.5 rounded-xl hover:bg-white/10 text-slate-200 hover:text-white transition"
@@ -466,7 +462,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
 
               {activeDropdown === 'solutions' && (
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-64 z-50">
-                  <div className="bg-[#0c1622]/95 border border-white/15 rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl text-xs space-y-1">
+                  <div className="bg-[#1b232c] border border-white/10 rounded-2xl p-2 shadow-2xl backdrop-blur-2xl text-xs space-y-1">
                     <a
                       href="#platform"
                       className="block p-2.5 rounded-xl hover:bg-white/10 text-slate-200 hover:text-white transition"
@@ -503,7 +499,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
 
               {activeDropdown === 'resources' && (
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-64 z-50">
-                  <div className="bg-[#0c1622]/95 border border-white/15 rounded-2xl p-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl text-xs space-y-1">
+                  <div className="bg-[#1b232c] border border-white/10 rounded-2xl p-2 shadow-2xl backdrop-blur-2xl text-xs space-y-1">
                     <a
                       href="#governance"
                       className="block p-2.5 rounded-xl hover:bg-white/10 text-slate-200 hover:text-white transition"
@@ -565,7 +561,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
 
       {/* Mobile Drawer (Attached to pill) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed top-16 left-4 right-4 z-50 bg-[#0c1622]/95 border border-white/15 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="lg:hidden fixed top-16 left-4 right-4 z-50 bg-[#1b232c] border border-white/10 rounded-3xl p-5 shadow-2xl backdrop-blur-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
           <nav className="flex flex-col space-y-2 text-sm font-medium text-slate-200">
             <a
               href="#platform"
@@ -636,47 +632,33 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
         ref={heroRef}
         onMouseMove={handleHeroMouseMove}
         onMouseLeave={handleHeroMouseLeave}
-        className="relative min-h-[92vh] lg:min-h-screen flex flex-col justify-end overflow-hidden pt-28 pb-14 lg:pt-32 lg:pb-16 border-b border-white/10 bg-[#061528]"
+        className="relative overflow-hidden pt-10 pb-20 lg:pt-16 lg:pb-32 border-b border-slate-200/80"
       >
-        {/* Full-screen ambient HLS video background with dark gradient vignette */}
-        <HlsVideoBackground opacity={0.35} />
-
-        {/* Subtle animated Aurora accent */}
-        <Aurora
-          colorStops={['#1769D2', '#32C7E9', '#08264D']}
-          speed={0.4}
-          amplitude={1.0}
-          blend={0.5}
-          className="absolute inset-0 w-full h-full pointer-events-none opacity-30 mix-blend-screen"
-        />
-
         <EnterpriseCanvas />
 
         {/* Ambient radial glow lights */}
-        <div className="absolute top-0 right-1/4 w-[600px] h-[380px] bg-gradient-to-b from-[#1769D2]/20 via-[#32C7E9]/10 to-transparent blur-[130px] pointer-events-none" />
-        <div className="absolute -bottom-10 left-10 w-[400px] h-[300px] bg-gradient-to-tr from-[#1769D2]/15 to-transparent blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 right-1/4 w-[600px] h-[380px] bg-gradient-to-b from-[#1769D2]/10 via-[#32C7E9]/6 to-transparent blur-[130px] pointer-events-none" />
+        <div className="absolute -bottom-10 left-10 w-[400px] h-[300px] bg-gradient-to-tr from-[#1769D2]/6 to-transparent blur-[100px] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-10 items-end">
-            {/* Left Column: Anchored Bottom-Left Copy, Value Proposition & CTAs */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
+            {/* Left Column: Copy, Value Proposition & CTAs */}
             <div className="lg:col-span-5 space-y-6">
               {/* Eyebrow */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-[#32C7E9] text-xs font-bold tracking-wider uppercase backdrop-blur-md shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-[#32C7E9] animate-pulse" />
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-[#1769D2] text-xs font-bold tracking-wider uppercase shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-[#1769D2] animate-pulse" />
                 <span>Enterprise CRM · Sales · Marketing</span>
               </div>
 
-              {/* Main Animated Headline using BlurText */}
-              <BlurText
-                text="Every customer relationship. Every opportunity. One intelligent workspace."
-                delay={40}
-                animateBy="words"
-                direction="bottom"
-                className="text-4xl sm:text-5xl lg:text-[52px] font-extrabold text-white tracking-tight leading-[1.12] font-display drop-shadow-md"
-              />
+              {/* Main Headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-[52px] font-extrabold text-[#08264D] tracking-tight leading-[1.12] font-display">
+                Every customer relationship.{' '}
+                <span className="text-[#1769D2]">Every opportunity.</span>{' '}
+                One intelligent workspace.
+              </h1>
 
               {/* Supporting Description */}
-              <p className="text-base sm:text-lg text-slate-200/90 leading-relaxed max-w-xl">
+              <p className="text-base sm:text-lg text-[#65758B] leading-relaxed max-w-xl">
                 Bring your customer relationships, sales operations and marketing activities together in one connected platform. Give your team the clarity and tools to engage customers, manage opportunities and grow your business.
               </p>
 
@@ -684,7 +666,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
               <div className="pt-2 flex flex-wrap items-center gap-3.5">
                 <button
                   onClick={onLaunchDemo}
-                  className="px-6 py-3.5 bg-[#1769D2] hover:bg-[#1257b0] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-2 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#32C7E9]"
+                  className="px-6 py-3.5 bg-[#1769D2] hover:bg-[#103B70] text-white font-semibold text-sm rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center gap-2 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1769D2]"
                 >
                   <span>Explore the Platform</span>
                   <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />
@@ -692,15 +674,15 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
 
                 <button
                   onClick={() => setShowDemoModal(true)}
-                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl border border-white/20 hover:border-white/40 backdrop-blur-md shadow-xs hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="px-6 py-3.5 bg-white hover:bg-slate-50 text-[#12243A] font-semibold text-sm rounded-xl border border-slate-300 hover:border-slate-400 shadow-2xs hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 >
                   Request a Demo
                 </button>
               </div>
 
               {/* Account Quick Switcher for Interactive Discovery */}
-              <div className="pt-4 border-t border-white/15">
-                <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-2">
+              <div className="pt-4 border-t border-slate-200/70">
+                <span className="text-[11px] font-bold text-[#65758B] uppercase tracking-wider block mb-2">
                   Interactive Account Discovery
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
@@ -710,8 +692,8 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
                       onClick={() => setSelectedHeroAccount(idx)}
                       className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
                         selectedHeroAccount === idx
-                          ? 'bg-[#1769D2] text-white border-[#32C7E9] shadow-xs'
-                          : 'bg-white/10 text-slate-200 border-white/15 hover:border-white/30 hover:bg-white/15'
+                          ? 'bg-[#08264D] text-white border-[#08264D] shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300'
                       }`}
                     >
                       {acc.name.split(' ')[0]}
@@ -722,9 +704,9 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
               </div>
 
               {/* Brand Microcopy & Pillars */}
-              <div className="flex items-center gap-4 text-xs font-semibold text-slate-300 tracking-wide">
-                <span className="text-white font-bold">ENGAGE · CONVERT · GROW</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+              <div className="flex items-center gap-4 text-xs font-semibold text-[#65758B] tracking-wide">
+                <span className="text-[#08264D] font-bold">ENGAGE · CONVERT · GROW</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                 <span>Multi-Tenant Architecture</span>
               </div>
             </div>
@@ -1103,20 +1085,17 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
             </p>
           </div>
 
-          {/* 4 Interactive Feature Selector Cards with React Bits Spotlight hover lighting */}
+          {/* 4 Interactive Feature Selector Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {/* Pillar 1: CRM & Customer 360 */}
-            <SpotlightCard
-              spotlightColor="rgba(23, 105, 210, 0.22)"
-              theme="light"
+            <button
+              type="button"
+              onClick={() => setActiveFeatureIndex(0)}
               className={`p-6 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                 activeFeatureIndex === 0
-                  ? 'bg-blue-50/90 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
+                  ? 'bg-blue-50/80 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
                   : 'bg-[#F5F8FC] border-slate-200/80 hover:border-blue-300 hover:bg-slate-50'
               }`}
-              onClick={() => setActiveFeatureIndex(0)}
-              role="button"
-              tabIndex={0}
             >
               <div className="space-y-3">
                 <div className="w-11 h-11 rounded-xl bg-blue-100 text-[#1769D2] flex items-center justify-center">
@@ -1131,20 +1110,17 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
                 <span>Explore Customer 360</span>
                 <ChevronRight size={13} />
               </div>
-            </SpotlightCard>
+            </button>
 
             {/* Pillar 2: Sales Management */}
-            <SpotlightCard
-              spotlightColor="rgba(23, 105, 210, 0.22)"
-              theme="light"
+            <button
+              type="button"
+              onClick={() => setActiveFeatureIndex(1)}
               className={`p-6 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                 activeFeatureIndex === 1
-                  ? 'bg-blue-50/90 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
+                  ? 'bg-blue-50/80 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
                   : 'bg-[#F5F8FC] border-slate-200/80 hover:border-blue-300 hover:bg-slate-50'
               }`}
-              onClick={() => setActiveFeatureIndex(1)}
-              role="button"
-              tabIndex={0}
             >
               <div className="space-y-3">
                 <div className="w-11 h-11 rounded-xl bg-cyan-100 text-[#103B70] flex items-center justify-center">
@@ -1159,20 +1135,17 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
                 <span>Explore Sales Engine</span>
                 <ChevronRight size={13} />
               </div>
-            </SpotlightCard>
+            </button>
 
             {/* Pillar 3: Marketing & Engagement */}
-            <SpotlightCard
-              spotlightColor="rgba(23, 105, 210, 0.22)"
-              theme="light"
+            <button
+              type="button"
+              onClick={() => setActiveFeatureIndex(2)}
               className={`p-6 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                 activeFeatureIndex === 2
-                  ? 'bg-blue-50/90 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
+                  ? 'bg-blue-50/80 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
                   : 'bg-[#F5F8FC] border-slate-200/80 hover:border-blue-300 hover:bg-slate-50'
               }`}
-              onClick={() => setActiveFeatureIndex(2)}
-              role="button"
-              tabIndex={0}
             >
               <div className="space-y-3">
                 <div className="w-11 h-11 rounded-xl bg-indigo-100 text-[#1769D2] flex items-center justify-center">
@@ -1187,20 +1160,17 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
                 <span>Explore Engagement</span>
                 <ChevronRight size={13} />
               </div>
-            </SpotlightCard>
+            </button>
 
             {/* Pillar 4: AI-Assisted Workflows */}
-            <SpotlightCard
-              spotlightColor="rgba(23, 105, 210, 0.22)"
-              theme="light"
+            <button
+              type="button"
+              onClick={() => setActiveFeatureIndex(3)}
               className={`p-6 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                 activeFeatureIndex === 3
-                  ? 'bg-blue-50/90 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
+                  ? 'bg-blue-50/80 border-[#1769D2] ring-2 ring-[#1769D2]/20 shadow-md'
                   : 'bg-[#F5F8FC] border-slate-200/80 hover:border-blue-300 hover:bg-slate-50'
               }`}
-              onClick={() => setActiveFeatureIndex(3)}
-              role="button"
-              tabIndex={0}
             >
               <div className="space-y-3">
                 <div className="w-11 h-11 rounded-xl bg-blue-100 text-[#1769D2] flex items-center justify-center">
@@ -1215,7 +1185,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
                 <span>Explore Intelligence</span>
                 <ChevronRight size={13} />
               </div>
-            </SpotlightCard>
+            </button>
           </div>
 
           {/* Synchronized Live Capability Preview Deck */}
@@ -1987,13 +1957,9 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
             </p>
           </div>
 
-          {/* 4 Security & Governance Pillars with React Bits SpotlightCard hover effect */}
+          {/* 4 Security & Governance Pillars */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <SpotlightCard
-              spotlightColor="rgba(50, 199, 233, 0.2)"
-              theme="light"
-              className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all"
-            >
+            <div className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all">
               <div className="w-10 h-10 rounded-xl bg-blue-100 text-[#1769D2] flex items-center justify-center">
                 <Building2 size={20} />
               </div>
@@ -2001,13 +1967,9 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
               <p className="text-xs text-[#65758B] leading-relaxed">
                 Logical data separation ensuring each organization's records, contacts, and opportunities remain strictly partitioned in a private workspace.
               </p>
-            </SpotlightCard>
+            </div>
 
-            <SpotlightCard
-              spotlightColor="rgba(50, 199, 233, 0.2)"
-              theme="light"
-              className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all"
-            >
+            <div className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all">
               <div className="w-10 h-10 rounded-xl bg-cyan-100 text-[#103B70] flex items-center justify-center">
                 <Shield size={20} />
               </div>
@@ -2015,13 +1977,9 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
               <p className="text-xs text-[#65758B] leading-relaxed">
                 Granular permission profiles ensuring team members access only authorized accounts, pipeline stages, and commercial actions.
               </p>
-            </SpotlightCard>
+            </div>
 
-            <SpotlightCard
-              spotlightColor="rgba(50, 199, 233, 0.2)"
-              theme="light"
-              className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all"
-            >
+            <div className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all">
               <div className="w-10 h-10 rounded-xl bg-indigo-100 text-[#1769D2] flex items-center justify-center">
                 <Lock size={20} />
               </div>
@@ -2029,13 +1987,9 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
               <p className="text-xs text-[#65758B] leading-relaxed">
                 Modern credential security, session validation, and support for enterprise identity federation to keep workspaces safe.
               </p>
-            </SpotlightCard>
+            </div>
 
-            <SpotlightCard
-              spotlightColor="rgba(50, 199, 233, 0.2)"
-              theme="light"
-              className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all"
-            >
+            <div className="p-6 bg-[#F5F8FC] border border-slate-200 rounded-2xl space-y-3 hover:border-blue-300 hover:shadow-md transition-all">
               <div className="w-10 h-10 rounded-xl bg-blue-100 text-[#1769D2] flex items-center justify-center">
                 <Activity size={20} />
               </div>
@@ -2043,7 +1997,7 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
               <p className="text-xs text-[#65758B] leading-relaxed">
                 Comprehensive activity tracking and audit logs to monitor platform usage, prevent unauthorized access, and ensure organizational compliance.
               </p>
-            </SpotlightCard>
+            </div>
           </div>
         </div>
       </section>
