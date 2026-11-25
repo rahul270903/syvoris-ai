@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import Aurora from '../components/Aurora';
+import EnterpriseTelemetryBackground from '../components/EnterpriseTelemetryBackground';
 import BlurText from '../components/BlurText';
 import SpotlightCard from '../components/SpotlightCard';
 import {
@@ -535,15 +535,8 @@ export function LandingPage({ onNavigateLogin, onNavigateRegister, onLaunchDemo 
         onMouseLeave={handleHeroMouseLeave}
         className="relative overflow-hidden pt-12 pb-24 lg:pt-20 lg:pb-36 border-b border-white/[0.08]"
       >
-        {/* React Bits: Restrained Aurora animated background */}
-        <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
-          <Aurora
-            colorStops={['#06070A', '#0D1726', '#092540', '#38BDF8']}
-            amplitude={1.0}
-            blend={0.5}
-            speed={0.5}
-          />
-        </div>
+        {/* Enterprise CRM SaaS Telemetry & Connected Node Network Background */}
+        <EnterpriseTelemetryBackground />
 
         {/* Ambient radial lighting accents */}
         <div className="absolute top-0 right-1/4 w-[600px] h-[380px] bg-gradient-to-b from-[#38BDF8]/10 via-[#1769D2]/5 to-transparent blur-[140px] pointer-events-none" />
