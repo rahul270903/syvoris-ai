@@ -1977,12 +1977,15 @@ class ApiClient {
       }
       let errorMessage = `Request failed (${response.status})`;
       try {
-        const errorJson = await response.json();
-        if (errorJson.detail) {
-          if (typeof errorJson.detail === 'string') {
-            errorMessage = errorJson.detail;
-          } else if (Array.isArray(errorJson.detail)) {
-            errorMessage = errorJson.detail.map((e: any) => e.msg || e.message).join(', ');
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('text/html')) {
+          const errorJson = await response.json();
+          if (errorJson.detail) {
+            if (typeof errorJson.detail === 'string') {
+              errorMessage = errorJson.detail;
+            } else if (Array.isArray(errorJson.detail)) {
+              errorMessage = errorJson.detail.map((e: any) => e.msg || e.message).join(', ');
+            }
           }
         }
       } catch {
@@ -2019,6 +2022,8 @@ class ApiClient {
         });
 
         if (!resp.ok) return false;
+        const contentType = resp.headers.get('content-type') || '';
+        if (contentType.includes('text/html')) return false;
         const data: AuthResponse = await resp.json();
         this.setTokens(data.access_token, data.refresh_token);
         return true;
